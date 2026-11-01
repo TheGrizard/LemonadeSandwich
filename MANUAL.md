@@ -36,6 +36,7 @@ page's four settings sit along the top of the screen in the same order.
 - [ORGANIC: TIDE and SWARM](#organic-tide-and-swarm)
 - [Mod shortcut](#mod-shortcut)
 - [Help card](#help-card)
+- [RND: one button, a new piece](#rnd-one-button-a-new-piece)
 - [Menu and settings](#menu-and-settings)
 - [Saving and older projects](#saving-and-older-projects)
 - [If something goes wrong](#if-something-goes-wrong)
@@ -808,12 +809,43 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 
 ---
 
+## RND: one button, a new piece
+
+After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** and REC becomes a roll:
+
+| On REC | What it does |
+|---|---|
+| Tap | A new piece on all four tracks at once, and it starts playing. The screen shows **RND** and the roll's seed. |
+| Hold | Back to how everything was before the roll (**BEFORE THE ROLL**); hold again for the roll. A quick A/B. |
+
+What a roll writes, every one an ordinary setting you can then change on its page:
+
+- **The sound** of each track: an instrument engine (FM6, ORACLE, TRIO or PHYS; never DRUM) and one of its presets,
+  pushed a long way from where it started: the engine's eight (EDIT), the envelope (slow swells or hard snaps, long
+  releases), the LFO, the voice mode, glide and spread, the register (TRN: an octave or two down, a fifth or an
+  octave up). On ORACLE the patch itself too, often with noise in it. At most one FM6 and one PHYS track a roll
+  (the FM-1's CPU).
+- **What plays**: a generator on each track (TURING, EUCLID, MARKOV, MORPH, BOUNCE, AWAKE, POLY, QUAD,
+  CONSTELLATION, SERIES or one CHORD track) with its settings, EVOLVE and now and then a FORM, TWEAK's DROP and
+  HUMAN, LENGTH, sometimes a ratchet, and the track's DIV, LEN, GATE and SWING (leaning slow).
+- **The key**: one ROOT and SCALE for all four (KEY LINK on), a mode often, often something stranger (an EDO, just
+  intonation, a gamelan or maqam scale).
+- **Effects**: one or two inserts a track (FX 3 off), the sends, and the three send effects in SPLIT (a space, a
+  smear, sometimes a third).
+- **MODS**: three to nine cords, slow sources (DRIFT, the SLOTHs, OCHD, S&H, the LFO) into the sound, the effects
+  and the generators' own settings. The tracks' four MOD routes are cleared.
+
+A roll leaves alone: the tempo, the steps of the tracks' STEP patterns, the arpeggiator's settings and the device's
+settings. Save a roll you like as a project (SAVE + REC still saves). To record live again, set REC BUTTON back to
+RECORD.
+
 ## Menu and settings
 
 Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

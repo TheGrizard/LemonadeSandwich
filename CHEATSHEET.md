@@ -115,6 +115,7 @@ ARP, FX, LFO and OCT+ on GEN work as soon as they are down. Page buttons act whe
 | **REC** + PLAY | Records now |
 | **REC** held | Generator track: prints its last bars into STEP. STEP EVOLVE: keeps the changes. STEP: captures what you played |
 | **REC** held on SONG | Take jam: the patterns played since PLAY become the song |
+| **REC** (MENU > REC BUTTON RND) | Rolls a new piece: sounds, generators, key, effects, mods. Held: before the roll / the roll again |
 | **EDIT** held, recording on NOTES | Erases as the steps pass |
 | **EDIT** + **REC** on NOTES | Clear pattern? (OCT+), REC stays on for a new take |
 | **OCT-** / **OCT+** on NOTES, REC on | Keys octave down / up; both: octave 0 |
