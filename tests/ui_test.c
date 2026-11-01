@@ -6080,9 +6080,162 @@ static int test_battery(void)
     return bad;
 }
 
+
+/* RND (rnd.c): MENU > REC BUTTON RND makes REC roll the whole project (engines, never DRUM; generators, effects, cords,
+ * key); REC held swaps back to before the roll and held again to the roll. Then many rolls: the limits a roll keeps
+ * (FM6 and PHYS once, one CHORD track, the parts in, one key) and what they play (sound, no hard clipping) */
+static int rnd_same_as(const rnd_snap_t *a)        /* what is there now equals the copy a */
+{
+    uint32_t tr, i;
+    for (tr = 0; tr < NTRK; tr++) {
+        if (trk[tr].eng_req != a->eng[tr] || trk[tr].preset != a->preset[tr]) return printf("rnd: T%u engine\n", tr + 1u), 0;
+        for (i = 0; i < P_COUNT; i++)
+            if (trk[tr].p[i] != a->p[tr][i]) return printf("rnd: T%u p[%u] %d, %d\n", tr + 1u, i, trk[tr].p[i], a->p[tr][i]), 0;
+        if (memcmp(or_patch_of(&trk[tr]), a->oracle[tr], OR_N)) return printf("rnd: T%u oracle\n", tr + 1u), 0;
+        if (trk[tr].eng_req == ENGI_FM6 && memcmp(fm6_patch[tr], a->fm6[tr], FP_SIZE))   /* (another engine's track:
+                                                                                         * its unused patch tidied) */
+            return printf("rnd: T%u fm6\n", tr + 1u), 0;
+    }
+    for (tr = 0; tr < TESSERA_TRACKS; tr++)
+        for (i = 0; i < RND_NTX; i++)
+            if (RND_TX[i] != TX_EV_SEED && pid_get(PID_TESS(RND_TX[i]), tr) != a->tx[tr][i])
+                return printf("rnd: T%u TX %u: %d, %d\n", tr + 1u, RND_TX[i], pid_get(PID_TESS(RND_TX[i]), tr), a->tx[tr][i]), 0;
+    if (tessera.key_link != a->key_link) return printf("rnd: KEY LINK\n"), 0;
+    for (i = 0; i < RND_NG; i++)
+        if (pid_get(PID_GLOBAL(RND_G[i]), 0) != a->g[i]) return printf("rnd: G %u\n", RND_G[i]), 0;
+    for (i = 0; i < CORD_LIVE; i++)
+        if (memcmp(cord_get(i), &a->cord[i], sizeof(cord_t))) return printf("rnd: cord %u\n", i), 0;
+    return 1;
+}
+static int test_rnd(void)
+{
+    static rnd_snap_t before, rolled;
+    int bad = 0;
+    uint32_t r, tr, i, n_fm6, n_phys, n_chord, drums = 0, limits = 0, modes_ok = 1, mixed = 1, keyed = 1, oracle_ok = 1;
+    uint32_t cords_ok = 1, silent = 0, loud = 0, clipped = 0, heard = 0, engines_seen = 0, gens_seen = 0, scales_seen = 0;
+    ui_power_on();
+    tessera_init();                                 /* (the generators' settings as at power-on: in their ranges) */
+    cord_clear();
+    song.master_q12 = 2048;                         /* (melodee_init's; ui_power_on leaves it 0) */
+    bad += check("RND: REC BUTTON is RECORD at first: REC arms the track", !rnd_mode());
+    press(B_REC);
+    bad += check("RND: ..REC tapped: the track armed (as upstream)", (song.rec & 1u) != 0u);
+    press(B_REC);
+    hold(B_HOME); ui.menu_sel = MI_REC_BTN; turn(EN_K2, 1);
+    bad += check("RND: MENU > REC BUTTON turned right: RND, kept in the settings (favorites byte 24, bit 6)",
+                 rnd_mode() && (favorites.factory[15][24] & 0x40u) && !(favorites.factory[15][24] & 0x30u));
+    hold(B_HOME);
+    ui.home = 1; ui.force = 1; frame();
+    rnd_take(); before = rnd_snap;
+    press(B_REC);
+    rolled = rnd_snap;                              /* (rnd_take's copy: what was there before the roll) */
+    bad += check("RND: REC tapped: a roll, the track not armed, the copy taken from before it",
+                 !song.rec && rnd_snap.valid && !memcmp(rolled.p, before.p, sizeof before.p));
+    bad += check("RND: ..the screen says RND and the seed", !memcmp(ui.msg, "RND ", 4) && strlen(ui.msg) == 12u);
+    {
+        int32_t o[2 * CTL];
+        for (i = 0; i < 40u; i++) mix_block(o, CTL);
+        bad += check("RND: ..it plays at once (the transport started)", song.playing);
+    }
+    {
+        rnd_snap_t now, copy = rnd_snap;            /* (rnd_snap: the copy the roll took, from before it) */
+        rnd_take(); now = rnd_snap; rnd_snap = copy;    /* the roll as it is now */
+        hold(B_REC);
+        bad += check("RND: REC held: everything back as before the roll (sounds, patches, generators, sends, cords)",
+                     rnd_same_as(&before) && !strcmp(ui.msg, "BEFORE THE ROLL"));
+        hold(B_REC);
+        bad += check("RND: ..held again: the roll again", rnd_same_as(&now) && !memcmp(ui.msg, "RND ", 4));
+    }
+    press(B_PLAY);                                  /* (PLAY stops; REC + PLAY does not record in RND) */
+    {
+        int32_t o[2 * CTL];
+        for (i = 0; i < 4u; i++) mix_block(o, CTL);
+    }
+    /* many rolls: the limits */
+    for (r = 0; r < 400u; r++) {
+        rnd_roll();
+        n_fm6 = n_phys = n_chord = 0;
+        for (tr = 0; tr < NTRK; tr++) {
+            uint32_t e = trk[tr].eng_req;
+            engines_seen |= 1u << (e & 31u);
+            drums += e == ENGI_DRUM || !eng_ok(e);
+            n_fm6 += e == ENGI_FM6;
+            n_phys += e == ENGI_PHYS;
+            mixed &= !trk[tr].p[P_MUTE] && trk[tr].p[P_LEVEL] >= 80 && trk[tr].p[P_AMODE] == 0;
+            keyed &= trk[tr].p[P_SCALE] == trk[0].p[P_SCALE] && trk[tr].p[P_ROOT] == trk[0].p[P_ROOT];
+            if (e == ENGI_ORACLE) {
+                const uint8_t *p = or_patch_of(&trk[tr]);
+                oracle_ok &= or_patch_ok(p) && (p[OR_SAW_A] | p[OR_PULSE_A] | p[OR_SAW_B] | p[OR_TRI_B] | p[OR_PULSE_B]) &&
+                             (p[OR_LEVEL_A] >= 50u || p[OR_LEVEL_B] >= 50u);
+            }
+        }
+        for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+            uint32_t m = tessera.mode[tr];
+            gens_seen |= 1u << m;
+            n_chord += m == TESS_ENG_CHORD;
+            modes_ok &= m != TESS_ENG_OFF && m != TESS_ENG_GRIDS && m != TESS_ENG_ANSWER;
+        }
+        scales_seen |= trk[0].p[P_SCALE] >= 16 ? 2u : 1u;
+        keyed &= tessera.key_link == 1u;
+        limits += n_fm6 > 1u || n_phys > 1u || n_chord > 1u;
+        {
+            uint32_t live = cord_count();
+            cords_ok &= live >= 1u && live <= 9u;
+        }
+        if (r % 20u == 0u) {                        /* listen to it: 12 s */
+            int32_t o[2 * CTL], peak = 0;
+            uint64_t sq = 0, cnt = 0;
+            uint32_t b, k, at_max = 0;
+            if (!song.playing) transport_req = 1;
+            for (b = 0; b < 12u * FS / CTL; b++) {
+                mix_block(o, CTL);
+                for (k = 0; k < 2u * CTL; k++) {
+                    int32_t v = o[k] < 0 ? -o[k] : o[k];
+                    if (v > peak) peak = v;
+                    if (v >= 32700) at_max++;
+                    sq += (uint64_t)((int64_t)o[k] * o[k]); cnt++;
+                }
+            }
+            heard++;
+            silent += peak < 300;
+            loud += peak > 16000;
+            clipped += at_max > 2u * FS / 100u;     /* (more than 10 ms a channel at the rail) */
+            printf("rnd: roll %3u seed %08X  %-6s %-6s %-6s %-6s  peak %5d rms %5.0f\n", r, rnd_seed,
+                   ENGINES[trk[0].eng_req]->name, ENGINES[trk[1].eng_req]->name, ENGINES[trk[2].eng_req]->name,
+                   ENGINES[trk[3].eng_req]->name, peak, cnt ? sqrt((double)sq / (double)cnt) : 0.0);
+        }
+    }
+    bad += check("RND: 400 rolls: never DRUM (nor a retired engine)", !drums);
+    bad += check("RND: ..at most one FM6, one PHYS and one CHORD track a roll", !limits);
+    bad += check("RND: ..every track on a generator (not STEP, ATLAS or ANSWER)", modes_ok);
+    bad += check("RND: ..all four in the mix, the ARP off, one key and scale (KEY LINK on)", mixed && keyed);
+    bad += check("RND: ..ORACLE's patches in range, an oscillator and a level up", oracle_ok);
+    bad += check("RND: ..a handful of mods, nothing past the live cords", cords_ok);
+    bad += check("RND: ..the instrument engines all picked, most generators, modes and stranger tunings",
+                 (engines_seen & (1u << ENGI_FM6)) && (engines_seen & (1u << ENGI_ORACLE)) &&
+                 __builtin_popcount(gens_seen) >= 10 && scales_seen == 3u);
+    printf("rnd: %u of %u rolls listened to: %u silent, %u loud (peak > -6 dBFS), %u clipping\n", heard, heard, silent,
+           loud, clipped);
+    bad += check("RND: ..each roll listened to sounds within 12 s", !silent);
+    bad += check("RND: ..and none holds the output at the rail", !clipped);
+    transport_req = 2;
+    {
+        int32_t o[2 * CTL];
+        for (i = 0; i < 8u; i++) mix_block(o, CTL);
+    }
+    rnd_mode_put(0);
+    bad += check("RND: REC BUTTON back to RECORD", !rnd_mode() && !(favorites.factory[15][24] & 0x40u));
+    return bad;
+}
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
+    if (getenv("UI_ONLY_RND")) {                    /* (RND alone: the device's engines, -DMELODEE_SID=0) */
+        int b = test_rnd();
+        printf(b ? "ui: %d FAILED\n" : "ui: all passed\n", b);
+        return b ? 1 : 0;
+    }
     int bad = test_boot_maintenance();
 #if !MELODEE_LOOK
     bad += test_large_face();
@@ -6168,6 +6321,7 @@ int main(void)
     bad += test_fm6_charts();
     bad += test_pattern_key_handoff();
     bad += test_stage_knobs_after_drum();
+    bad += test_rnd();
 
     if (getenv("UI_SCREEN_DIR")) chain_screens(getenv("UI_SCREEN_DIR"));
     printf(bad ? "ui: %d FAILED\n" : "ui: all passed\n", bad);
