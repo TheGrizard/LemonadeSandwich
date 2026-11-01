@@ -1285,3 +1285,5 @@ static void confirm_open(uint32_t kind, uint32_t trk)
 #include "seq_tools.c"                            /* the Pattern sheet's DOUBLE, HALF, EUCLID */
 
 #include "ui_boot.c"                            /* visible progress before boot flash maintenance */
+
+#include "rnd.c"                                 /* RND: REC rolls a whole new piece (MENU > REC BUTTON) */

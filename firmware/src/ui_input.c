@@ -2111,6 +2111,10 @@ static void ui_input(void)
     }
     if (ui.menu || ui.confirm || name_on()) {
         /* REC does nothing in the menu, a dialog or NAME (no transport start there) */
+    } else if (rnd_mode() && rec == BT_TAP) {           /* RND (MENU > REC BUTTON): a tap rolls, a hold swaps back */
+        rnd_roll();
+    } else if (rnd_mode() && rec == BT_HOLD) {
+        rnd_back();
     } else if (chain_busy() && rec == BT_TAP) {
         ui_message("STOP TO RECORD");
     } else if (rec == BT_TAP) {
@@ -2251,7 +2255,7 @@ static void ui_input(void)
         b = panel_btn_of(id);
         switch (b) {
         case B_PLAY:
-            if ((fm1_in.buttons >> panel.btn[B_REC]) & 1u) {   /* REC + PLAY: record now */
+            if (!rnd_mode() && ((fm1_in.buttons >> panel.btn[B_REC]) & 1u)) {   /* REC + PLAY: record now */
                 rec_play();
                 break;
             }

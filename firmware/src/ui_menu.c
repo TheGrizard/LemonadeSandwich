@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Melodee menu (HOME held): COLOR, HOLD (the layer threshold), LIGHTS (the keys' and buttons'
- * glow: ui_input.c ui_leds), KNOB ACCEL (ui_input.c accel_by), TRACK KNOB (RIGHT: ALGORITHM picks the track, LEFT:
+ * glow: ui_input.c ui_leds), REC BUTTON (RECORD, or RND: REC rolls a new piece, held swaps back; rnd.c), KNOB ACCEL (ui_input.c accel_by), TRACK KNOB (RIGHT: ALGORITHM picks the track, LEFT:
  * PRESETS does; panel.c), USB AUDIO (IN+OUT, IN, OUT or OFF; usb.c ua_off_set),
  * USB INPUT (stereo master or four track stems; usb.c ua_tracks_set),
  * MIDI OUT (KEYS, ALL or OFF: the notes sent over USB) and CLOCK OUT (midi_out.c), MIDI CC IN (ON or OFF: CCs and
@@ -12,7 +12,7 @@
  * PRESETS scrolls from ABOUT through all credits. ui.menu: 1 list, 2 information. */
 /* ------------------------------------------------------------ menu --- */
 #define MENU_HEAD 24                     /* the menu's own title strip (Stage and the pages: H_HEAD) */
-enum { MI_COLOR, MI_HOLD, MI_LIGHTS,
+enum { MI_COLOR, MI_HOLD, MI_LIGHTS, MI_REC_BTN,
 #if MELODEE_USB_AUDIO
        MI_USB, MI_USB_INPUT,
 #endif
@@ -23,7 +23,7 @@ enum { MI_COLOR, MI_HOLD, MI_LIGHTS,
        MI_CLICK, MI_CLICK_LEVEL, MI_COUNTIN, MI_PREVIEW, MI_ADD, MI_AUTOSAVE, MI_ACCEL, MI_TRACK_KNOB, MI_SCREEN, MI_BATTERY, MI_GAMMA, MI_PANEL, MI_ABOUT, MI_DESIGNER, MI_BACK,
        MI_COUNT };
 static const char *const GAMMA_NAME[GAMMA_N] = {"G2.2", "G1.8", "G2.5", "G1.0", "TUNED", "TUNED+VCOM"};   /* (lcd.c) */
-static const char *const MI_NAME[MI_COUNT] = {"COLOR", "HOLD", "LIGHTS",
+static const char *const MI_NAME[MI_COUNT] = {"COLOR", "HOLD", "LIGHTS", "REC BUTTON",
 #if MELODEE_USB_AUDIO
                                               "USB AUDIO", "USB INPUT",
 #endif
@@ -410,6 +410,7 @@ static const char *menu_value(uint32_t i, char *b, uint32_t size)
 #endif
     if (i == MI_AUTOSAVE) value = settings_autosave ? "ON" : "OFF";
     if (i == MI_BATTERY) value = settings_batt_off ? "WHEN LOW" : "ON";
+    if (i == MI_REC_BTN) value = rnd_mode() ? "RND" : "RECORD";
     if (i == MI_SCREEN) value = (const char *const[]){"NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"}[scr_get()];
     if (i == MI_GAMMA) value = GAMMA_NAME[gamma_get()];
     if (i == MI_LIGHTS) value = LIGHTS_NAME[settings_lights % LIGHTS_N];
@@ -674,6 +675,10 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
         gamma_put((gamma_get() + (s < 0 ? GAMMA_N - 1u : 1u)) % GAMMA_N);
         lcd_gamma_switch(gamma_get());                 /* (the panel black and on again: ui.force draws it all) */
         ui.force = 1; ok = 0;
+    }
+    if ((s || ok) && ui.menu == 1 && ui.menu_sel == MI_REC_BTN) {   /* KNOB 2 right RND, left RECORD; OCT+ toggles */
+        rnd_mode_put(s > 0 ? 1u : s < 0 ? 0u : !rnd_mode());
+        ui.force = 1; ok = 0;                          /* (rnd.c: REC rolls, held swaps back) */
     }
     if ((s || ok) && ui.menu == 1 && ui.menu_sel == MI_BATTERY) {   /* KNOB 2 right ON, left WHEN LOW; OCT+ toggles */
         settings_batt_off = (uint8_t)(s > 0 ? 0u : s < 0 ? 1u : !settings_batt_off);
