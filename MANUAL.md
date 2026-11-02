@@ -820,7 +820,7 @@ After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** and REC becom
 
 What a roll writes, every one an ordinary setting you can then change on its page:
 
-- **The sound** of each track: an instrument engine (FM6, ORACLE, TRIO or PHYS; never DRUM) and one of its presets,
+- **The sound** of each track: an instrument engine (at most one each of FM6, ORACLE and PHYS, the rest TRIO; never DRUM) and one of its presets,
   pushed a long way from where it started: the engine's eight (EDIT), the envelope (slow swells or hard snaps, long
   releases), the LFO, the voice mode (never UNISON), glide and spread, the register (TRN: an octave or two down, a fifth or an
   octave up). On ORACLE the patch itself too, often with noise in it. At most one FM6 and one PHYS track a roll
@@ -830,16 +830,17 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   HUMAN, LENGTH, sometimes a ratchet, and the track's DIV, LEN, GATE and SWING (leaning slow).
 - **The key**: one ROOT and SCALE for all four (KEY LINK on), a mode often, often something stranger (an EDO, just
   intonation, a gamelan or maqam scale).
-- **Effects**: one or two inserts a track (FX 3 off), the sends, and the three send effects in SPLIT (a space, a
-  smear, sometimes a third).
+- **Effects**: FX 1 on up to two tracks, the sends, and the send effects in SPLIT (a REVERB or ROOM, often an ECHO).
+  The effects share a CPU budget, so an expensive one (FORMANT, WIDTH, PHASER) leaves less room for the others.
 - **MODS**: three to nine cords, slow sources (DRIFT, the SLOTHs, OCHD, S&H, the LFO) into the sound, the effects
   and the generators' own settings. The tracks' four MOD routes are cleared.
 
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
-at once](#how-many-voices-at-once)), so a roll stays inside what it can play: at most one FM6 and one PHYS track, no
-UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
+at once](#how-many-voices-at-once)), so a roll stays inside what it can play: at most one FM6, one ORACLE and one PHYS track,
+the effects within a CPU budget, no UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
 tracks (and often MONO or LEGATO, one voice a line), shorter tails on a CHORD track, very long tails on two tracks at
-most, POLY with two or three rhythms, and at most five inserts in all. A roll also lowers **GLO > GLOBAL > BUDGET** to
+most, and POLY with two or three rhythms. The tracks' levels sit under the default (72 to 96) so four rough sounds
+together stay clear of the output limiter with MASTER turned up. A roll also lowers **GLO > GLOBAL > BUDGET** to
 12 if it was higher (it never raises it, and a lower one stays); it is a device setting, so it stays at 12 afterwards:
 turn it back up there if you want more voices.
 

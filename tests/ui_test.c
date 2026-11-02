@@ -6111,7 +6111,7 @@ static int test_rnd(void)
 {
     static rnd_snap_t before, rolled;
     int bad = 0;
-    uint32_t r, tr, i, n_fm6, n_phys, n_chord, drums = 0, limits = 0, modes_ok = 1, mixed = 1, keyed = 1, oracle_ok = 1;
+    uint32_t r, tr, i, n_fm6, n_phys, n_oracle, n_chord, drums = 0, limits = 0, modes_ok = 1, mixed = 1, keyed = 1, oracle_ok = 1;
     uint32_t cords_ok = 1, silent = 0, loud = 0, clipped = 0, heard = 0, engines_seen = 0, gens_seen = 0, scales_seen = 0;
     uint32_t cpu_ok = 1, fx_ok = 1, tails_ok = 1;
     int16_t budget_was = settings_budget;
@@ -6156,14 +6156,15 @@ static int test_rnd(void)
     /* many rolls: the limits */
     for (r = 0; r < 400u; r++) {
         rnd_roll();
-        n_fm6 = n_phys = n_chord = 0;
+        n_fm6 = n_phys = n_oracle = n_chord = 0;
         for (tr = 0; tr < NTRK; tr++) {
             uint32_t e = trk[tr].eng_req;
             engines_seen |= 1u << (e & 31u);
             drums += e == ENGI_DRUM || !eng_ok(e);
             n_fm6 += e == ENGI_FM6;
             n_phys += e == ENGI_PHYS;
-            mixed &= !trk[tr].p[P_MUTE] && trk[tr].p[P_LEVEL] >= 80 && trk[tr].p[P_AMODE] == 0;
+            n_oracle += e == ENGI_ORACLE;
+            mixed &= !trk[tr].p[P_MUTE] && trk[tr].p[P_LEVEL] >= 70 && trk[tr].p[P_LEVEL] <= 100 && trk[tr].p[P_AMODE] == 0;
             keyed &= trk[tr].p[P_SCALE] == trk[0].p[P_SCALE] && trk[tr].p[P_ROOT] == trk[0].p[P_ROOT];
             if (e == ENGI_ORACLE) {
                 const uint8_t *p = or_patch_of(&trk[tr]);
@@ -6178,7 +6179,7 @@ static int test_rnd(void)
             modes_ok &= m != TESS_ENG_OFF && m != TESS_ENG_GRIDS && m != TESS_ENG_ANSWER;
         }
         {                                           /* what the FM-1 can play (rnd_cpu, rnd_tails, rnd_budget) */
-            uint32_t fx = 0, longt = 0, s2;
+            uint32_t fx = 0, points = 0, longt = 0, s2;
             for (tr = 0; tr < NTRK; tr++) {
                 uint32_t sp = rnd_speed((uint32_t)trk[tr].p[P_SDIV]);
                 cpu_ok &= trk[tr].p[P_VOICE] != V_UNISON;
@@ -6188,16 +6189,18 @@ static int test_rnd(void)
                 cpu_ok &= sp != RND_FAST || (rnd_tail(tr) <= 55 && pid_get(PID_TESS(TX_NL_MODE), tr) == 0);
                 cpu_ok &= tessera.mode[tr] != TESS_ENG_POLY || pid_get(PID_TESS(TX_POL_DIV4), tr) == 0;
                 longt += rnd_tail(tr) > RND_REL_LONG;
-                for (s2 = 0; s2 < 3u; s2++) fx += trk[tr].p[P_FXTYPE + 4u * s2] != FX_OFF;
-                fx_ok &= trk[tr].p[P_FXTYPE + 8u] == FX_OFF;
+                fx += trk[tr].p[P_FXTYPE] != FX_OFF;
+                points += rnd_fx_points((uint32_t)trk[tr].p[P_FXTYPE], 0);
+                fx_ok &= trk[tr].p[P_FXTYPE + 4u] == FX_OFF && trk[tr].p[P_FXTYPE + 8u] == FX_OFF && !trk[tr].p[P_FXSEND3];
             }
-            fx_ok &= fx <= RND_FX_MAX;
+            for (s2 = 0; s2 < 3u; s2++) points += rnd_fx_points((uint32_t)song.g[G_MFXTYPE + 4u * s2], 1);
+            fx_ok &= fx <= RND_INSERT_TRACKS && points <= RND_FX_POINTS && song.g[G_MFX3TYPE] == FX_OFF;
             tails_ok &= longt <= 2u;
             cpu_ok &= settings_budget <= RND_BUDGET;
         }
         scales_seen |= trk[0].p[P_SCALE] >= 16 ? 2u : 1u;
         keyed &= tessera.key_link == 1u;
-        limits += n_fm6 > 1u || n_phys > 1u || n_chord > 1u;
+        limits += n_fm6 > 1u || n_phys > 1u || n_oracle > 1u || n_chord > 1u;
         {
             uint32_t live = cord_count();
             cords_ok &= live >= 1u && live <= 9u;
@@ -6226,12 +6229,13 @@ static int test_rnd(void)
         }
     }
     bad += check("RND: 400 rolls: never DRUM (nor a retired engine)", !drums);
-    bad += check("RND: ..at most one FM6, one PHYS and one CHORD track a roll", !limits);
+    bad += check("RND: ..at most one FM6, one ORACLE, one PHYS and one CHORD track a roll", !limits);
     bad += check("RND: ..every track on a generator (not STEP, ATLAS or ANSWER)", modes_ok);
     bad += check("RND: ..all four in the mix, the ARP off, one key and scale (KEY LINK on)", mixed && keyed);
     bad += check("RND: ..the CPU: no UNISON, FM6 never fast, chords and ratchets only slow, fast tracks' notes short, "
                  "POLY's fourth rhythm off, BUDGET at most 12", cpu_ok);
-    bad += check("RND: ..at most five inserts in all (FX 3 off), very long tails on two tracks at most", fx_ok && tails_ok);
+    bad += check("RND: ..the effects within their CPU points: FX 1 on two tracks at most, two send effects at most; "
+                 "very long tails on two tracks at most", fx_ok && tails_ok);
     bad += check("RND: ..ORACLE's patches in range, an oscillator and a level up", oracle_ok);
     bad += check("RND: ..a handful of mods, nothing past the live cords", cords_ok);
     bad += check("RND: ..the instrument engines all picked, most generators, modes and stranger tunings",

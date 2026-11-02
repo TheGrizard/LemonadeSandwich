@@ -12,7 +12,8 @@
  * Cost (MANUAL "How many voices at once": the FM-1 crackles when it has more voices to work out than time for): at
  * most one FM6 and one PHYS track a roll (two FM6 pads crackle, engines.c TRK_DEF), never UNISON, the chord keys only
  * on a slow track, FM6 never on a fast division, a fast track's notes short (release, LENGTH; no ratchets), at most
- * five inserts in all, and BUDGET lowered to RND_BUDGET if it was set higher (rnd_cpu). The swap copy is one snapshot
+ * two inserts in all and the effects within a CPU budget (rnd_fx_points), one ORACLE track at most (FM6, ORACLE and
+ * PHYS cost about twice what TRIO does: the rest TRIO), and BUDGET lowered to RND_BUDGET if it was set higher (rnd_cpu). The swap copy is one snapshot
  * of what a roll touches (.pool). */
 
 /* ------------------------------------------------------------ the setting: MENU > REC BUTTON --- */
@@ -192,7 +193,7 @@ static void rnd_tp(uint32_t tr, uint32_t id, int32_t v) { pid_set(PID_TRACK(id),
 static void rnd_tx(uint32_t tr, uint32_t id, int32_t v) { pid_set(PID_TESS(id), tr, v); }
 
 /* the engines a roll may pick (built, offered, never DRUM): FM6 and PHYS at most once each a roll */
-static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys)
+static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     uint8_t code[NENG_SHOWN], w[NENG_SHOWN];
     uint32_t n = 0, k;
@@ -201,13 +202,14 @@ static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys)
         if (!eng_ok(e) || e == ENGI_DRUM || !ENGINES[e]->npresets) continue;
         if (e == ENGI_FM6) wt = *fm6s ? 0u : 3u;
         if (e == ENGI_PHYS) wt = *phys ? 0u : 2u;
-        if (e == ENGI_ORACLE) wt = 3u;
+        if (e == ENGI_ORACLE) wt = *oracles ? 0u : 3u;  /* (one at most: as heavy as FM6) */
         code[n] = (uint8_t)e;
         w[n++] = (uint8_t)wt;
     }
     k = n ? rnd_pick(code, w, n) : ENGI_FALLBACK;
     if (k == ENGI_FM6) (*fm6s)++;
     if (k == ENGI_PHYS) (*phys)++;
+    if (k == ENGI_ORACLE) (*oracles)++;
     return k;
 }
 
@@ -231,10 +233,10 @@ static void rnd_oracle(uint32_t tr, uint32_t wild)
     p[OR_NOISE] = (uint8_t)(rnd_pct(45) ? rnd_rr(20, 127) : p[OR_NOISE]);   /* (hiss and grit, often) */
 }
 
-static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys)
+static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     track_t *t = &trk[tr];
-    uint32_t e = rnd_engine(fm6s, phys), wild = (uint32_t)rnd_rr(40, 100), k;
+    uint32_t e = rnd_engine(fm6s, phys, oracles), wild = (uint32_t)rnd_rr(40, 100), k;
     const engine_t *en = ENGINES[e];
     engine_load_of(t, e, (uint32_t)rnd_rr(0, (int32_t)en->npresets - 1));
     for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
@@ -276,7 +278,8 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys)
                                                                  * slow track) */
     for (k = 0; k < 4u; k++) rnd_tp(tr, P_M1SRC + 3u * k, 0);          /* (the routes: cords below) */
     /* the mix: all four in, spread */
-    rnd_tp(tr, P_LEVEL, rnd_rr(88, 118));
+    rnd_tp(tr, P_LEVEL, rnd_rr(72, 96));             /* (under the default 104: four rough tracks at once kept
+                                                     * off the output limiter with MASTER turned up) */
     rnd_tp(tr, P_PAN, rnd_rr(-45, 45));
     rnd_tp(tr, P_MUTE, 0);
     rnd_tp(tr, P_AMODE, 0);
@@ -287,48 +290,80 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys)
     }
 }
 
-/* the inserts: one, now and then two (RND_FX_MAX in all), picked for grit; FX 3 stays off (the CPU) */
-#define RND_FX_MAX 5u
-static void rnd_inserts(uint32_t tr, uint32_t *used)
+/* ------------------------------------------------------------ the roll: effects within a CPU budget --- */
+/* What each effect costs, in points (measured on the host, tests/ui_test.c test_rnd: four tracks rolled, one insert of
+ * a kind on each, or one send effect; a point is about a twentieth of what a roll's engines cost). On the FM-1 a roll's
+ * effects had cost as much again as its engines (80 to 105 % CPU, the overload: late blocks are a digital crunch and the
+ * voices it sheds a stutter), so a roll's effects share RND_FX_POINTS. Inserts: FX 1 only, on two tracks at most. */
+static uint32_t rnd_fx_points(uint32_t type, int send)
 {
-    static const uint8_t fx[] = {FX_PHASER, FX_WIDTH, FX_FORMANT, FX_TAPE, FX_SPIT, FX_ECHO, FX_CHORUS, FX_FILTER};
-    static const uint8_t fw[] = {10, 6, 14, 16, 18, 10, 8, 18};
-    uint32_t s, n = rnd_pct(30) && *used + 2u + (TESSERA_TRACKS - 1u - tr) <= RND_FX_MAX ? 2u : 1u;
-    *used += n;
-    for (s = 0; s < 3u; s++) {
-        uint32_t base = P_FXTYPE + s * 4u;
-        if (s < n) {
-            rnd_tp(tr, base, rnd_pick(fx, fw, NELEM(fx)));
-            rnd_tp(tr, base + 1u, rnd_rr(40, 127));
-            rnd_tp(tr, base + 2u, rnd_rr(0, 127));
-            rnd_tp(tr, base + 3u, rnd_rr(0, 127));
-        } else {
-            rnd_tp(tr, base, FX_OFF);
-        }
+    switch (type) {
+    case FX_OFF: return 0u;
+    case FX_ECHO: case FX_FILTER: return 1u;
+    case FX_ROOM: return 3u;
+    case FX_SPIT: case FX_TAPE: case FX_CHORUS: return 4u;
+    case FX_PHASER: return 5u;
+    case FX_WIDTH: return 7u;
+    case FX_FORMANT: return 9u;
+    case FX_REVERB: return send ? 11u : 14u;
+    default: return 6u;
     }
-    rnd_tp(tr, P_FXSEND, rnd_rr(20, 110));
-    rnd_tp(tr, P_FXSEND2, rnd_rr(0, 100));
-    rnd_tp(tr, P_FXSEND3, rnd_pct(50) ? rnd_rr(0, 90) : 0);
 }
+#define RND_FX_POINTS 18u
+#define RND_INSERT_TRACKS 2u
 
-/* the send effects (SPLIT: a send to each): a space, a smear, sometimes a third */
-static void rnd_sends(void)
+/* the send effects (SPLIT: a send to each): a space (REVERB, or the cheaper ROOM), now and then an echo; the third
+ * off. -> the points they use */
+static uint32_t rnd_sends(void)
 {
-    static const uint8_t s1[] = {FX_REVERB, FX_ROOM}, w1[] = {3, 1};
-    static const uint8_t s2[] = {FX_ECHO, FX_TAPE, FX_CHORUS, FX_PHASER}, w2[] = {4, 2, 2, 2};
-    static const uint8_t s3[] = {FX_OFF, FX_SPIT, FX_FORMANT, FX_FILTER, FX_WIDTH}, w3[] = {5, 2, 2, 2, 1};
-    const uint8_t *code[3] = {s1, s2, s3}, *w[3] = {w1, w2, w3};
-    const uint32_t n[3] = {NELEM(s1), NELEM(s2), NELEM(s3)};
-    uint32_t s;
+    uint32_t used = 0, s;
+    uint32_t type[3];
+    type[0] = rnd_pct(60) ? FX_REVERB : FX_ROOM;
+    type[1] = rnd_pct(55) ? FX_ECHO : FX_OFF;
+    type[2] = FX_OFF;
     pid_set(PID_GLOBAL(G_FXMODE), 0, 1);
     for (s = 0; s < 3u; s++) {
         uint32_t base = G_MFXTYPE + s * 4u;
-        pid_set(PID_GLOBAL(base), 0, rnd_pick(code[s], w[s], n[s]));
-        pid_set(PID_GLOBAL(base + 1u), 0, rnd_rr(60, 127));
+        pid_set(PID_GLOBAL(base), 0, (int32_t)type[s]);
+        pid_set(PID_GLOBAL(base + 1u), 0, rnd_rr(60, 120));
         pid_set(PID_GLOBAL(base + 2u), 0, rnd_rr(0, 127));
-        pid_set(PID_GLOBAL(base + 3u), 0, rnd_rr(20, 127));
+        pid_set(PID_GLOBAL(base + 3u), 0, rnd_rr(20, 120));
+        used += rnd_fx_points(type[s], 1);
     }
-    pid_set(PID_GLOBAL(G_FXRETURN), 0, rnd_rr(60, 110));
+    pid_set(PID_GLOBAL(G_FXRETURN), 0, rnd_rr(60, 100));
+    return used;
+}
+
+/* the inserts: FX 1 on RND_INSERT_TRACKS tracks at most, each kind if the points left allow it; FX 2 and 3 off. SPIT
+ * (its drive: a hard digital edge) rare */
+static void rnd_inserts(uint32_t used)
+{
+    static const uint8_t fx[] = {FX_FILTER, FX_ECHO, FX_TAPE, FX_CHORUS, FX_PHASER, FX_SPIT, FX_WIDTH, FX_FORMANT};
+    static const uint8_t fw[] = {18, 12, 16, 12, 10, 3, 4, 6};
+    uint8_t ok[NELEM(fx)], tracks[TESSERA_TRACKS] = {0, 1, 2, 3};
+    uint32_t tr, k, n = 0, want = (uint32_t)rnd_rr(0, (int32_t)RND_INSERT_TRACKS);
+    for (k = TESSERA_TRACKS - 1u; k > 0u; k--) {    /* (which tracks: shuffled) */
+        uint32_t j = rnd_next() % (k + 1u);
+        uint8_t v = tracks[k]; tracks[k] = tracks[j]; tracks[j] = v;
+    }
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+        uint32_t t = tracks[tr], type = FX_OFF, s;
+        if (n < want) {
+            for (k = 0; k < NELEM(fx); k++) ok[k] = used + rnd_fx_points(fx[k], 0) <= RND_FX_POINTS ? fw[k] : 0u;
+            type = rnd_pick(fx, ok, NELEM(fx));
+            if (used + rnd_fx_points(type, 0) > RND_FX_POINTS) type = FX_OFF;
+            if (type != FX_OFF) { used += rnd_fx_points(type, 0); n++; }
+        }
+        for (s = 0; s < 3u; s++) rnd_tp(t, P_FXTYPE + s * 4u, s == 0u ? (int32_t)type : FX_OFF);
+        if (type != FX_OFF) {
+            rnd_tp(t, P_FXMIX, rnd_rr(40, 110));
+            rnd_tp(t, P_FXRATE, rnd_rr(0, 127));
+            rnd_tp(t, P_FXCHAR, type == FX_SPIT ? rnd_rr(0, 70) : rnd_rr(0, 127));   /* (SPIT: its BITE not flat out) */
+        }
+        rnd_tp(t, P_FXSEND, rnd_rr(20, 110));
+        rnd_tp(t, P_FXSEND2, rnd_rr(0, 100));
+        rnd_tp(t, P_FXSEND3, 0);
+    }
 }
 
 /* ------------------------------------------------------------ the roll: what plays --- */
@@ -570,7 +605,7 @@ static void rnd_say(const char *what, uint32_t seed)
 
 static void rnd_roll(void)
 {
-    uint32_t tr, fm6s = 0, phys = 0, chords = 0, inserts = 0;
+    uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0;
     momentary_restore();
     rnd_seed = rnd_next() ^ fm1_ticks() ^ (fm1_ms << 7);
     if (!rnd_seed) rnd_seed = 0x2545F491u;
@@ -578,18 +613,17 @@ static void rnd_roll(void)
     rnd_take();                                     /* (the hold swaps back to this) */
     rnd_backed = 0;
     undo_depth++;                                   /* (a roll is not four sound loads to undo one by one) */
-    for (tr = 0; tr < NTRK; tr++) rnd_sound(tr, &fm6s, &phys);
+    for (tr = 0; tr < NTRK; tr++) rnd_sound(tr, &fm6s, &phys, &oracles);
     undo_depth--;
     undo_clear();
     rnd_key();
     for (tr = 0; tr < TESSERA_TRACKS; tr++) {
         rnd_generator(tr, &chords);
         rnd_cpu(tr);
-        rnd_inserts(tr, &inserts);
     }
     rnd_tails();
     rnd_budget();
-    rnd_sends();
+    rnd_inserts(rnd_sends());
     rnd_cords();
     sync_reload = 1;
     rnd_say("RND ", rnd_seed);
