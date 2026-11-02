@@ -13,7 +13,7 @@
  * most one FM6 and one PHYS track a roll (two FM6 pads crackle, engines.c TRK_DEF), never UNISON, the chord keys only
  * on a slow track, FM6 never on a fast division, a fast track's notes short (release, LENGTH; no ratchets), at most
  * two inserts in all and the effects within a CPU budget (rnd_fx_points), one ORACLE track at most (FM6, ORACLE and
- * PHYS cost about twice what TRIO does: the rest TRIO), and BUDGET lowered to RND_BUDGET if it was set higher (rnd_cpu). The swap copy is one snapshot
+ * PHYS cost about twice what TRIO does: two of them a roll at most, the rest TRIO), and BUDGET lowered to RND_BUDGET if it was set higher (rnd_cpu). The swap copy is one snapshot
  * of what a roll touches (.pool). */
 
 /* ------------------------------------------------------------ the setting: MENU > REC BUTTON --- */
@@ -192,17 +192,21 @@ static void rnd_take(void)
 static void rnd_tp(uint32_t tr, uint32_t id, int32_t v) { pid_set(PID_TRACK(id), tr, v); }
 static void rnd_tx(uint32_t tr, uint32_t id, int32_t v) { pid_set(PID_TESS(id), tr, v); }
 
-/* the engines a roll may pick (built, offered, never DRUM): FM6 and PHYS at most once each a roll */
+/* the engines a roll may pick (built, offered, never DRUM): FM6, ORACLE and PHYS once each at most, and two of them
+ * at most a roll (RND_HEAVY): each costs about twice TRIO, and on the FM-1 the rolls with all three were the ones past
+ * 80 % CPU (host profile, 80 rolls: all of the heaviest held the three; the lightest two TRIO tracks) */
+#define RND_HEAVY 2u
 static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     uint8_t code[NENG_SHOWN], w[NENG_SHOWN];
-    uint32_t n = 0, k;
+    uint32_t n = 0, k, full = *fm6s + *phys + *oracles >= RND_HEAVY;
     for (k = 0; k < NENG_SHOWN; k++) {
         uint32_t e = eng_vis(k), wt = 2u;
         if (!eng_ok(e) || e == ENGI_DRUM || !ENGINES[e]->npresets) continue;
         if (e == ENGI_FM6) wt = *fm6s ? 0u : 3u;
         if (e == ENGI_PHYS) wt = *phys ? 0u : 2u;
         if (e == ENGI_ORACLE) wt = *oracles ? 0u : 3u;  /* (one at most: as heavy as FM6) */
+        if (full && (e == ENGI_FM6 || e == ENGI_PHYS || e == ENGI_ORACLE)) wt = 0u;
         code[n] = (uint8_t)e;
         w[n++] = (uint8_t)wt;
     }
@@ -589,6 +593,104 @@ static void rnd_cords(void)
     }
 }
 
+/* ------------------------------------------------------------ the guard: a roll that is too heavy lightens itself --- */
+/* The FM-1 knows its own load (audio.c song.cpu_q8: the audio's share of the time, 1/256, over ~93 ms). Past ~80 % it
+ * sheds voices (a stutter) and past 100 % blocks are late (a digital crunch), and what a roll costs is only known once it
+ * plays: so while a roll plays, a load over RND_GUARD_HOT for RND_GUARD_MS, or over RND_GUARD_PEAK at all, takes one
+ * step off it (rnd_trim), then waits RND_GUARD_GAP to see. Only a roll's own sound: off once the hold swaps back. */
+#define RND_GUARD_HOT 184u                          /* 72 % */
+#define RND_GUARD_PEAK 218u                         /* 85 % */
+#define RND_GUARD_MS 300u
+#define RND_GUARD_GAP 1500u
+#define RND_GUARD_GRACE 600u                        /* (after a roll: the engines' switch and its fades) */
+static struct {
+    uint8_t on, step, hot;
+    uint32_t hot_since, wait_until;
+} rnd_guard_s;
+
+static void rnd_guard_start(void)
+{
+    rnd_guard_s.on = 1;
+    rnd_guard_s.step = 0;
+    rnd_guard_s.hot = 0;
+    rnd_guard_s.wait_until = fm1_ms + RND_GUARD_GRACE;
+}
+
+/* the insert (FX 1) costing most, on any track; NTRK: none */
+static uint32_t rnd_dearest_insert(void)
+{
+    uint32_t tr, best = NTRK, pts = 0;
+    for (tr = 0; tr < NTRK; tr++) {
+        uint32_t p = rnd_fx_points((uint32_t)trk[tr].p[P_FXTYPE], 0);
+        if (p > pts) pts = p, best = tr;
+    }
+    return best;
+}
+/* the POLY track with the most voices sounding now (one voice a line from then on); NTRK: none */
+static uint32_t rnd_busiest_poly(void)
+{
+    uint32_t tr, i, best = NTRK, most = 0;
+    for (tr = 0; tr < NTRK; tr++) {
+        uint32_t n = 0;
+        if (trk[tr].p[P_VOICE] != V_POLY) continue;
+        for (i = 0; i < NVOICE; i++) n += trk[tr].v[i].active;
+        if (n >= most) most = n, best = tr;
+    }
+    return best;
+}
+/* one step lighter, the cheapest to hear first: the reverb a ROOM, the dearest inserts off, the echo off, then the
+ * busiest POLY tracks MONO. 0: nothing left to take */
+static int rnd_trim(void)
+{
+    uint32_t tr;
+    if (song.g[G_MFXTYPE] == FX_REVERB) {
+        pid_set(PID_GLOBAL(G_MFXTYPE), 0, FX_ROOM);
+        return 1;
+    }
+    if ((tr = rnd_dearest_insert()) < NTRK) {
+        rnd_tp(tr, P_FXTYPE, FX_OFF);
+        return 1;
+    }
+    if (song.g[G_MFX2TYPE] != FX_OFF) {
+        pid_set(PID_GLOBAL(G_MFX2TYPE), 0, FX_OFF);
+        return 1;
+    }
+    if ((tr = rnd_busiest_poly()) < NTRK) {
+        rnd_tp(tr, P_VOICE, V_MONO);
+        return 1;
+    }
+    return 0;
+}
+
+/* each UI frame (ui_input) in RND mode */
+static void rnd_guard(void)
+{
+    uint32_t load = song.cpu_q8;
+    if (!rnd_guard_s.on || !song.playing) {
+        rnd_guard_s.hot = 0;
+        return;
+    }
+    if ((int32_t)(fm1_ms - rnd_guard_s.wait_until) < 0) return;
+    if (load <= RND_GUARD_HOT) {
+        rnd_guard_s.hot = 0;
+        return;
+    }
+    if (!rnd_guard_s.hot) {
+        rnd_guard_s.hot = 1;
+        rnd_guard_s.hot_since = fm1_ms;
+    }
+    if (load <= RND_GUARD_PEAK && fm1_ms - rnd_guard_s.hot_since < RND_GUARD_MS) return;
+    rnd_guard_s.hot = 0;
+    rnd_guard_s.wait_until = fm1_ms + RND_GUARD_GAP;
+    if (rnd_trim()) {
+        rnd_guard_s.step++;
+        ui_message("LIGHTER");
+        ui.force = 1;
+    } else {
+        rnd_guard_s.on = 0;                         /* (nothing left to take: as it is) */
+    }
+}
+
 /* ------------------------------------------------------------ the button --- */
 static void rnd_say(const char *what, uint32_t seed)
 {
@@ -628,6 +730,7 @@ static void rnd_roll(void)
     sync_reload = 1;
     rnd_say("RND ", rnd_seed);
     if (!song.playing && !seq_counting() && !chain_busy()) transport_req = 1;   /* (it plays at once) */
+    rnd_guard_start();
 }
 
 /* the hold: before the roll / the roll again */
@@ -642,6 +745,11 @@ static void rnd_back(void)
     undo_clear();
     sync_reload = 1;
     rnd_backed ^= 1u;
-    if (rnd_backed) ui_message("BEFORE THE ROLL");
-    else rnd_say("RND ", rnd_seed);
+    if (rnd_backed) {
+        rnd_guard_s.on = 0;                         /* (what was there before: not the guard's to change) */
+        ui_message("BEFORE THE ROLL");
+    } else {
+        rnd_say("RND ", rnd_seed);
+        rnd_guard_start();
+    }
 }

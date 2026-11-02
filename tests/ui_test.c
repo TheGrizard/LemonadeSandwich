@@ -6250,6 +6250,47 @@ static int test_rnd(void)
         int32_t o[2 * CTL];
         for (i = 0; i < 8u; i++) mix_block(o, CTL);
     }
+    {                                               /* the guard: a heavy roll lightens itself, step by step */
+        uint32_t k, steps;
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (i = 0; i < 8u; i++) mix_block(o, CTL); }
+        rnd_roll();
+        { int32_t o[2 * CTL]; for (i = 0; i < 8u; i++) mix_block(o, CTL); }
+        song.g[G_MFXTYPE] = FX_REVERB; trk[1].p[P_FXTYPE] = FX_FORMANT; trk[2].p[P_FXTYPE] = FX_FILTER;
+        song.g[G_MFX2TYPE] = FX_ECHO;
+        song.cpu_q8 = 150u;                         /* (59 %: fine) */
+        for (k = 0; k < 200u; k++) frame();
+        bad += check("RND guard: a roll at 59 % CPU is left as it is", rnd_guard_s.step == 0u && song.g[G_MFXTYPE] == FX_REVERB);
+        song.cpu_q8 = 200u;                         /* (78 %: hot) */
+        for (k = 0; k < 10u; k++) frame();          /* (160 ms: not yet) */
+        bad += check("RND guard: ..78 % for a moment: not yet", rnd_guard_s.step == 0u);
+        for (k = 0; k < 20u; k++) frame();
+        bad += check("RND guard: ..78 % held: one step, the reverb a ROOM, LIGHTER said",
+                     rnd_guard_s.step == 1u && song.g[G_MFXTYPE] == FX_ROOM && !strcmp(ui.msg, "LIGHTER"));
+        for (k = 0; k < 40u; k++) frame();
+        bad += check("RND guard: ..then it waits to hear (no step within 1.5 s)", rnd_guard_s.step == 1u);
+        for (k = 0; k < 80u; k++) frame();
+        bad += check("RND guard: ..still hot: the dearest insert off (FORMANT before FILTER)",
+                     rnd_guard_s.step == 2u && trk[1].p[P_FXTYPE] == FX_OFF && trk[2].p[P_FXTYPE] == FX_FILTER);
+        song.cpu_q8 = 240u;                         /* (94 %: a peak: at once, once the wait is over) */
+        for (k = 0; k < 100u; k++) frame();
+        bad += check("RND guard: ..a peak: the next insert off", rnd_guard_s.step == 3u && trk[2].p[P_FXTYPE] == FX_OFF);
+        for (k = 0; k < 100u; k++) frame();
+        bad += check("RND guard: ..then the echo send off", rnd_guard_s.step == 4u && song.g[G_MFX2TYPE] == FX_OFF);
+        for (k = 0; k < 2000u; k++) frame();
+        steps = rnd_guard_s.step;
+        for (tr = 0; tr < NTRK; tr++) cpu_ok &= trk[tr].p[P_VOICE] != V_POLY;
+        bad += check("RND guard: ..then POLY tracks MONO, until nothing is left (the guard off)", !rnd_guard_s.on && steps >= 4u);
+        song.cpu_q8 = 0;
+        rnd_roll();
+        hold(B_REC);
+        song.cpu_q8 = 240u;
+        { uint32_t fx = song.g[G_MFXTYPE]; for (k = 0; k < 400u; k++) frame();
+          bad += check("RND guard: before the roll (REC held): never touched", !rnd_guard_s.on && song.g[G_MFXTYPE] == (int16_t)fx); }
+        song.cpu_q8 = 0;
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (i = 0; i < 8u; i++) mix_block(o, CTL); }
+    }
     rnd_mode_put(0);
     {                                               /* BUDGET: lowered, never raised; one set lower stays */
         settings_budget = 10; rnd_budget();

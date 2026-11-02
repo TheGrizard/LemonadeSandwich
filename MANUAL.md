@@ -820,7 +820,8 @@ After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** and REC becom
 
 What a roll writes, every one an ordinary setting you can then change on its page:
 
-- **The sound** of each track: an instrument engine (at most one each of FM6, ORACLE and PHYS, the rest TRIO; never DRUM) and one of its presets,
+- **The sound** of each track: an instrument engine (two of FM6, ORACLE and PHYS at most, one of each, the rest
+  TRIO; never DRUM) and one of its presets,
   pushed a long way from where it started: the engine's eight (EDIT), the envelope (slow swells or hard snaps, long
   releases), the LFO, the voice mode (never UNISON), glide and spread, the register (TRN: an octave or two down, a fifth or an
   octave up). On ORACLE the patch itself too, often with noise in it. At most one FM6 and one PHYS track a roll
@@ -836,13 +837,19 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   and the generators' own settings. The tracks' four MOD routes are cleared.
 
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
-at once](#how-many-voices-at-once)), so a roll stays inside what it can play: at most one FM6, one ORACLE and one PHYS track,
+at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
 the effects within a CPU budget, no UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
 tracks (and often MONO or LEGATO, one voice a line), shorter tails on a CHORD track, very long tails on two tracks at
 most, and POLY with two or three rhythms. The tracks' levels sit under the default (72 to 96) so four rough sounds
 together stay clear of the output limiter with MASTER turned up. A roll also lowers **GLO > GLOBAL > BUDGET** to
 12 if it was higher (it never raises it, and a lower one stays); it is a device setting, so it stays at 12 afterwards:
 turn it back up there if you want more voices.
+
+**LIGHTER.** What a roll costs is only known once it plays, so while it plays the FM-1 watches its own CPU load. If the
+load stays over about 72 % for a third of a second, or touches 85 %, the roll takes one step off itself and the screen
+says **LIGHTER**: first the REVERB becomes a ROOM, then the most expensive inserts go, then the ECHO send, then the
+busiest POLY tracks become MONO. It waits a second and a half after each step to hear the difference. Only a roll's
+own sound is changed: holding REC to go back to before the roll stops it.
 
 A roll leaves alone: the tempo, the steps of the tracks' STEP patterns, the arpeggiator's settings and the device's
 other settings. Save a roll you like as a project (SAVE + REC still saves). To record live again, set REC BUTTON back to
