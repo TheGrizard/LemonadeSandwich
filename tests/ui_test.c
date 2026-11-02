@@ -6113,6 +6113,8 @@ static int test_rnd(void)
     int bad = 0;
     uint32_t r, tr, i, n_fm6, n_phys, n_chord, drums = 0, limits = 0, modes_ok = 1, mixed = 1, keyed = 1, oracle_ok = 1;
     uint32_t cords_ok = 1, silent = 0, loud = 0, clipped = 0, heard = 0, engines_seen = 0, gens_seen = 0, scales_seen = 0;
+    uint32_t cpu_ok = 1, fx_ok = 1, tails_ok = 1;
+    int16_t budget_was = settings_budget;
     ui_power_on();
     tessera_init();                                 /* (the generators' settings as at power-on: in their ranges) */
     cord_clear();
@@ -6175,6 +6177,24 @@ static int test_rnd(void)
             n_chord += m == TESS_ENG_CHORD;
             modes_ok &= m != TESS_ENG_OFF && m != TESS_ENG_GRIDS && m != TESS_ENG_ANSWER;
         }
+        {                                           /* what the FM-1 can play (rnd_cpu, rnd_tails, rnd_budget) */
+            uint32_t fx = 0, longt = 0, s2;
+            for (tr = 0; tr < NTRK; tr++) {
+                uint32_t sp = rnd_speed((uint32_t)trk[tr].p[P_SDIV]);
+                cpu_ok &= trk[tr].p[P_VOICE] != V_UNISON;
+                cpu_ok &= !(trk[tr].eng_req == ENGI_FM6 && sp == RND_FAST);
+                cpu_ok &= !(trk[tr].p[P_CHRD] && (sp != RND_SLOW || trk[tr].eng_req == ENGI_FM6));
+                cpu_ok &= sp == RND_SLOW || (pid_get(PID_TESS(TX_SUB_RATCH), tr) == 0 && rnd_tail(tr) <= 85);
+                cpu_ok &= sp != RND_FAST || (rnd_tail(tr) <= 55 && pid_get(PID_TESS(TX_NL_MODE), tr) == 0);
+                cpu_ok &= tessera.mode[tr] != TESS_ENG_POLY || pid_get(PID_TESS(TX_POL_DIV4), tr) == 0;
+                longt += rnd_tail(tr) > RND_REL_LONG;
+                for (s2 = 0; s2 < 3u; s2++) fx += trk[tr].p[P_FXTYPE + 4u * s2] != FX_OFF;
+                fx_ok &= trk[tr].p[P_FXTYPE + 8u] == FX_OFF;
+            }
+            fx_ok &= fx <= RND_FX_MAX;
+            tails_ok &= longt <= 2u;
+            cpu_ok &= settings_budget <= RND_BUDGET;
+        }
         scales_seen |= trk[0].p[P_SCALE] >= 16 ? 2u : 1u;
         keyed &= tessera.key_link == 1u;
         limits += n_fm6 > 1u || n_phys > 1u || n_chord > 1u;
@@ -6209,6 +6229,9 @@ static int test_rnd(void)
     bad += check("RND: ..at most one FM6, one PHYS and one CHORD track a roll", !limits);
     bad += check("RND: ..every track on a generator (not STEP, ATLAS or ANSWER)", modes_ok);
     bad += check("RND: ..all four in the mix, the ARP off, one key and scale (KEY LINK on)", mixed && keyed);
+    bad += check("RND: ..the CPU: no UNISON, FM6 never fast, chords and ratchets only slow, fast tracks' notes short, "
+                 "POLY's fourth rhythm off, BUDGET at most 12", cpu_ok);
+    bad += check("RND: ..at most five inserts in all (FX 3 off), very long tails on two tracks at most", fx_ok && tails_ok);
     bad += check("RND: ..ORACLE's patches in range, an oscillator and a level up", oracle_ok);
     bad += check("RND: ..a handful of mods, nothing past the live cords", cords_ok);
     bad += check("RND: ..the instrument engines all picked, most generators, modes and stranger tunings",
@@ -6224,6 +6247,13 @@ static int test_rnd(void)
         for (i = 0; i < 8u; i++) mix_block(o, CTL);
     }
     rnd_mode_put(0);
+    {                                               /* BUDGET: lowered, never raised; one set lower stays */
+        settings_budget = 10; rnd_budget();
+        bad += check("RND: a BUDGET of 10 stays 10 (a roll only lowers it to 12)", settings_budget == 10);
+        settings_budget = 20; rnd_budget();
+        bad += check("RND: ..one of 20 becomes 12", settings_budget == RND_BUDGET);
+        settings_budget = budget_was;
+    }
     bad += check("RND: REC BUTTON back to RECORD", !rnd_mode() && !(favorites.factory[15][24] & 0x40u));
     return bad;
 }

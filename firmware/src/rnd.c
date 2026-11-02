@@ -9,8 +9,11 @@
  * lean wide and rough (noise, feedback, odd tunings) and slow (long gates, slow divisions) for ambient work through
  * outboard effects. What a roll leaves alone: tempo, the steps of STEP patterns, the arpeggiator's own settings.
  *
- * Cost: at most one FM6 and one PHYS track a roll (two FM6 pads crackle on the FM-1, engines.c TRK_DEF), one or two
- * inserts a track, the send effects through SPLIT. The swap copy is one snapshot of what a roll touches (.pool). */
+ * Cost (MANUAL "How many voices at once": the FM-1 crackles when it has more voices to work out than time for): at
+ * most one FM6 and one PHYS track a roll (two FM6 pads crackle, engines.c TRK_DEF), never UNISON, the chord keys only
+ * on a slow track, FM6 never on a fast division, a fast track's notes short (release, LENGTH; no ratchets), at most
+ * five inserts in all, and BUDGET lowered to RND_BUDGET if it was set higher (rnd_cpu). The swap copy is one snapshot
+ * of what a roll touches (.pool). */
 
 /* ------------------------------------------------------------ the setting: MENU > REC BUTTON --- */
 /* 0 RECORD (REC as upstream), 1 RND. Saved in favorites.factory[15][24] bit 6 (free: settings_test.c), as the panel
@@ -263,13 +266,14 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys)
     rnd_tp(tr, P_LSYNC, rnd_pct(30) ? rnd_rr(1, 10) : 0);
     /* the voice */
     {
-        static const uint8_t vm[] = {V_POLY, V_MONO, V_LEGATO, V_UNISON}, vw[] = {50, 15, 25, 10};
-        rnd_tp(tr, P_VOICE, rnd_pick(vm, vw, 4));
+        static const uint8_t vm[] = {V_POLY, V_MONO, V_LEGATO}, vw[] = {55, 20, 25};   /* (no UNISON: the CPU) */
+        rnd_tp(tr, P_VOICE, rnd_pick(vm, vw, 3));
     }
     rnd_tp(tr, P_GLIDE, rnd_pct(40) ? rnd_rr(10, 127) : 0);
     rnd_tp(tr, P_DETUNE, rnd_rr(0, 127));
     rnd_tp(tr, P_SPRD, rnd_rr(0, 127));
-    rnd_tp(tr, P_CHRD, rnd_pct(15) && e != ENGI_FM6 ? rnd_rr(1, 2) : 0);   /* (now and then a cluster; DIA3, DIA7) */
+    rnd_tp(tr, P_CHRD, rnd_pct(8) && e != ENGI_FM6 ? 1 : 0);    /* (now and then a triad, DIA3; rnd_cpu keeps it to a
+                                                                 * slow track) */
     for (k = 0; k < 4u; k++) rnd_tp(tr, P_M1SRC + 3u * k, 0);          /* (the routes: cords below) */
     /* the mix: all four in, spread */
     rnd_tp(tr, P_LEVEL, rnd_rr(88, 118));
@@ -283,12 +287,14 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys)
     }
 }
 
-/* the inserts: one, sometimes two, picked for grit; FX 3 stays off (the CPU) */
-static void rnd_inserts(uint32_t tr)
+/* the inserts: one, now and then two (RND_FX_MAX in all), picked for grit; FX 3 stays off (the CPU) */
+#define RND_FX_MAX 5u
+static void rnd_inserts(uint32_t tr, uint32_t *used)
 {
     static const uint8_t fx[] = {FX_PHASER, FX_WIDTH, FX_FORMANT, FX_TAPE, FX_SPIT, FX_ECHO, FX_CHORUS, FX_FILTER};
     static const uint8_t fw[] = {10, 6, 14, 16, 18, 10, 8, 18};
-    uint32_t s, n = rnd_pct(35) ? 2u : 1u;
+    uint32_t s, n = rnd_pct(30) && *used + 2u + (TESSERA_TRACKS - 1u - tr) <= RND_FX_MAX ? 2u : 1u;
+    *used += n;
     for (s = 0; s < 3u; s++) {
         uint32_t base = P_FXTYPE + s * 4u;
         if (s < n) {
@@ -354,8 +360,10 @@ static void rnd_generator(uint32_t tr, uint32_t *chords)
     case TESS_ENG_AWAKE:
         rnd_tx(tr, TX_AWK_LENA, rnd_rr(1, 16)); rnd_tx(tr, TX_AWK_LENB, rnd_rr(1, 16)); rnd_tx(tr, TX_AWK_PROB, rnd_rr(20, 90)); break;
     case TESS_ENG_POLY:
-        rnd_tx(tr, TX_POL_DIV1, rnd_rr(1, 16)); rnd_tx(tr, TX_POL_DIV2, rnd_rr(0, 16)); rnd_tx(tr, TX_POL_DIV3, rnd_rr(0, 16));
-        rnd_tx(tr, TX_POL_DIV4, rnd_rr(0, 16)); rnd_tx(tr, TX_POL_SPAN, rnd_rr(1, 3)); break;
+        rnd_tx(tr, TX_POL_DIV1, rnd_rr(1, 16)); rnd_tx(tr, TX_POL_DIV2, rnd_rr(0, 16));   /* (two or three rhythms:
+                                                                                         * each one a voice) */
+        rnd_tx(tr, TX_POL_DIV3, rnd_pct(40) ? rnd_rr(1, 16) : 0); rnd_tx(tr, TX_POL_DIV4, 0);
+        rnd_tx(tr, TX_POL_SPAN, rnd_rr(1, 3)); break;
     case TESS_ENG_QUAD:
         rnd_tx(tr, TX_QD_DIR, rnd_rr(0, 3)); rnd_tx(tr, TX_QD_PROB, rnd_rr(20, 90)); rnd_tx(tr, TX_QD_LINK, 0); rnd_tx(tr, TX_QD_RANGE, rnd_rr(0, 3));
         break;
@@ -398,6 +406,91 @@ static void rnd_generator(uint32_t tr, uint32_t *chords)
     rnd_tp(tr, P_SLEN, rnd_rr(8, 32));
     rnd_tp(tr, P_SGATE, rnd_rr(50, 127));
     rnd_tp(tr, P_SSWING, rnd_pct(30) ? rnd_rr(5, 40) : 0);
+}
+
+/* ------------------------------------------------------------ the roll: what the FM-1 can play --- */
+/* BUDGET (GLO > GLOBAL, the voices' shared pool, 16 by default) during rolls: 12 leaves the FM-1 headroom (MANUAL "How
+ * many voices at once"). Only ever lowered, and saved only when it changes: a BUDGET set lower stays */
+#define RND_BUDGET 12
+enum { RND_SLOW, RND_MID, RND_FAST };
+static uint32_t rnd_speed(uint32_t div)            /* P_SDIV: 1/4 1/8 1/16 1/32 8T 16T 1/2 1/1 2BAR 4BAR */
+{
+    return div == 2u || div == 3u || div == 4u || div == 5u ? RND_FAST : div == 1u ? RND_MID : RND_SLOW;
+}
+static void rnd_cap(uint32_t tr, uint32_t id, int32_t top)
+{
+    if (trk[tr].p[id] > top) rnd_tp(tr, id, top);
+}
+/* a track's tail (how long a note rings after its gate), 0..127, wherever its engine keeps it: FM6 and ORACLE have
+ * their own envelopes (ownenv) and leave the track's ENV RELEASE alone. FM6: AEG (+ slower carriers' release, -64..63);
+ * ORACLE: its patch's amp release; the others: the track's RELEASE */
+static int32_t rnd_tail(uint32_t tr)
+{
+    const track_t *t = &trk[tr];
+    if (t->eng_req == ENGI_FM6) return t->p[P_E0 + 7u] + 64;
+    if (t->eng_req == ENGI_ORACLE) return or_patch[tr][OR_RELEASE_AMP];
+    return t->p[P_REL];
+}
+static void rnd_tail_cap(uint32_t tr, int32_t top)
+{
+    track_t *t = &trk[tr];
+    if (t->eng_req == ENGI_FM6) {
+        rnd_cap(tr, P_E0 + 7u, top - 64);
+    } else if (t->eng_req == ENGI_ORACLE) {
+        uint8_t *p = or_patch[tr];
+        if (p[OR_RELEASE_AMP] > top) p[OR_RELEASE_AMP] = (uint8_t)top;
+        if (p[OR_RELEASE_FILTER] > top) p[OR_RELEASE_FILTER] = (uint8_t)top;
+    } else {
+        rnd_cap(tr, P_REL, top);
+    }
+}
+/* a track after its sound and generator: the faster it plays, the shorter its notes, so its voices are free again
+ * before the next ones (a voice ringing in its release still holds a place in the pool) */
+static void rnd_cpu(uint32_t tr)
+{
+    track_t *t = &trk[tr];
+    uint32_t e = t->eng_req, sp;
+    if (e == ENGI_FM6 && rnd_speed((uint32_t)t->p[P_SDIV]) == RND_FAST)   /* (FM6 is the heaviest: 1/8 at most) */
+        rnd_tp(tr, P_SDIV, rnd_pct(50) ? 1 : 0);
+    sp = rnd_speed((uint32_t)t->p[P_SDIV]);
+    if (sp != RND_SLOW) {
+        rnd_tail_cap(tr, sp == RND_FAST ? 55 : 85);
+        rnd_cap(tr, P_SGATE, sp == RND_FAST ? 90 : 127);
+        rnd_tx(tr, TX_SUB_RATCH, 0);                /* (ratchets only on a slow track) */
+        if (t->p[P_CHRD]) rnd_tp(tr, P_CHRD, 0);    /* (a chord: three voices a note) */
+        if (tessera.mode[tr] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_HIT), tr) == 2)
+            rnd_tx(tr, TX_CH_HIT, 1);               /* (CHORD's hits: a beat's, not every step's) */
+        if (sp == RND_FAST)
+            rnd_tx(tr, TX_NL_MODE, 0);              /* (LENGTH: the step's, not long FIXED notes) */
+        else if (pid_get(PID_TESS(TX_NL_LEN), tr) > 3)
+            rnd_tx(tr, TX_NL_LEN, 3);               /* (FIXED at most a 1/4) */
+    }
+    if (tessera.mode[tr] == TESS_ENG_CHORD)          /* (a chord holds three or four voices: a shorter tail) */
+        rnd_tail_cap(tr, 75);
+    else if (sp == RND_FAST && tessera.mode[tr] != TESS_ENG_POLY && tessera.mode[tr] != TESS_ENG_QUAD && rnd_pct(50))
+        rnd_tp(tr, P_VOICE, rnd_pct(50) ? V_MONO : V_LEGATO);   /* (a line on one voice: nothing overlaps) */
+    if (e == ENGI_FM6) {
+        rnd_tail_cap(tr, 90);                       /* (AEG at most +26: FM6's pads ring, but not for ever) */
+        if (t->p[P_CHRD]) rnd_tp(tr, P_CHRD, 0);
+    }
+}
+/* very long releases (past RND_REL_LONG) on two tracks at most: the rest of the pool stays free for new notes */
+#define RND_REL_LONG 100
+static void rnd_tails(void)
+{
+    uint32_t tr, n = 0;
+    for (tr = 0; tr < NTRK; tr++) {
+        track_t *t = &trk[tr];
+        (void)t;
+        if (rnd_tail(tr) <= RND_REL_LONG || ++n <= 2u) continue;
+        rnd_tail_cap(tr, rnd_rr(50, RND_REL_LONG));
+    }
+}
+static void rnd_budget(void)
+{
+    if (settings_budget <= RND_BUDGET) return;
+    settings_budget = RND_BUDGET;
+    settings_save();
 }
 
 /* one key and scale for all four: modes mostly, often something stranger (EDOs, JI, gamelan, maqam) */
@@ -477,7 +570,7 @@ static void rnd_say(const char *what, uint32_t seed)
 
 static void rnd_roll(void)
 {
-    uint32_t tr, fm6s = 0, phys = 0, chords = 0;
+    uint32_t tr, fm6s = 0, phys = 0, chords = 0, inserts = 0;
     momentary_restore();
     rnd_seed = rnd_next() ^ fm1_ticks() ^ (fm1_ms << 7);
     if (!rnd_seed) rnd_seed = 0x2545F491u;
@@ -491,8 +584,11 @@ static void rnd_roll(void)
     rnd_key();
     for (tr = 0; tr < TESSERA_TRACKS; tr++) {
         rnd_generator(tr, &chords);
-        rnd_inserts(tr);
+        rnd_cpu(tr);
+        rnd_inserts(tr, &inserts);
     }
+    rnd_tails();
+    rnd_budget();
     rnd_sends();
     rnd_cords();
     sync_reload = 1;
