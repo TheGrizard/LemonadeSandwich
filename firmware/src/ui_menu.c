@@ -410,7 +410,7 @@ static const char *menu_value(uint32_t i, char *b, uint32_t size)
 #endif
     if (i == MI_AUTOSAVE) value = settings_autosave ? "ON" : "OFF";
     if (i == MI_BATTERY) value = settings_batt_off ? "WHEN LOW" : "ON";
-    if (i == MI_REC_BTN) value = (const char *const[]){"RECORD", "RND", "AMBIENT", "NICE", "FALL", "LOOPS", "ORBIT"}[rnd_setting() % RND_MODES];
+    if (i == MI_REC_BTN) value = (const char *const[]){"RECORD", "RND", "AMBIENT", "NICE", "FALL", "LOOPS", "ORBIT", "PLAITS"}[rnd_setting() % RND_MODES];
     if (i == MI_SCREEN) value = (const char *const[]){"NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"}[scr_get()];
     if (i == MI_GAMMA) value = GAMMA_NAME[gamma_get()];
     if (i == MI_LIGHTS) value = LIGHTS_NAME[settings_lights % LIGHTS_N];

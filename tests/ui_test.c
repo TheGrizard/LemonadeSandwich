@@ -6320,8 +6320,26 @@ static int test_rnd(void)
             settings_import(&pr, sizeof pr);
             bad += check("RND AMBIENT: ..ORBIT saved and loaded with the settings", rnd_setting() == RND_ORBIT && pr.lowcut == 1u);
         }
+#if MELODEE_PLAITS
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..right again: PLAITS (AMBIENT's bits with variant 2)", rnd_setting() == RND_PLAITS &&
+                     (favorites.factory[15][24] & 0xC0u) == 0xC0u && settings_rnd_variant == 2u);
+        {
+            persist_t pr;
+            settings_export(&pr);
+            settings_rnd_variant = 0;
+            favorites.factory[15][24] &= (uint8_t)~0xC0u;
+            settings_import(&pr, sizeof pr);
+            bad += check("RND AMBIENT: ..PLAITS saved and loaded with the settings", rnd_setting() == RND_PLAITS &&
+                         pr.lowcut == 2u);
+        }
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..PLAITS is the last (right again: stays)", rnd_setting() == RND_PLAITS);
+        turn(EN_K2, -1);
+#else
         turn(EN_K2, 1);
         bad += check("RND AMBIENT: ..ORBIT is the last (right again: stays)", rnd_setting() == RND_ORBIT);
+#endif
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
@@ -6557,6 +6575,116 @@ static int test_rnd(void)
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
     }
+#if MELODEE_PLAITS
+    {                                               /* PLAITS: FALL's roles and leaves, Plaits on every track */
+        uint32_t k, all_mc = 1, fits = 1, drone_ok = 1, chord_ok = 1, leaves = 0, quiet = 0, clipped_n = 0, arps = 0;
+        uint32_t used = 0, hit_on = 0, mel = 0, budget_ok = 1;
+        rnd_mode_put(RND_PLAITS);
+        settings_budget = 16;
+        press(B_REC);
+        bad += check("RND PLAITS: REC tapped: a roll, PLAITS and the seed said", !memcmp(ui.msg, "PLAITS ", 7));
+        for (r = 0; r < 200u; r++) {
+            uint32_t units = 0, chord_tr = NTRK;
+            rnd_roll();
+            budget_ok &= settings_budget == RND_PLAITS_BUDGET;
+            for (tr = 0; tr < NTRK; tr++) {
+                const int16_t *p = trk[tr].p;
+                uint32_t m = (uint32_t)p[P_E0] % sizeof MC_MODEL;
+                all_mc &= trk[tr].eng_req == ENGI_MACRO;
+                units += MC_UNITS[m];
+                used |= 1u << m;
+                if (tessera.mode[tr] == TESS_ENG_CHORD) {
+                    chord_tr = tr;
+                    chord_ok &= pid_get(PID_TESS(TX_CH_HIT), tr) == 2 && (p[P_SDIV] == 0 || p[P_SDIV] == 1);
+                } else if (rnd_role_of[tr] == RND_ROLE_DRONE) {
+                    drone_ok &= p[P_E6] == 0 && MC_MODEL[m] != 19u && MC_MODEL[m] != 20u;
+                } else {
+                    mel++;
+                    hit_on += p[P_E6] == 1;
+                    leaves += tessera.mode[tr] == TESS_ENG_BOUNCE && pid_get(PID_TESS(TX_BNC_BALLS), tr) == 5;
+                }
+            }
+            fits &= units <= RND_PLAITS_BUDGET;
+            fits &= rnd_registers_apart();
+            if (r % 25u == 0u) {
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, rail = 0, notes[4] = {0}, n = 0;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
+                    if (chord_tr < NTRK)            /* (the chord track's notes: an arpeggio plays three and more) */
+                        for (j = 0; j < NVOICE; j++) {
+                            const voice_t *v = &trk[chord_tr].v[j];
+                            if (v->active && v->gate) notes[v->note >> 5] |= 1u << (v->note & 31u);
+                        }
+                }
+                for (j = 0; j < 128u; j++) n += (notes[j >> 5] >> (j & 31u)) & 1u;
+                arps += n >= 3u;
+                quiet += peak < 300;
+                clipped_n += rail > 2u * FS / 100u;
+            }
+        }
+        for (k = 0, r = 0; k < sizeof MC_MODEL; k++) r += (used >> k) & 1u;
+        printf("rnd: PLAITS: %u of %u models heard in 200 rolls, %u of %u melodies struck, %u falling leaves, %u of 8 "
+               "chord tracks arpeggiated\n", r, (uint32_t)sizeof MC_MODEL, hit_on, mel, leaves, arps);
+        bad += check("RND PLAITS: 200 rolls: Plaits on every track, the four models' units within its BUDGET (13), an "
+                     "octave each", all_mc && fits && budget_ok);
+        bad += check("RND PLAITS: ..every model in some roll; the drone held (HIT OFF, no PLUCK or BELL); melodies "
+                     "mostly struck, FALL's leaves among them", r == sizeof MC_MODEL && drone_ok && hit_on * 10u > mel * 6u &&
+                     leaves > 100u);
+        bad += check("RND PLAITS: ..the chords an arpeggio (HIT STEP, 1/8 or 1/4: three notes and more heard)",
+                     chord_ok && arps >= 6u);
+        bad += check("RND PLAITS: ..each roll heard within 15 s, none at the rail", !quiet && !clipped_n);
+        {                                           /* the guard: the dearest model VA */
+            uint32_t fm = 0;
+            for (k = 0; k < sizeof MC_MODEL; k++) if (MC_MODEL[k] == 10u) fm = k;
+            for (tr = 0; tr < NTRK; tr++) { rnd_tp(tr, P_E0, (int32_t)MC_VA); rnd_tp(tr, P_FXTYPE, FX_OFF); rnd_tp(tr, P_VOICE, V_POLY); }
+            rnd_tp(2, P_E0, (int32_t)fm);
+            song.g[G_MFXTYPE] = FX_OFF; song.g[G_MFX2TYPE] = FX_OFF;
+            k = (uint32_t)rnd_trim();
+            bad += check("RND PLAITS: ..the guard: the dearest Plaits model (FM) becomes VA; then nothing left to take",
+                         k && trk[2].p[P_E0] == (int16_t)MC_VA && !rnd_trim());
+        }
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        settings_budget = 16;
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* a CHORD track on one voice (MACRO, Plaits) arpeggiates (tessera.c) */
+        uint32_t k, j, b, seen[6] = {0}, ok = 1, most = 0;
+        int32_t o[2 * CTL];
+        rnd_mode_put(RND_OFF);
+        transport_req = 2;
+        for (b = 0; b < 8u; b++) mix_block(o, CTL);
+        host_preset(&trk[0], ENGI_MACRO, 0);
+        trk[0].p[P_VOICE] = V_POLY;
+        trk[0].p[P_SCALE] = 1;                      /* (a plain scale: a roll's may be an EDO, its chord one note) */
+        trk[0].p[P_ROOT] = 0;
+        trk[0].p[P_CHRD] = 0;
+        tessera.chord[0].deg = 0;
+        tessera.chord[0].oct = 0;
+        tessera.chord[0].hit = 2;                   /* (STEP; no BREATH, DROP or SHIFT left by the rolls) */
+        tessera.ch_breath[0] = 0;
+        memset(&tessera.evolve[0], 0, sizeof tessera.evolve[0]);
+        for (k = 0; k < 6u; k++) {                  /* six strikes of one chord: up and down its three notes */
+            uint32_t n = 0;
+            tess_chord_play(&trk[0], 0, 100);
+            for (b = 0; b < 4u; b++) mix_block(o, CTL);
+            for (j = 0; j < NVOICE; j++) {
+                const voice_t *v = &trk[0].v[j];
+                if (v->active && v->gate) { n++; seen[k] = v->note; }
+            }
+            most = n > most ? n : most;
+        }
+        ok = seen[0] < seen[1] && seen[1] < seen[2] && seen[3] == seen[1] && seen[4] == seen[0] && seen[5] == seen[1];
+        printf("ui: one-voice chord, six strikes: %u %u %u %u %u %u\n", seen[0], seen[1], seen[2], seen[3], seen[4], seen[5]);
+        bad += check("CHORD on one voice (MACRO): each strike the chord's next note, up and down (an arpeggio)", ok && most == 1u);
+        tess_chord_play(&trk[0], 0, 0);
+        seq_release(&trk[0]);
+        for (b = 0; b < 8u; b++) mix_block(o, CTL);
+    }
+#endif
     {                                               /* no clicks: a voice the budget takes fades gently (voice.c) */
         static voice_t was[NPART][NVOICE];
         uint32_t k, b, p, v, loud = 0, kills0 = voice_kills, most = 0, fading = 0, cap = 0;

@@ -1,12 +1,14 @@
 name: Build RND
 
 # The RND fork: a development build of both variants (dual core and MELODEE_DUAL_CORE=0) on every push to rnd-roll
-# or by hand, uploaded as one artifact (tessera-rnd.fwsc, tessera-rnd-1core.fwsc, SHA256SUMS). Install either with
-# the web installer's local-file option. Then the full host suite on the dual-core build.
+# (or rnd-plaits-tri, its PLAITS mode on the way) or by hand, uploaded as one artifact (tessera-rnd.fwsc,
+# tessera-rnd-1core.fwsc, SHA256SUMS). Install either with the web installer's local-file option. Then the full host
+# suite on the dual-core build. Plaits (MACRO) is in: its lean set, PLAITS_RND's five, at half rate. A build past the
+# flash: linked again with the region made larger (never installed) and tools/flash_report.py says where the bytes go.
 
 on:
   push:
-    branches: [rnd-roll]
+    branches: [rnd-roll, rnd-plaits-tri]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +22,9 @@ jobs:
       JIELI_TOOLCHAIN: ${{ github.workspace }}/.nightly-deps/jieli/toolchain
       AC79_SDK: ${{ github.workspace }}/.nightly-deps/sdk
       PARALLEL: '2'
+      MELODEE_PLAITS: '1'
+      MELODEE_PLAITS_RND: '1'
+      MELODEE_PLAITS_HALF: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -58,7 +63,16 @@ jobs:
             cat build/rnd/SHA256SUMS
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Flash report (only when the build did not fit)
+        if: failure()
+        run: |
+          sed -i 's/LENGTH = 0x8C000/LENGTH = 0xAC000/' firmware/app.ld
+          ./build.sh 2>&1 | tee over.log || true
+          grep -E "overflow|image|XIP|error|left" over.log | tail -20 || true
+          python tools/flash_report.py build/melodee.elf --top 150 --csv flash_symbols.csv | tee flash_report.md
+          cat flash_report.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: tessera-rnd-${{ github.run_number }}
           path: |
