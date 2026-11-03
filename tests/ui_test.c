@@ -6107,13 +6107,24 @@ static int rnd_same_as(const rnd_snap_t *a)        /* what is there now equals t
         if (memcmp(cord_get(i), &a->cord[i], sizeof(cord_t))) return printf("rnd: cord %u\n", i), 0;
     return 1;
 }
+/* the four tracks' TRN: each an octave of its own (a fifth up from it allowed) */
+static int rnd_registers_apart(void)
+{
+    uint32_t tr, seen = 0;
+    for (tr = 0; tr < NTRK; tr++) {
+        int32_t t = trk[tr].p[P_TRANS], o = ((t % 12) + 12) % 12 == 7 ? t - 7 : t;
+        if (o % 12 || o < -24 || o > 24 || (seen >> (uint32_t)(o / 12 + 2)) & 1u) return 0;
+        seen |= 1u << (uint32_t)(o / 12 + 2);
+    }
+    return 1;
+}
 static int test_rnd(void)
 {
     static rnd_snap_t before, rolled;
     int bad = 0;
     uint32_t r, tr, i, n_fm6, n_phys, n_oracle, n_chord, drums = 0, limits = 0, modes_ok = 1, mixed = 1, keyed = 1, oracle_ok = 1;
     uint32_t cords_ok = 1, silent = 0, loud = 0, clipped = 0, heard = 0, engines_seen = 0, gens_seen = 0, scales_seen = 0;
-    uint32_t cpu_ok = 1, fx_ok = 1, tails_ok = 1;
+    uint32_t cpu_ok = 1, fx_ok = 1, tails_ok = 1, regs_ok = 1;
     int16_t budget_was = settings_budget;
     ui_power_on();
     tessera_init();                                 /* (the generators' settings as at power-on: in their ranges) */
@@ -6198,6 +6209,7 @@ static int test_rnd(void)
             tails_ok &= longt <= 2u;
             cpu_ok &= settings_budget <= RND_BUDGET;
         }
+        regs_ok &= rnd_registers_apart();
         scales_seen |= trk[0].p[P_SCALE] >= 16 ? 2u : 1u;
         keyed &= tessera.key_link == 1u;
         limits += n_fm6 > 1u || n_phys > 1u || n_oracle > 1u || n_chord > 1u;
@@ -6232,6 +6244,7 @@ static int test_rnd(void)
     bad += check("RND: ..at most one FM6, one ORACLE, one PHYS and one CHORD track a roll", !limits);
     bad += check("RND: ..every track on a generator (not STEP, ATLAS or ANSWER)", modes_ok);
     bad += check("RND: ..all four in the mix, the ARP off, one key and scale (KEY LINK on)", mixed && keyed);
+    bad += check("RND: ..each track an octave of its own (TRN), none sharing a register", regs_ok);
     bad += check("RND: ..the CPU: no UNISON, FM6 never fast, chords and ratchets only slow, fast tracks' notes short, "
                  "POLY's fourth rhythm off, BUDGET at most 12", cpu_ok);
     bad += check("RND: ..the effects within their CPU points: FX 1 on two tracks at most, two send effects at most; "
@@ -6250,12 +6263,75 @@ static int test_rnd(void)
         int32_t o[2 * CTL];
         for (i = 0; i < 8u; i++) mix_block(o, CTL);
     }
+    {                                               /* AMBIENT: a drone, chords, two melodies; no effects */
+        uint32_t k, roles_ok = 1, fx_off = 1, qnt = 1, regs = 1, drone_regs = 0, quiet = 0, amb_heavy = 1, no_trem = 1;
+        hold(B_HOME); ui.menu_sel = MI_REC_BTN; turn(EN_K2, 1); turn(EN_K2, 1);
+        bad += check("RND AMBIENT: MENU > REC BUTTON turned right twice: AMBIENT (bits 6 and 7)",
+                     rnd_setting() == RND_AMBIENT && (favorites.factory[15][24] & 0xC0u) == 0xC0u);
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..AMBIENT is the last (right again: stays)", rnd_setting() == RND_AMBIENT);
+        hold(B_HOME);
+        ui.home = 1; ui.force = 1; frame();
+        press(B_REC);
+        bad += check("RND AMBIENT: REC tapped: a roll, AMB and the seed said", !memcmp(ui.msg, "AMB ", 4) && !song.rec);
+        for (r = 0; r < 200u; r++) {
+            uint32_t drones = 0, chordt = 0, melodies = 0, heavy = 0;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++) {
+                uint32_t m = tessera.mode[tr], div = (uint32_t)trk[tr].p[P_SDIV], e = trk[tr].eng_req;
+                heavy += e == ENGI_FM6 || e == ENGI_ORACLE || e == ENGI_PHYS;
+                if (m == TESS_ENG_TURING && div >= 7u && trk[tr].p[P_VOICE] == V_LEGATO &&
+                    pid_get(PID_TESS(TX_TUR_SPAN), tr) == 1) {
+                    drones++;
+                    drone_regs |= 1u << (uint32_t)((trk[tr].p[P_TRANS] + 24) / 12);
+                } else if (m == TESS_ENG_CHORD && trk[tr].p[P_VOICE] == V_POLY) {
+                    chordt++;
+                } else if (m != TESS_ENG_CHORD && m != TESS_ENG_POLY && m != TESS_ENG_QUAD && m != TESS_ENG_OFF) {
+                    melodies++;
+                }
+                fx_off &= trk[tr].p[P_FXTYPE] == FX_OFF && trk[tr].p[P_FXTYPE + 4u] == FX_OFF &&
+                          trk[tr].p[P_FXTYPE + 8u] == FX_OFF && !trk[tr].p[P_FXSEND] && !trk[tr].p[P_FXSEND2] &&
+                          !trk[tr].p[P_FXSEND3];
+                qnt &= trk[tr].p[P_QUANT] == Q_CHRD;
+                no_trem &= trk[tr].p[P_LD_AMP] == 0;
+            }
+            fx_off &= song.g[G_MFXTYPE] == FX_OFF && song.g[G_MFX2TYPE] == FX_OFF && song.g[G_MFX3TYPE] == FX_OFF;
+            roles_ok &= drones >= 1u && chordt == 1u && drones + chordt + melodies == NTRK;
+            regs &= rnd_registers_apart();
+            amb_heavy &= heavy <= 2u;
+            if (r % 25u == 0u) {                    /* listen: 15 s (a drone swells in slowly) */
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
+                }
+                quiet += peak < 300;
+                printf("rnd: ambient roll %3u: %-6s %-6s %-6s %-6s TRN %3d %3d %3d %3d peak %5d\n", r,
+                       ENGINES[trk[0].eng_req]->name, ENGINES[trk[1].eng_req]->name, ENGINES[trk[2].eng_req]->name,
+                       ENGINES[trk[3].eng_req]->name, trk[0].p[P_TRANS], trk[1].p[P_TRANS], trk[2].p[P_TRANS],
+                       trk[3].p[P_TRANS], peak);
+            }
+        }
+        bad += check("RND AMBIENT: 200 rolls: a drone (TURING, a bar to four, legato), one CHORD track, the rest melodies",
+                     roles_ok);
+        bad += check("RND AMBIENT: ..no effects (inserts, sends, send effects off), QNT CHRD on every track", fx_off && qnt);
+        bad += check("RND AMBIENT: ..an octave each, and the drone's not always low (three registers and more seen)",
+                     regs && __builtin_popcount(drone_regs) >= 3);
+        bad += check("RND AMBIENT: ..no tremolo, two heavy engines at most", no_trem && amb_heavy);
+        bad += check("RND AMBIENT: ..each roll listened to sounds within 15 s", !quiet);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
     {                                               /* the guard: a heavy roll lightens itself, step by step */
         uint32_t k, steps;
         transport_req = 2;
         { int32_t o[2 * CTL]; for (i = 0; i < 8u; i++) mix_block(o, CTL); }
         rnd_roll();
         { int32_t o[2 * CTL]; for (i = 0; i < 8u; i++) mix_block(o, CTL); }
+        for (tr = 0; tr < NTRK; tr++) trk[tr].p[P_FXTYPE] = FX_OFF;   /* (only the inserts set here) */
         song.g[G_MFXTYPE] = FX_REVERB; trk[1].p[P_FXTYPE] = FX_FORMANT; trk[2].p[P_FXTYPE] = FX_FILTER;
         song.g[G_MFX2TYPE] = FX_ECHO;
         song.cpu_q8 = 150u;                         /* (59 %: fine) */

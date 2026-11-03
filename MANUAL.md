@@ -811,7 +811,7 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 
 ## RND: one button, a new piece
 
-After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** and REC becomes a roll:
+After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -829,12 +829,28 @@ What a roll writes, every one an ordinary setting you can then change on its pag
 - **What plays**: a generator on each track (TURING, EUCLID, MARKOV, MORPH, BOUNCE, AWAKE, POLY, QUAD,
   CONSTELLATION, SERIES or one CHORD track) with its settings, EVOLVE and now and then a FORM, TWEAK's DROP and
   HUMAN, LENGTH, sometimes a ratchet, and the track's DIV, LEN, GATE and SWING (leaning slow).
+- **The registers**: each track an octave of its own (TRN), dealt at random: four of two octaves down, one down,
+  none, one up and two up, so the voices never sit on top of each other.
 - **The key**: one ROOT and SCALE for all four (KEY LINK on), a mode often, often something stranger (an EDO, just
   intonation, a gamelan or maqam scale).
 - **Effects**: FX 1 on up to two tracks, the sends, and the send effects in SPLIT (a REVERB or ROOM, often an ECHO).
   The effects share a CPU budget, so an expensive one (FORMANT, WIDTH, PHASER) leaves less room for the others.
 - **MODS**: three to nine cords, slow sources (DRIFT, the SLOTHs, OCHD, S&H, the LFO) into the sound, the effects
   and the generators' own settings. The tracks' four MOD routes are cleared.
+
+**AMBIENT.** With REC BUTTON on **AMBIENT**, a roll gives the four tracks roles, in a random order:
+
+| Role | What it plays |
+|---|---|
+| **Drone** | TURING moving between two to four notes, one every bar to four bars, LEGATO with glide; a slow swell, long sustain and release; ORACLE with its noise up, TRIO on a noisy wave, PHYS bowed or a slow FM6. |
+| **Chords** | A CHORD track: a progression held (or on the beat) over two or four bars, a slow pad (POLY). |
+| **Melodies** (two) | A line generator (TURING, MARKOV, AWAKE, BOUNCE, CONSTELLATION, SERIES, MORPH or EUCLID), sparser and slower than RND's, struck sounds. |
+
+The registers are dealt as in RND, so the drone can be low one roll and high the next. The key leans to modes
+(minor, Dorian, Mixolydian, the pentatonics, Phrygian, Lydian, major) and **QNT CHRD** is on, so the drone and the
+melodies follow the chords. AMBIENT sets no effects of its own (inserts, sends and send effects off), for an outboard
+chain; there is no tremolo, and only slow modulation (two to five cords, never on pitch). The screen shows **AMB** and
+the seed.
 
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
 at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
@@ -861,7 +877,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |
