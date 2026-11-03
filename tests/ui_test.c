@@ -6118,6 +6118,22 @@ static int rnd_registers_apart(void)
     }
     return 1;
 }
+/* how busy a roll is: the generators' gates opening a minute, over secs of play, summed over the tracks */
+static double rnd_note_rate(uint32_t secs)
+{
+    int32_t o[2 * CTL];
+    uint32_t b, tr, n = 0;
+    uint8_t was[TESSERA_TRACKS] = {0};
+    if (!song.playing) transport_req = 1;
+    for (b = 0; b < secs * FS / CTL; b++) {
+        mix_block(o, CTL);
+        for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+            n += tessera.active_gate[tr] && !was[tr];
+            was[tr] = (uint8_t)(tessera.active_gate[tr] != 0);
+        }
+    }
+    return n * 60.0 / secs;
+}
 static int test_rnd(void)
 {
     static rnd_snap_t before, rolled;
@@ -6273,11 +6289,11 @@ static int test_rnd(void)
                      (favorites.factory[15][24] & 0xC0u) == 0x80u && rnd_mode());
         turn(EN_K2, 1);
         bad += check("RND AMBIENT: ..right again: FALL (bit 7 and the lowcut word's 1)", rnd_setting() == RND_FALL &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_fall);
+                     (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_variant);
         {                                           /* FALL kept through the settings record */
             persist_t pr;
             settings_export(&pr);
-            settings_rnd_fall = 0;
+            settings_rnd_variant = 0;
             favorites.factory[15][24] &= (uint8_t)~0xC0u;
             settings_import(&pr, sizeof pr);
             bad += check("RND AMBIENT: ..FALL saved and loaded with the settings (lowcut 1, a valid record)",
@@ -6285,20 +6301,32 @@ static int test_rnd(void)
         }
         turn(EN_K2, 1);
         bad += check("RND AMBIENT: ..right again: LOOPS (the lowcut word's 2)", rnd_setting() == RND_LOOPS &&
-                     settings_rnd_fall == 2u);
+                     settings_rnd_variant == 2u);
         {
             persist_t pr;
             settings_export(&pr);
-            settings_rnd_fall = 0;
+            settings_rnd_variant = 0;
             settings_import(&pr, sizeof pr);
             bad += check("RND AMBIENT: ..LOOPS saved and loaded with the settings", rnd_setting() == RND_LOOPS && pr.lowcut == 2u);
         }
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..LOOPS is the last (right again: stays)", rnd_setting() == RND_LOOPS);
+        bad += check("RND AMBIENT: ..right again: ORBIT (AMBIENT's bits with variant 1)", rnd_setting() == RND_ORBIT &&
+                     (favorites.factory[15][24] & 0xC0u) == 0xC0u && settings_rnd_variant == 1u);
+        {
+            persist_t pr;
+            settings_export(&pr);
+            settings_rnd_variant = 0;
+            favorites.factory[15][24] &= (uint8_t)~0xC0u;
+            settings_import(&pr, sizeof pr);
+            bad += check("RND AMBIENT: ..ORBIT saved and loaded with the settings", rnd_setting() == RND_ORBIT && pr.lowcut == 1u);
+        }
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..ORBIT is the last (right again: stays)", rnd_setting() == RND_ORBIT);
+        turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         bad += check("RND AMBIENT: ..left twice: NICE (the lowcut word's 0 again)", rnd_setting() == RND_NICE &&
-                     !settings_rnd_fall);
+                     !settings_rnd_variant);
         turn(EN_K2, -1);
         hold(B_HOME);
         ui.home = 1; ui.force = 1; frame();
@@ -6482,6 +6510,49 @@ static int test_rnd(void)
         bad += check("RND LOOPS: ..the loops kept: nothing dropped, no ratchet or swing, no cord on a generator", fixed);
         bad += check("RND LOOPS: ..soft onsets, no tremolo, no effects, the bright modes", voices);
         bad += check("RND LOOPS: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* ORBIT: BOUNCE and CONSTELLATION only, busier than LOOPS */
+        uint32_t k, gens_ok = 1, smooth = 1, quiet = 0, clipped_n = 0, both = 0;
+        double loops_rate = 0, orbit_rate = 0;
+        rnd_mode_put(RND_LOOPS);
+        for (k = 0; k < 8u; k++) { rnd_roll(); loops_rate += rnd_note_rate(20) / 8.0; }
+        rnd_mode_put(RND_ORBIT);
+        press(B_REC);
+        bad += check("RND ORBIT: REC tapped: a roll, ORBIT and the seed said", !memcmp(ui.msg, "ORBIT ", 6));
+        for (r = 0; r < 200u; r++) {
+            uint32_t kinds = 0;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++) {
+                uint32_t m = tessera.mode[tr];
+                gens_ok &= m == TESS_ENG_BOUNCE || m == TESS_ENG_CONSTEL;
+                kinds |= m == TESS_ENG_BOUNCE ? 1u : 2u;
+                smooth &= trk[tr].p[P_ATK] >= 10 && trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_FXTYPE] == FX_OFF &&
+                          pid_get(PID_TESS(TX_SUB_RATCH), tr) == 0;
+            }
+            both += kinds == 3u;
+            gens_ok &= rnd_registers_apart();
+            if (r % 25u == 0u) {
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, rail = 0;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
+                }
+                quiet += peak < 300;
+                clipped_n += rail > 2u * FS / 100u;
+            }
+        }
+        for (k = 0; k < 8u; k++) { rnd_roll(); orbit_rate += rnd_note_rate(20) / 8.0; }
+        printf("rnd: notes a minute (four tracks): LOOPS %.0f, ORBIT %.0f\n", loops_rate, orbit_rate);
+        bad += check("RND ORBIT: 200 rolls: BOUNCE or CONSTELLATION on every track (both kinds in most rolls), an octave each",
+                     gens_ok && both > 120u);
+        bad += check("RND ORBIT: ..LOOPS' smooth voices: soft onsets, no tremolo or ratchet, no effects", smooth);
+        bad += check("RND ORBIT: ..busier than LOOPS (twice the notes and more), each roll heard within 15 s, none at the rail",
+                     orbit_rate > 2.0 * loops_rate && !quiet && !clipped_n);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);

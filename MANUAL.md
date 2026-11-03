@@ -811,8 +811,8 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 
 ## RND: one button, a new piece
 
-After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL** or **LOOPS**,
-below) and REC becomes a roll:
+After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS** or
+**ORBIT**, below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -872,6 +872,13 @@ every 16 bars: EVOLVE). The voices are NICE's with a soft onset and a long tail,
 the pentatonics, Mixolydian, Dorian, minor), each track in an octave of its own, no effects. The first loop starts on
 its first step, so a roll is heard at once. The screen shows **LOOPS** and the seed.
 
+**ORBIT.** With REC BUTTON on **ORBIT**, every track starts on **BOUNCE** or **CONSTELLATION**, at a middling density
+(about twice LOOPS'): BOUNCE two or three balls at a moderate speed (now and then FALL's leaves instead),
+CONSTELLATION a middling sky with the ship steering itself (AUTO); mostly 1/8, some 1/16 and 1/4. EVOLVE now and then,
+a little dropped now and then, no ratchet or swing. The voices are LOOPS' (soft onsets, long tails), the key a bright
+mode, each track in an octave of its own, no effects; slow cords may move the balls and the stars. The screen shows
+**ORBIT** and the seed.
+
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
 at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
 the effects within a CPU budget, no UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
@@ -897,7 +904,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |
