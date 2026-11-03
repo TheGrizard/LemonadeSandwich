@@ -855,6 +855,23 @@ A roll leaves alone: the tempo, the steps of the tracks' STEP patterns, the arpe
 other settings. Save a roll you like as a project (SAVE + REC still saves). To record live again, set REC BUTTON back to
 RECORD.
 
+### The Plaits build (tessera-rnd-plaits)
+
+A second firmware from the same source: **Plaits** (Mutable Instruments' macro-oscillator, by Emilie Gillet, MIT) on
+every track, the other instrument engines left out (DRUM stays for older projects). Plaits runs at half the FM-1's
+sample rate (22.05 kHz), which halves its cost and leaves a slightly lo-fi top. Each track plays one Plaits voice.
+
+The engine is **MACRO**. EDIT 1: **MODEL**, **HARM**, **TIMBR**, **MORPH**. EDIT 2: **DECAY** and **COLOR** (Plaits'
+low-pass gate), **HIT** (ON: a note strikes it and the gate shapes it; OFF: it sounds while held and the track's ENV
+shapes it) and **AUX** (Plaits' second output mixed in). The models: VA, VCF, PHASE, WSHAP (wavefolder), FM, DX7 A/B/C
+(six-operator banks), TERRN (wave terrain), STMCH (string machine), CHIP, GRAIN (formants), HARM (additive), WTABL
+(wavetables), CHORD, SPEAK, SWARM, NOISE (filtered noise), PLUCK (string) and BELL (modal). The drums and particles
+are left out.
+
+A roll picks a model for each track within a CPU budget (the costly ones, such as SWARM, FM and the DX7 banks, leave
+less for the others), and sets HARM, TIMBR and MORPH anywhere, DECAY, COLOR, HIT and AUX. **LIGHTER**, as a last step,
+turns the costliest model into the cheapest.
+
 ## Menu and settings
 
 Hold **HOME** for the menu. Tessera's additions:

@@ -1,0 +1,85 @@
+name: Build RND Plaits
+
+# The Plaits build of the RND fork: Plaits on every track (whole, at half rate), the other instrument engines left
+# out. Both variants (dual core and MELODEE_DUAL_CORE=0) on every push to rnd-plaits or by hand, uploaded as one
+# artifact (tessera-rnd-plaits.fwsc, tessera-rnd-plaits-1core.fwsc, SHA256SUMS). Install either with the web
+# installer's local-file option. Then the Plaits build's own host tests and the full host suite.
+
+on:
+  push:
+    branches: [rnd-plaits]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      JIELI_TOOLCHAIN: ${{ github.workspace }}/.nightly-deps/jieli/toolchain
+      AC79_SDK: ${{ github.workspace }}/.nightly-deps/sdk
+      PARALLEL: '2'
+      MELODEE_PLAITS: '1'
+      MELODEE_PLAITS_FULL: '1'
+      MELODEE_PLAITS_HALF: '1'
+      MELODEE_FM6: '0'
+      MELODEE_ORACLE: '0'
+      MELODEE_TRIO: '0'
+      MELODEE_PHYS: '0'
+      MELODEE_SID: '0'
+      MELODEE_SID_KIT: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libharfbuzz-dev libfribidi-dev libraqm-dev
+          python -m pip install Pillow fonttools==4.68.0
+      - uses: actions/cache@v4
+        with:
+          path: .nightly-deps
+          key: jieli-linux-sdk-d179b448-v1
+      - name: Fetch pinned SDK and toolchain
+        run: |
+          if [ ! -x "$JIELI_TOOLCHAIN/pi32v2/bin/clang" ]; then
+            tools/get_toolchain.sh "$GITHUB_WORKSPACE/.nightly-deps/jieli"
+          fi
+          if [ ! -d "$AC79_SDK/.git" ]; then
+            git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$AC79_SDK"
+          fi
+          test "$(git -C "$AC79_SDK" rev-parse HEAD)" = d179b4484759423312073f5fbb232501aa491047
+      - name: Build both variants
+        run: |
+          mkdir -p build/rnd
+          MELODEE_DUAL_CORE=0 ./build.sh 2>&1 | tee single.log
+          cp build/tessera.fwsc build/rnd/tessera-rnd-plaits-1core.fwsc
+          ./build.sh 2>&1 | tee dual.log
+          cp build/tessera.fwsc build/rnd/tessera-rnd-plaits.fwsc
+          (cd build/rnd && sha256sum *.fwsc > SHA256SUMS && cat SHA256SUMS)
+          {
+            echo '### Tessera RND Plaits'
+            echo '```'
+            grep -h -E "audio working arena|pool|^app |^package " dual.log single.log || true
+            cat build/rnd/SHA256SUMS
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tessera-rnd-plaits-${{ github.run_number }}
+          path: |
+            build/rnd/*
+            LICENSE
+            LICENSING.md
+            LICENSES
+      - name: The Plaits build's host tests (Plaits whole at half rate, RND's rolls)
+        run: sh tests/rnd_plaits_test.sh
+      - name: Full host suite (the default engines)
+        run: |
+          unset MELODEE_PLAITS MELODEE_PLAITS_FULL MELODEE_PLAITS_HALF MELODEE_FM6 MELODEE_ORACLE MELODEE_TRIO MELODEE_PHYS MELODEE_SID MELODEE_SID_KIT
+          ./build.sh   # (the suite checks the default device build: its render loops, sizes, package)
+          tests/run_tests.sh

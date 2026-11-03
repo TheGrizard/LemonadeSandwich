@@ -237,13 +237,52 @@ static void rnd_oracle(uint32_t tr, uint32_t wild)
     p[OR_NOISE] = (uint8_t)(rnd_pct(45) ? rnd_rr(20, 127) : p[OR_NOISE]);   /* (hiss and grit, often) */
 }
 
+#if MELODEE_PLAITS
+/* Plaits (MACRO, eng_macro.c): one voice a track and each track's sounds at once, so their voice units add up: a roll's
+ * models share RND_MC_UNITS (rnd_mc_left), the tracks after this one kept their cheapest (2). The model weighted to the
+ * noisy and textured; HARM, TIMBR and MORPH anywhere (Plaits made every corner of them usable), DECAY, COLOR, HIT and
+ * AUX (Plaits' second output: often the rougher one) too */
+#if MELODEE_PLAITS_FULL                             /* VA VCF PHASE WSHAP FM DX7ABC TERRN STMCH CHIP GRAIN HARM WTABL CHORD
+                                                     * SPEAK SWARM NOISE PLUCK BELL */
+static const uint8_t RND_MC_W[] = {6, 6, 6, 10, 3, 3, 3, 3, 8, 8, 6, 10, 4, 8, 8, 6, 2, 10, 5, 6};
+#else                                               /* VCF PHASE VA FM HARM PLUCK BELL */
+static const uint8_t RND_MC_W[] = {6, 6, 6, 3, 4, 5, 6};
+#endif
+_Static_assert(sizeof RND_MC_W == sizeof MC_MODEL, "RND_MC_W / MC_MODEL");
+#define RND_MC_UNITS 11u
+#define RND_MC_MIN 2u
+static uint32_t rnd_mc_left;
+static void rnd_macro(uint32_t tr, uint32_t tracks_after)
+{
+    uint8_t code[sizeof MC_MODEL], w[sizeof MC_MODEL];
+    uint32_t k, model, keep = tracks_after * RND_MC_MIN;
+    for (k = 0; k < sizeof MC_MODEL; k++) {
+        code[k] = (uint8_t)k;
+        w[k] = MC_UNITS[k] + keep <= rnd_mc_left ? RND_MC_W[k] : 0u;
+    }
+    model = rnd_pick(code, w, sizeof MC_MODEL);
+    if (MC_UNITS[model] + keep > rnd_mc_left) {         /* (nothing fits: the cheapest) */
+        for (k = 0, model = 0; k < sizeof MC_MODEL; k++) if (MC_UNITS[k] < MC_UNITS[model]) model = k;
+    }
+    rnd_mc_left -= MC_UNITS[model] < rnd_mc_left ? MC_UNITS[model] : rnd_mc_left;
+    rnd_tp(tr, P_E0, (int32_t)model);
+    rnd_tp(tr, P_E1, rnd_rr(0, 127));                   /* HARM */
+    rnd_tp(tr, P_E2, rnd_rr(0, 127));                   /* TIMBR */
+    rnd_tp(tr, P_E3, rnd_rr(0, 127));                   /* MORPH */
+    rnd_tp(tr, P_E4, rnd_rr(30, 127));                  /* DECAY */
+    rnd_tp(tr, P_E5, rnd_rr(0, 127));                   /* COLOR */
+    rnd_tp(tr, P_E6, rnd_pct(45));                      /* HIT: struck, or held and shaped by the ENV */
+    rnd_tp(tr, P_E7, rnd_pct(50) ? rnd_rr(20, 110) : 0);   /* AUX */
+}
+#endif
+
 static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     track_t *t = &trk[tr];
     uint32_t e = rnd_engine(fm6s, phys, oracles), wild = (uint32_t)rnd_rr(40, 100), k;
     const engine_t *en = ENGINES[e];
     engine_load_of(t, e, (uint32_t)rnd_rr(0, (int32_t)en->npresets - 1));
-    for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
+    for (k = 0; k < 8u && e != 21u; k++) {          /* the engine's eight, pushed from the preset's (MACRO: rnd_macro) */
         const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + k), tr);
         if (!d || d->max <= d->min) continue;
         int32_t lo = d->min, hi = d->max;
@@ -252,6 +291,9 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
                                           : rnd_push(t->p[P_E0 + k], lo, hi, wild));
     }
     if (e == ENGI_ORACLE) rnd_oracle(tr, wild * 2u / 3u);
+#if MELODEE_PLAITS
+    if (e == ENGI_MACRO) rnd_macro(tr, NTRK - 1u - tr);
+#endif
     /* the envelope: slow swells or hard snaps, long tails for the room outside */
     rnd_tp(tr, P_ATK, rnd_pct(60) ? rnd_rr(30, 127) : rnd_rr(0, 20));
     rnd_tp(tr, P_DEC, rnd_rr(20, 127));
@@ -282,8 +324,9 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
                                                                  * slow track) */
     for (k = 0; k < 4u; k++) rnd_tp(tr, P_M1SRC + 3u * k, 0);          /* (the routes: cords below) */
     /* the mix: all four in, spread */
-    rnd_tp(tr, P_LEVEL, rnd_rr(72, 96));             /* (under the default 104: four rough tracks at once kept
-                                                     * off the output limiter with MASTER turned up) */
+    rnd_tp(tr, P_LEVEL, e == 21u ? rnd_rr(86, 106) : rnd_rr(72, 96));   /* (under the default 104: four rough tracks
+                                                     * at once kept off the output limiter with MASTER turned up;
+                                                     * MACRO's one voice quieter: up) */
     rnd_tp(tr, P_PAN, rnd_rr(-45, 45));
     rnd_tp(tr, P_MUTE, 0);
     rnd_tp(tr, P_AMODE, 0);
@@ -632,7 +675,7 @@ static uint32_t rnd_busiest_poly(void)
     uint32_t tr, i, best = NTRK, most = 0;
     for (tr = 0; tr < NTRK; tr++) {
         uint32_t n = 0;
-        if (trk[tr].p[P_VOICE] != V_POLY) continue;
+        if (trk[tr].p[P_VOICE] != V_POLY || ENGINES[trk[tr].eng_req % NENGINES]->poly == 1u) continue;   /* (one voice) */
         for (i = 0; i < NVOICE; i++) n += trk[tr].v[i].active;
         if (n >= most) most = n, best = tr;
     }
@@ -659,6 +702,19 @@ static int rnd_trim(void)
         rnd_tp(tr, P_VOICE, V_MONO);
         return 1;
     }
+#if MELODEE_PLAITS
+    {                                               /* the dearest Plaits model a cheapest one (one voice: no MONO) */
+        uint32_t best = NTRK, most = RND_MC_MIN, k, cheap = 0;
+        for (k = 0; k < sizeof MC_MODEL; k++) if (MC_UNITS[k] < MC_UNITS[cheap]) cheap = k;
+        for (tr = 0; tr < NTRK; tr++)
+            if (trk[tr].eng_req == ENGI_MACRO && MC_UNITS[clamp(trk[tr].p[P_E0], 0, (int32_t)sizeof MC_MODEL - 1)] > most)
+                most = MC_UNITS[trk[tr].p[P_E0]], best = tr;
+        if (best < NTRK) {
+            rnd_tp(best, P_E0, (int32_t)cheap);
+            return 1;
+        }
+    }
+#endif
     return 0;
 }
 
@@ -715,6 +771,9 @@ static void rnd_roll(void)
     rnd_take();                                     /* (the hold swaps back to this) */
     rnd_backed = 0;
     undo_depth++;                                   /* (a roll is not four sound loads to undo one by one) */
+#if MELODEE_PLAITS
+    rnd_mc_left = RND_MC_UNITS;
+#endif
     for (tr = 0; tr < NTRK; tr++) rnd_sound(tr, &fm6s, &phys, &oracles);
     undo_depth--;
     undo_clear();

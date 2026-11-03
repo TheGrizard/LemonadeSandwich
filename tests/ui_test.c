@@ -6113,7 +6113,7 @@ static int test_rnd(void)
     int bad = 0;
     uint32_t r, tr, i, n_fm6, n_phys, n_oracle, n_chord, drums = 0, limits = 0, modes_ok = 1, mixed = 1, keyed = 1, oracle_ok = 1;
     uint32_t cords_ok = 1, silent = 0, loud = 0, clipped = 0, heard = 0, engines_seen = 0, gens_seen = 0, scales_seen = 0;
-    uint32_t cpu_ok = 1, fx_ok = 1, tails_ok = 1;
+    uint32_t cpu_ok = 1, fx_ok = 1, tails_ok = 1, mc_seen = 0, mc_ok = 1;
     int16_t budget_was = settings_budget;
     ui_power_on();
     tessera_init();                                 /* (the generators' settings as at power-on: in their ranges) */
@@ -6164,7 +6164,8 @@ static int test_rnd(void)
             n_fm6 += e == ENGI_FM6;
             n_phys += e == ENGI_PHYS;
             n_oracle += e == ENGI_ORACLE;
-            mixed &= !trk[tr].p[P_MUTE] && trk[tr].p[P_LEVEL] >= 70 && trk[tr].p[P_LEVEL] <= 100 && trk[tr].p[P_AMODE] == 0;
+            mixed &= !trk[tr].p[P_MUTE] && trk[tr].p[P_LEVEL] >= 70 && trk[tr].p[P_LEVEL] <= (e == 21u ? 106 : 100) &&
+                     trk[tr].p[P_AMODE] == 0;
             keyed &= trk[tr].p[P_SCALE] == trk[0].p[P_SCALE] && trk[tr].p[P_ROOT] == trk[0].p[P_ROOT];
             if (e == ENGI_ORACLE) {
                 const uint8_t *p = or_patch_of(&trk[tr]);
@@ -6198,6 +6199,18 @@ static int test_rnd(void)
             tails_ok &= longt <= 2u;
             cpu_ok &= settings_budget <= RND_BUDGET;
         }
+#if MELODEE_PLAITS
+        {                                           /* Plaits: the models' units within RND_MC_UNITS */
+            uint32_t units = 0;
+            for (tr = 0; tr < NTRK; tr++)
+                if (trk[tr].eng_req == ENGI_MACRO) {
+                    uint32_t m = (uint32_t)trk[tr].p[P_E0];
+                    mc_seen |= 1u << m;
+                    units += MC_UNITS[m];
+                }
+            mc_ok &= units <= RND_MC_UNITS;
+        }
+#endif
         scales_seen |= trk[0].p[P_SCALE] >= 16 ? 2u : 1u;
         keyed &= tessera.key_link == 1u;
         limits += n_fm6 > 1u || n_phys > 1u || n_oracle > 1u || n_chord > 1u;
@@ -6238,9 +6251,15 @@ static int test_rnd(void)
                  "very long tails on two tracks at most", fx_ok && tails_ok);
     bad += check("RND: ..ORACLE's patches in range, an oscillator and a level up", oracle_ok);
     bad += check("RND: ..a handful of mods, nothing past the live cords", cords_ok);
+#if MELODEE_PLAITS && !MELODEE_FM6
+    bad += check("RND: ..Plaits on every track, a dozen models and more, their units within the budget; most generators, "
+                 "modes and stranger tunings", engines_seen == 1u << ENGI_MACRO && __builtin_popcount(mc_seen) >= 12 &&
+                 mc_ok && __builtin_popcount(gens_seen) >= 10 && scales_seen == 3u);
+#else
     bad += check("RND: ..the instrument engines all picked, most generators, modes and stranger tunings",
                  (engines_seen & (1u << ENGI_FM6)) && (engines_seen & (1u << ENGI_ORACLE)) &&
-                 __builtin_popcount(gens_seen) >= 10 && scales_seen == 3u);
+                 __builtin_popcount(gens_seen) >= 10 && scales_seen == 3u && mc_ok);
+#endif
     printf("rnd: %u of %u rolls listened to: %u silent, %u loud (peak > -6 dBFS), %u clipping\n", heard, heard, silent,
            loud, clipped);
     bad += check("RND: ..each roll listened to sounds within 12 s", !silent);

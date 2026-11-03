@@ -74,7 +74,12 @@ int main(void)
     models = (uint32_t)ENGINES[ENGI_MACRO]->edit[0].max + 1u;
     for (k = 0, ok = 1; k < sizeof MC_MODEL; k++)      /* (Plaits' 6, 7, 14: string machine, chiptune, chords) */
         ok &= MC_MODEL[k] != 6u && MC_MODEL[k] != 7u && MC_MODEL[k] != 14u;
+#if MELODEE_PLAITS_FULL
+    check("the full set: 20 models, no drums, no PARTICLE", models == sizeof MC_MODEL && models == 20u);
+#else
     check("no chord model: each note plays one pitch (2026-10-17)", ok && models == sizeof MC_MODEL);
+#endif
+    ok = 1;                                           /* (the chord check above set it its own way) */
     for (k = 0; k < models; k++) {                    /* every model, from INIT VA's settings, struck and held */
         sound(0);
         trk[0].p[P_E0] = (int16_t)k;
