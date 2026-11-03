@@ -1231,6 +1231,15 @@ static void tess_chord_breathe(track_t *t, uint32_t tr)
     }
 }
 
+/* tessera-rnd: a CHORD track whose engine plays one voice (MACRO, Plaits) cannot hold the chord: each strike plays its
+ * next note instead, up and down (an arpeggio; a new chord starts from its root). (MONO and LEGATO keep upstream's:
+ * the root alone, chord.c) */
+static struct { uint8_t i[TESSERA_TRACKS], deg[TESSERA_TRACKS]; } tess_ch_arp;
+static int tess_chord_one(const track_t *t)
+{
+    return trk_nvoice(t) <= 1u;
+}
+
 static void tess_chord_play(track_t *t, uint32_t tr, uint32_t gate)
 {
     const tessera_chord_t *g = &tessera.chord[tr];
@@ -1261,6 +1270,15 @@ static void tess_chord_play(track_t *t, uint32_t tr, uint32_t gate)
     tess_br.out[tr] = 0;
     for (i = 0; i < TESS_BR_VOICES; i++)
         tess_br.left[tr][i] = (uint16_t)(br ? tess_br_cycle(t, tr, 1) : 0u);
+    if (n > 1u && tess_chord_one(t)) {                   /* one voice: the chord's next note (an arpeggio) */
+        uint32_t span = 2u * n - 2u, k, j;
+        for (k = 1; k < n; k++)                          /* (low to high) */
+            for (j = k; j && out[j - 1u] > out[j]; j--) { uint8_t s = out[j]; out[j] = out[j - 1u]; out[j - 1u] = s; }
+        if (tess_ch_arp.deg[tr] != g->deg + 1u) tess_ch_arp.deg[tr] = (uint8_t)(g->deg + 1u), tess_ch_arp.i[tr] = 0;
+        k = tess_ch_arp.i[tr]++ % span;
+        out[0] = out[k < n ? k : span - k];
+        n = 1;
+    }
     for (i = 0; i < n; i++) {
         x = (int32_t)out[i] + 12 * g->oct + t->p[P_TRANS] + tw->shift;
         x = x < 0 ? 0 : x > 127 ? 127 : x;
