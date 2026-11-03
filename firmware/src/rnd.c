@@ -65,6 +65,8 @@ static uint8_t rnd_loops;                          /* 1: this roll is LOOPS': fo
 static uint8_t rnd_orbit;                          /* 1: this roll is ORBIT's: BOUNCE and CONSTELLATION only */
 static uint8_t rnd_plaits;                         /* 1: this roll is PLAITS': FALL's, every track MACRO (Plaits) */
 static uint8_t rnd_role_of[NTRK];                  /* the last roll's roles (RND_ROLE_*: the tests) */
+static uint32_t rnd_mc_left, rnd_mc_after;          /* Plaits' units left this roll; PLAITS: the tracks still to roll
+                                                     * after this one (rnd_macro) */
 static uint32_t rnd_next(void)
 {
     uint32_t x = rnd_state;
@@ -233,9 +235,10 @@ enum { RND_ROLE_FREE, RND_ROLE_DRONE, RND_ROLE_CHORDS, RND_ROLE_MELODY };
  * waves, PHYS bowed), chords a pad, a melody struck */
 static uint32_t rnd_engine_weight(uint32_t e, uint32_t role)
 {
-    static const uint8_t W[4][4] = {{3, 3, 2, 2}, {2, 4, 3, 3}, {4, 3, 1, 3}, {3, 2, 3, 3}};
-    uint32_t i = e == ENGI_FM6 ? 0u : e == ENGI_ORACLE ? 1u : e == ENGI_PHYS ? 2u : e == 6u ? 3u : 4u;
-    return i < 4u ? W[role & 3u][i] : 2u;
+    /* FM6 ORACLE PHYS TRIO MACRO (Plaits: tessera-rnd, as often as any, more on a melody) */
+    static const uint8_t W[4][5] = {{3, 3, 2, 2, 4}, {2, 4, 3, 3, 3}, {4, 3, 1, 3, 3}, {3, 2, 3, 3, 4}};
+    uint32_t i = e == ENGI_FM6 ? 0u : e == ENGI_ORACLE ? 1u : e == ENGI_PHYS ? 2u : e == 6u ? 3u : e == ENGI_MACRO ? 4u : 5u;
+    return i < 5u ? W[role & 3u][i] : 2u;
 }
 static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, uint32_t role)
 {
@@ -252,6 +255,7 @@ static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, ui
         if (e == ENGI_PHYS && *phys) wt = 0u;
         if (e == ENGI_ORACLE && *oracles) wt = 0u;      /* (one at most: as heavy as FM6) */
         if (full && (e == ENGI_FM6 || e == ENGI_PHYS || e == ENGI_ORACLE)) wt = 0u;
+        if (e == ENGI_MACRO && rnd_mc_left < 2u) wt = 0u;   /* (Plaits' share of the roll spent: rnd_macro) */
         code[n] = (uint8_t)e;
         w[n++] = (uint8_t)wt;
     }
@@ -283,50 +287,66 @@ static void rnd_oracle(uint32_t tr, uint32_t wild)
 }
 
 #if MELODEE_PLAITS
-/* PLAITS: Plaits (MACRO, eng_macro.c) is one voice a track and the four sound at once, so their voice units add up: a
- * roll's models share rnd_mc_left (the roll's BUDGET), the tracks after this one kept their cheapest (2). Each model
- * by its weight for the role: a drone held (HIT OFF) on what sustains (no PLUCK or BELL, they want a strike), the
- * chords (an arpeggio: tessera.c) and the melodies mostly struck (HIT ON: Plaits' gate shapes them). HARM, TIMBR and
- * MORPH anywhere (Plaits made every corner of them usable), DECAY and COLOR by the role, AUX (the second output) now
- * and then */
+/* Plaits (MACRO, eng_macro.c) on a track: one voice a track, and the tracks sound at once, so their voice units add up:
+ * a roll's MACRO tracks share rnd_mc_left (PLAITS: the roll's BUDGET, the tracks after this one kept their cheapest,
+ * 2; the other modes RND_MC_MIXED beside ORACLE and TRIO). The model by its weight for the kind of roll (rnd_mc_w):
+ * a drone held (HIT OFF) on what sustains (never PLUCK or BELL: they want a strike), the chords (an arpeggio, tessera.c)
+ * and the melodies mostly struck (HIT ON: Plaits' gate shapes them); RND's wild (the noisy and textured first, anything
+ * struck or held); LOOPS' and ORBIT's held (their smooth envelopes shape them). HARM, TIMBR and MORPH anywhere (Plaits
+ * made every corner of them usable; NICE: TIMBR and MORPH off their extremes), DECAY and COLOR by the role, AUX (the
+ * second output) now and then (never in NICE) */
 #define RND_MC_MIN 2u
-static uint32_t rnd_mc_left, rnd_mc_after;          /* (the units left, the tracks still to roll after this one) */
+#define RND_MC_MIXED 9u
+enum { RND_MC_DRONE, RND_MC_CHORDS, RND_MC_MELODY, RND_MC_WILD, RND_MC_SMOOTH };
+static uint32_t rnd_mc_w(uint32_t model, uint32_t kind)   /* model: Plaits' own number (MC_MODEL) */
+{
+    /* Plaits' 0 VCF, 1 PHASE, 6 STMCH, 7 CHIP, 8 VA, 9 WSHAP, 10 FM, 11 GRAIN, 12 HARM, 17 NOISE, 19 PLUCK, 20 BELL */
+    static const uint8_t pm[] = {0, 1, 6, 7, 8, 9, 10, 11, 12, 17, 19, 20};
+    static const uint8_t W[5][12] = {{5, 5, 6, 2, 6, 5, 1, 5, 5, 4, 0, 0},     /* drone */
+                                     {5, 5, 3, 4, 6, 5, 2, 3, 4, 1, 5, 6},     /* chords (an arpeggio) */
+                                     {5, 5, 2, 4, 6, 5, 3, 3, 4, 2, 6, 6},     /* melody */
+                                     {4, 5, 4, 6, 3, 7, 6, 7, 4, 7, 4, 4},     /* RND: wild */
+                                     {5, 5, 5, 3, 6, 5, 2, 3, 5, 1, 0, 0}};    /* LOOPS, ORBIT: held */
+    uint32_t i;
+    for (i = 0; i < sizeof pm; i++)
+        if (pm[i] == model) return W[kind % 5u][i];
+    return 0;
+}
 static void rnd_macro(uint32_t tr, uint32_t role, uint32_t tracks_after)
 {
-#if MELODEE_PLAITS_RND                              /* VCF PHASE VA FM HARM PLUCK BELL WSHAP GRAIN STMCH CHIP NOISE */
-    static const uint8_t W[3][12] = {{5, 5, 6, 1, 5, 0, 0, 5, 5, 6, 2, 4},      /* drone */
-                                     {5, 5, 6, 2, 4, 5, 6, 5, 3, 3, 4, 1},      /* chords (an arpeggio) */
-                                     {5, 5, 6, 3, 4, 6, 6, 5, 3, 2, 4, 2}};     /* melody */
-#else                                               /* VCF PHASE VA FM HARM PLUCK BELL */
-    static const uint8_t W[3][7] = {{5, 5, 6, 1, 5, 0, 0}, {5, 5, 6, 2, 4, 5, 6}, {5, 5, 6, 3, 4, 6, 6}};
-#endif
     uint8_t code[sizeof MC_MODEL], w[sizeof MC_MODEL];
-    uint32_t k, model, keep = tracks_after * RND_MC_MIN, r = role == RND_ROLE_DRONE ? 0u : role == RND_ROLE_CHORDS ? 1u : 2u;
-    int hit;
+    uint32_t k, model, keep = tracks_after * RND_MC_MIN, pm;
+    uint32_t kind = rnd_loops || rnd_orbit ? RND_MC_SMOOTH : role == RND_ROLE_FREE ? RND_MC_WILD :
+                    role == RND_ROLE_DRONE ? RND_MC_DRONE : role == RND_ROLE_CHORDS ? RND_MC_CHORDS : RND_MC_MELODY;
+    int hit, gentle = rnd_nice && !rnd_plaits;
     for (k = 0; k < sizeof MC_MODEL; k++) {
         code[k] = (uint8_t)k;
-        w[k] = MC_UNITS[k] + keep <= rnd_mc_left ? W[r][k] : 0u;
+        w[k] = MC_UNITS[k] + keep <= rnd_mc_left ? (uint8_t)rnd_mc_w(MC_MODEL[k], kind) : 0u;
     }
     model = rnd_pick(code, w, sizeof MC_MODEL);
-    if (MC_UNITS[model] + keep > rnd_mc_left || !W[r][model]) model = MC_VA;   /* (nothing fits: VA, the cheapest) */
+    if (MC_UNITS[model] + keep > rnd_mc_left || !rnd_mc_w(MC_MODEL[model], kind)) model = MC_VA;   /* (nothing fits: VA) */
     rnd_mc_left -= MC_UNITS[model] < rnd_mc_left ? MC_UNITS[model] : rnd_mc_left;
-    hit = r == 0u ? 0 : MC_MODEL[model] == 19u || MC_MODEL[model] == 20u ? 1 : rnd_pct(r == 1u ? 70 : 80);
+    pm = MC_MODEL[model];
+    hit = pm == 19u || pm == 20u ? 1 : kind == RND_MC_DRONE || kind == RND_MC_SMOOTH ? 0 :
+          rnd_pct(kind == RND_MC_CHORDS ? 70 : kind == RND_MC_MELODY ? 80 : 50);
     rnd_tp(tr, P_E0, (int32_t)model);
     rnd_tp(tr, P_E1, rnd_rr(0, 127));                   /* HARM */
-    rnd_tp(tr, P_E2, rnd_rr(0, 127));                   /* TIMBR */
-    rnd_tp(tr, P_E3, rnd_rr(0, 127));                   /* MORPH */
-    rnd_tp(tr, P_E4, hit ? rnd_rr(35, 110) : rnd_rr(60, 127));   /* DECAY: a struck note rings, then dies */
+    rnd_tp(tr, P_E2, gentle ? rnd_rr(10, 90) : rnd_rr(0, 127));    /* TIMBR */
+    rnd_tp(tr, P_E3, gentle ? rnd_rr(10, 100) : rnd_rr(0, 127));   /* MORPH */
+    rnd_tp(tr, P_E4, kind == RND_MC_WILD ? rnd_rr(15, 127) : hit ? rnd_rr(35, 110) : rnd_rr(60, 127));   /* DECAY */
     rnd_tp(tr, P_E5, rnd_rr(0, 127));                   /* COLOR: the gate's, from a VCA to a low-pass */
     rnd_tp(tr, P_E6, hit);                              /* HIT */
-    rnd_tp(tr, P_E7, rnd_pct(30) ? rnd_rr(20, 90) : 0); /* AUX */
+    rnd_tp(tr, P_E7, gentle ? 0 : rnd_pct(kind == RND_MC_WILD ? 50 : 30) ? rnd_rr(20, kind == RND_MC_WILD ? 127 : 90) : 0);
     if (hit) {                                          /* (the gate shapes it: the ENV only lets it through) */
         rnd_tp(tr, P_ATK, 0);
         rnd_tp(tr, P_DEC, 127);
         rnd_tp(tr, P_SUS, 127);
-        rnd_tp(tr, P_REL, rnd_rr(60, 100));
+        if (kind != RND_MC_WILD) rnd_tp(tr, P_REL, rnd_rr(60, 100));
     }
-    rnd_tp(tr, P_ED_FLT, 0);                            /* (ENV -> CUTOFF and SHAPE move TIMBR and MORPH: still) */
-    rnd_tp(tr, P_ED_SHP, 0);
+    if (kind != RND_MC_WILD) {                          /* (ENV -> CUTOFF and SHAPE move TIMBR and MORPH: still) */
+        rnd_tp(tr, P_ED_FLT, 0);
+        rnd_tp(tr, P_ED_SHP, 0);
+    }
 }
 #endif
 
@@ -383,8 +403,8 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
     rnd_tp(tr, P_AMODE, 0);
     if (role != RND_ROLE_FREE) rnd_role_sound(tr, e, role);
 #if MELODEE_PLAITS
-    if (e == ENGI_MACRO && rnd_plaits) {               /* (after the role's envelope: HIT ON takes it over) */
-        rnd_macro(tr, role, rnd_mc_after);
+    if (e == ENGI_MACRO) {                          /* (after the role's envelope: HIT ON takes it over) */
+        rnd_macro(tr, role, rnd_plaits ? rnd_mc_after : 0u);
         if (rnd_mc_after) rnd_mc_after--;
     }
 #endif
@@ -605,12 +625,8 @@ static void rnd_role_generator(uint32_t tr, uint32_t role, uint32_t *chords)
         rnd_tx(tr, TX_CH_OCT, 0);                      /* (its register: rnd_registers) */
         rnd_tx(tr, TX_CH_BREATH, rnd_rr(0, 60));
         rnd_tp(tr, P_SDIV, 0);
-        if (rnd_plaits) {                           /* (PLAITS: one voice, the chord an arpeggio, a note a step) */
-            rnd_tx(tr, TX_CH_HIT, 2);               /* (STEP) */
-            rnd_tx(tr, TX_CH_BREATH, 0);
-            rnd_tp(tr, P_SDIV, rnd_pct(55) ? 1 : 0);   /* (1/8 or 1/4) */
-            rnd_tp(tr, P_SGATE, rnd_rr(60, 110));
-        }
+        if (ENGINES[trk[tr].eng_req]->poly == 1u)  /* (one voice, Plaits: the chord an arpeggio, a note a step) */
+            rnd_tp(tr, P_SDIV, rnd_pct(55) ? 1 : 0);   /* (1/8 or 1/4; rnd_cpu: HIT STEP) */
         rnd_tp(tr, P_SGATE, 127);
         rnd_tx(tr, TX_NL_MODE, 0);
         rnd_tx(tr, TX_EV_EVERY, 0);
@@ -768,6 +784,12 @@ static void rnd_cpu(uint32_t tr)
 {
     track_t *t = &trk[tr];
     uint32_t e = t->eng_req, sp;
+    int one_chord = tessera.mode[tr] == TESS_ENG_CHORD && ENGINES[e]->poly == 1u;
+    if (one_chord) {                                /* (one voice, Plaits: the chord an arpeggio, tessera.c, a note a
+                                                     * step; slower than 1/4: 1/8 or 1/4) */
+        if (t->p[P_SDIV] >= 6) rnd_tp(tr, P_SDIV, rnd_pct(55) ? 1 : 0);
+        rnd_tp(tr, P_SGATE, rnd_rr(60, 110));
+    }
     if (e == ENGI_FM6 && rnd_speed((uint32_t)t->p[P_SDIV]) == RND_FAST)   /* (FM6 is the heaviest: 1/8 at most) */
         rnd_tp(tr, P_SDIV, rnd_pct(50) ? 1 : 0);
     sp = rnd_speed((uint32_t)t->p[P_SDIV]);
@@ -776,21 +798,25 @@ static void rnd_cpu(uint32_t tr)
         rnd_cap(tr, P_SGATE, sp == RND_FAST ? 90 : 127);
         rnd_tx(tr, TX_SUB_RATCH, 0);                /* (ratchets only on a slow track) */
         if (t->p[P_CHRD]) rnd_tp(tr, P_CHRD, 0);    /* (a chord: three voices a note) */
-        if (tessera.mode[tr] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_HIT), tr) == 2 && ENGINES[e]->poly != 1u)
-            rnd_tx(tr, TX_CH_HIT, 1);               /* (CHORD's hits: a beat's, not every step's; one voice: its
-                                                     * arpeggio, tessera.c) */
+        if (tessera.mode[tr] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_HIT), tr) == 2 && !one_chord)
+            rnd_tx(tr, TX_CH_HIT, 1);               /* (CHORD's hits: a beat's, not every step's) */
         if (sp == RND_FAST)
             rnd_tx(tr, TX_NL_MODE, 0);              /* (LENGTH: the step's, not long FIXED notes) */
         else if (pid_get(PID_TESS(TX_NL_LEN), tr) > 3)
             rnd_tx(tr, TX_NL_LEN, 3);               /* (FIXED at most a 1/4) */
     }
-    if (tessera.mode[tr] == TESS_ENG_CHORD)          /* (a chord holds three or four voices: a shorter tail) */
+    if (tessera.mode[tr] == TESS_ENG_CHORD && ENGINES[e]->poly != 1u)   /* (a chord holds three or four voices: a
+                                                                         * shorter tail) */
         rnd_tail_cap(tr, 75);
     else if (sp == RND_FAST && tessera.mode[tr] != TESS_ENG_POLY && tessera.mode[tr] != TESS_ENG_QUAD && rnd_pct(50))
         rnd_tp(tr, P_VOICE, rnd_pct(50) ? V_MONO : V_LEGATO);   /* (a line on one voice: nothing overlaps) */
     if (e == ENGI_FM6) {
         rnd_tail_cap(tr, 90);                       /* (AEG at most +26: FM6's pads ring, but not for ever) */
         if (t->p[P_CHRD]) rnd_tp(tr, P_CHRD, 0);
+    }
+    if (one_chord) {
+        rnd_tx(tr, TX_CH_HIT, 2);                   /* (STEP) */
+        rnd_tx(tr, TX_CH_BREATH, 0);
     }
 }
 /* very long releases (past RND_REL_LONG) on two tracks at most: the rest of the pool stays free for new notes */
@@ -1224,7 +1250,7 @@ static void rnd_roll(void)
     rnd_fall = (uint8_t)(rnd_setting() == RND_FALL || rnd_plaits);   /* (PLAITS: FALL's leaves, on Plaits) */
     rnd_budget();                                   /* (before the sounds: PLAITS' models share it) */
 #if MELODEE_PLAITS
-    rnd_mc_left = settings_budget;
+    rnd_mc_left = rnd_plaits ? settings_budget : RND_MC_MIXED;
     rnd_mc_after = NTRK - 1u;
 #endif
     rnd_loops = (uint8_t)(rnd_setting() == RND_LOOPS);

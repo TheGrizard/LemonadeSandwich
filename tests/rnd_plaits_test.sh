@@ -1,14 +1,15 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-only
 # Copyright (C) 2026 Thomas Bradley (tessera-rnd)
-# tessera-rnd's Plaits (MACRO) on the host as the device builds it: Plaits' lean set and PLAITS_RND's five (waveshaper,
-# grains, string machine, chiptune, noise) at half rate (22.05 kHz). Runs MACRO's own test (tests/macro_test.c: every
+# tessera-rnd's build on the host as the device has it: no FM6, PHYS or SID; Plaits' lean set and PLAITS_RND's five
+# (waveshaper, grains, string machine, chiptune, noise) at half rate (22.05 kHz). Runs MACRO's own test (tests/macro_test.c: every
 # model plays, pitch, HIT, knobs, no denormal tails, each model's cost and units) and RND's (tests/ui_test.c test_rnd:
 # the PLAITS mode's rolls). Run from the repo root after ./build.sh (or with build/gen made); run_tests.sh runs it.
 set -e
 OUT=build/host/rnd_plaits
 M=firmware/third_party/mi
-PF="-DMELODEE_PLAITS=1 -DMELODEE_PLAITS_RND=1 -DMELODEE_PLAITS_HALF=1"
+PF="-DMELODEE_FM6=0 -DMELODEE_PHYS=0 -DMELODEE_SID=0 -DMELODEE_SID_KIT=0 -DMELODEE_PLAITS=1 -DMELODEE_PLAITS_RND=1
+    -DMELODEE_PLAITS_HALF=1"
 mkdir -p "$OUT"
 objs=
 for f in $M/plaits/dsp/*.cc $M/plaits/dsp/*/*.cc $M/plaits/resources.cc $M/stmlib/dsp/*.cc $M/stmlib/utils/*.cc \

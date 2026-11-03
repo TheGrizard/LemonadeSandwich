@@ -822,8 +822,10 @@ After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT
 
 What a roll writes, every one an ordinary setting you can then change on its page:
 
-- **The sound** of each track: an instrument engine (two of FM6, ORACLE and PHYS at most, one of each, the rest
-  TRIO; never DRUM) and one of its presets,
+- **The sound** of each track: an instrument engine and one of its presets. tessera-rnd's firmware has **ORACLE**,
+  **TRIO** and **MACRO** (Plaits: its model, HARM, TIMBR and MORPH rolled anywhere, the Plaits tracks of a roll within
+  a share of the CPU; FM6 and PHYS are left out to make room for it); one ORACLE track at most, never DRUM (a build
+  with FM6 and PHYS: two of FM6, ORACLE and PHYS at most, one of each),
   pushed a long way from where it started: the engine's eight (EDIT), the envelope (slow swells or hard snaps, long
   releases), the LFO, the voice mode (never UNISON), glide and spread, the register (TRN: an octave or two down, a fifth or an
   octave up). On ORACLE the patch itself too, often with noise in it. At most one FM6 and one PHYS track a roll
@@ -859,6 +861,10 @@ of its own) with nicer sounds: each track's factory preset kept close to how it 
 noise or ring), ORACLE's noise low, a gentle sine LFO (a little vibrato and filter movement, no tremolo), no pitch
 envelope, and only gentle cords (never on the engines' own eight). The key is always one of the modes (no stranger
 tunings) and no track goes two octaves up. The screen shows **NICE** and the seed.
+
+In NICE, Plaits' TIMBR and MORPH stay off their extremes and its second output is off; in LOOPS and ORBIT it is held
+(HIT OFF), shaped by their smooth envelopes; in RND anything goes. A CHORD track on Plaits (one voice) plays its chords
+as an arpeggio, a note a step.
 
 **FALL.** With REC BUTTON on **FALL**, a roll works as NICE with every track on **TRIO** on three triangles (WAVE
 TRI3, LP): octaves, fifths and unisons between its oscillators, a little detune, the filter open and soft. The melodies

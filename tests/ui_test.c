@@ -6268,7 +6268,8 @@ static int test_rnd(void)
     bad += check("RND: ..ORACLE's patches in range, an oscillator and a level up", oracle_ok);
     bad += check("RND: ..a handful of mods, nothing past the live cords", cords_ok);
     bad += check("RND: ..the instrument engines all picked, most generators, modes and stranger tunings",
-                 (engines_seen & (1u << ENGI_FM6)) && (engines_seen & (1u << ENGI_ORACLE)) &&
+                 (!MELODEE_FM6 || (engines_seen & (1u << ENGI_FM6))) && (engines_seen & (1u << ENGI_ORACLE)) &&
+                 (engines_seen & (1u << 6u)) && (!MELODEE_PLAITS || (engines_seen & (1u << ENGI_MACRO))) &&
                  __builtin_popcount(gens_seen) >= 10 && scales_seen == 3u);
     printf("rnd: %u of %u rolls listened to: %u silent, %u loud (peak > -6 dBFS), %u clipping\n", heard, heard, silent,
            loud, clipped);
@@ -6651,6 +6652,37 @@ static int test_rnd(void)
         settings_budget = 16;
         rnd_mode_put(RND_FREE);
     }
+    {                                               /* Plaits in the other modes, beside ORACLE and TRIO (not FALL) */
+        static const uint8_t modes[] = {RND_FREE, RND_AMBIENT, RND_NICE, RND_LOOPS, RND_ORBIT, RND_FALL};
+        uint32_t m, k, ok = 1, seen = 0, rolls_with = 0;
+        for (m = 0; m < sizeof modes; m++) {
+            rnd_mode_put(modes[m]);
+            for (r = 0; r < 60u; r++) {
+                uint32_t units = 0, n = 0;
+                rnd_roll();
+                for (tr = 0; tr < NTRK; tr++) {
+                    const int16_t *p = trk[tr].p;
+                    uint32_t mi = (uint32_t)p[P_E0] % sizeof MC_MODEL, pm = MC_MODEL[mi];
+                    if (trk[tr].eng_req != ENGI_MACRO) continue;
+                    n++;
+                    units += MC_UNITS[mi];
+                    seen |= 1u << mi;
+                    ok &= modes[m] != RND_FALL;                       /* (FALL: TRIO's triangles) */
+                    ok &= !((pm == 19u || pm == 20u) && !p[P_E6]);    /* (PLUCK, BELL: struck, or silent) */
+                    if (modes[m] == RND_LOOPS || modes[m] == RND_ORBIT) ok &= !p[P_E6] && p[P_ATK] >= 10;   /* (held, soft) */
+                    if (modes[m] == RND_NICE) ok &= !p[P_E7];         /* (no AUX) */
+                }
+                ok &= units <= RND_MC_MIXED;
+                rolls_with += n > 0;
+            }
+        }
+        for (k = 0, r = 0; k < sizeof MC_MODEL; k++) r += (seen >> k) & 1u;
+        printf("rnd: Plaits in RND, AMBIENT, NICE, LOOPS, ORBIT: in %u of 300 rolls, %u of %u models\n", rolls_with, r,
+               (uint32_t)sizeof MC_MODEL);
+        bad += check("RND: Plaits in the other modes (not FALL), within its share (9 units), PLUCK and BELL struck, LOOPS' "
+                     "and ORBIT's held", ok && rolls_with > 200u && r >= 10u);
+        rnd_mode_put(RND_FREE);
+    }
     {                                               /* a CHORD track on one voice (MACRO, Plaits) arpeggiates (tessera.c) */
         uint32_t k, j, b, seen[6] = {0}, ok = 1, most = 0;
         int32_t o[2 * CTL];
@@ -6667,6 +6699,8 @@ static int test_rnd(void)
         tessera.chord[0].hit = 2;                   /* (STEP; no BREATH, DROP or SHIFT left by the rolls) */
         tessera.ch_breath[0] = 0;
         memset(&tessera.evolve[0], 0, sizeof tessera.evolve[0]);
+        memset(&tess_ch_arp, 0, sizeof tess_ch_arp);
+        trk[0].p[P_TRANS] = 0;
         for (k = 0; k < 6u; k++) {                  /* six strikes of one chord: up and down its three notes */
             uint32_t n = 0;
             tess_chord_play(&trk[0], 0, 100);

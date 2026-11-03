@@ -3,8 +3,9 @@ name: Build RND
 # The RND fork: a development build of both variants (dual core and MELODEE_DUAL_CORE=0) on every push to rnd-roll
 # (or rnd-plaits-tri, its PLAITS mode on the way) or by hand, uploaded as one artifact (tessera-rnd.fwsc,
 # tessera-rnd-1core.fwsc, SHA256SUMS). Install either with the web installer's local-file option. Then the full host
-# suite on the dual-core build. Plaits (MACRO) is in: its lean set, PLAITS_RND's five, at half rate. A build past the
-# flash: linked again with the region made larger (never installed) and tools/flash_report.py says where the bytes go.
+# suite on the dual-core build. Plaits (MACRO) is in: its lean set, PLAITS_RND's five, at half rate; FM6 and PHYS are
+# out to make room. A build past the flash: linked again with the region made larger (never installed) and
+# tools/flash_report.py says where the bytes go.
 
 on:
   push:
@@ -25,6 +26,8 @@ jobs:
       MELODEE_PLAITS: '1'
       MELODEE_PLAITS_RND: '1'
       MELODEE_PLAITS_HALF: '1'
+      MELODEE_FM6: '0'
+      MELODEE_PHYS: '0'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

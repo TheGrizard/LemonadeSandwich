@@ -244,6 +244,10 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 #define TRK_START_TESS 1
 #endif
 /* the parts at power-on (engine, preset; the steps empty): bass (TRK_START_TESS: a drone), pad, lead, drums */
+#if !MELODEE_FM6 && !MELODEE_SID                   /* tessera-rnd (no FM6, no SID): TRIO FIFTH DRONE, TRIO STRING MACH,
+                                                     * MACRO (Plaits) PLUCK or TRIO SOFT LEAD */
+static const uint8_t TRK_DEF[NPART][2] = {{6, 14}, {6, 6}, {MELODEE_PLAITS ? 21 : 6, MELODEE_PLAITS ? 8 : 10}, {ENGI_DRUM, 0}};
+#else
 static const uint8_t TRK_DEF[NPART][2] = {
 #if TRK_START_TESS && MELODEE_PHYS && MELODEE_SID
     {ENGI_PHYS, 7},                                 /* PHYS DRONE STRING (Theo 2026-10-19; the host tests' set. PHYS back
@@ -265,6 +269,7 @@ static const uint8_t TRK_DEF[NPART][2] = {
     {ENGI_FM6, 11},                                 /* FM6 BELLS (without SID; was KALIMBA) */
 #endif
     {ENGI_DRUM, 0}};                                /* DRUM KIT */
+#endif
 /* the power-on presets when project format 1 was written (project.c PROJ_DEF_SOUND): fixed, whatever TRK_DEF becomes */
 static const uint8_t TRK_DEF_V1[NPART] = {4, 4, 0, 0};
 #if TRK_START_TESS
