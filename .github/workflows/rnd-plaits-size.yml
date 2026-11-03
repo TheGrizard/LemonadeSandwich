@@ -1,0 +1,72 @@
+name: RND Plaits size report
+
+# DIAGNOSTIC (a branch of its own, not for installing): the Plaits build linked with the XIP region made larger, so it
+# links even past the FM-1's flash, and tools/flash_report.py says where the bytes go.
+# The Plaits build of the RND fork: Plaits on every track (whole, at half rate), the other instrument engines left
+# out. Both variants (dual core and MELODEE_DUAL_CORE=0) on every push to rnd-plaits or by hand, uploaded as one
+# artifact (tessera-rnd-plaits.fwsc, tessera-rnd-plaits-1core.fwsc, SHA256SUMS). Install either with the web
+# installer's local-file option. Then the Plaits build's own host tests and the full host suite.
+
+on:
+  push:
+    branches: [rnd-plaits-size]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      JIELI_TOOLCHAIN: ${{ github.workspace }}/.nightly-deps/jieli/toolchain
+      AC79_SDK: ${{ github.workspace }}/.nightly-deps/sdk
+      PARALLEL: '2'
+      MELODEE_PLAITS: '1'
+      MELODEE_PLAITS_FULL: '1'
+      MELODEE_PLAITS_HALF: '1'
+      MELODEE_FM6: '0'
+      MELODEE_ORACLE: '0'
+      MELODEE_TRIO: '0'
+      MELODEE_PHYS: '0'
+      MELODEE_SID: '0'
+      MELODEE_SID_KIT: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libharfbuzz-dev libfribidi-dev libraqm-dev
+          python -m pip install Pillow fonttools==4.68.0
+      - uses: actions/cache@v4
+        with:
+          path: .nightly-deps
+          key: jieli-linux-sdk-d179b448-v1
+      - name: Fetch pinned SDK and toolchain
+        run: |
+          if [ ! -x "$JIELI_TOOLCHAIN/pi32v2/bin/clang" ]; then
+            tools/get_toolchain.sh "$GITHUB_WORKSPACE/.nightly-deps/jieli"
+          fi
+          if [ ! -d "$AC79_SDK/.git" ]; then
+            git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$AC79_SDK"
+          fi
+          test "$(git -C "$AC79_SDK" rev-parse HEAD)" = d179b4484759423312073f5fbb232501aa491047
+      - name: Build past the flash limit (diagnostic)
+        run: |
+          sed -i 's/LENGTH = 0x8C000/LENGTH = 0xAC000/' firmware/app.ld
+          ./build.sh 2>&1 | tee dual.log || true
+          grep -E "overflow|image|XIP|error" dual.log | tail -20 || true
+      - name: Flash report
+        run: |
+          python tools/flash_report.py build/melodee.elf --top 150 --csv flash_symbols.csv | tee flash_report.md
+          cat flash_report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rnd-plaits-flash-report
+          path: |
+            flash_report.md
+            flash_symbols.csv
