@@ -6272,7 +6272,21 @@ static int test_rnd(void)
         bad += check("RND AMBIENT: ..right again: NICE (bit 7 alone); left: AMBIENT", rnd_setting() == RND_NICE &&
                      (favorites.factory[15][24] & 0xC0u) == 0x80u && rnd_mode());
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..NICE is the last (right again: stays)", rnd_setting() == RND_NICE);
+        bad += check("RND AMBIENT: ..right again: FALL (bit 7 and the lowcut word's 1)", rnd_setting() == RND_FALL &&
+                     (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_fall);
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..FALL is the last (right again: stays)", rnd_setting() == RND_FALL);
+        {                                           /* FALL kept through the settings record */
+            persist_t pr;
+            settings_export(&pr);
+            settings_rnd_fall = 0;
+            favorites.factory[15][24] &= (uint8_t)~0xC0u;
+            settings_import(&pr, sizeof pr);
+            bad += check("RND AMBIENT: ..FALL saved and loaded with the settings (lowcut 1, a valid record)",
+                         rnd_setting() == RND_FALL && pr.lowcut == 1u);
+        }
+        turn(EN_K2, -1);
+        bad += check("RND AMBIENT: ..left: NICE (the lowcut word's 0 again)", rnd_setting() == RND_NICE && !settings_rnd_fall);
         turn(EN_K2, -1);
         hold(B_HOME);
         ui.home = 1; ui.force = 1; frame();
@@ -6371,6 +6385,44 @@ static int test_rnd(void)
                      "noise low", clean);
         bad += check("RND NICE: ..the modes only (no stranger tuning), QNT CHRD; an octave each, never +24", modal && regs);
         bad += check("RND NICE: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* FALL: NICE's on TRIO's triangles, melodies falling */
+        uint32_t k, trio = 1, roles_ok = 1, quiet = 0, falls = 0, clipped_n = 0;
+        rnd_mode_put(RND_FALL);
+        press(B_REC);
+        bad += check("RND FALL: REC tapped: a roll, FALL and the seed said", !memcmp(ui.msg, "FALL ", 5));
+        for (r = 0; r < 200u; r++) {
+            uint32_t chordt = 0;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++) {
+                trio &= trk[tr].eng_req == 6u && trk[tr].p[P_E0] == 4 && trk[tr].p[P_E0 + 4u] == 0 &&
+                        trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_FXTYPE] == FX_OFF;
+                chordt += tessera.mode[tr] == TESS_ENG_CHORD;
+                falls += tessera.mode[tr] == TESS_ENG_BOUNCE && pid_get(PID_TESS(TX_BNC_BALLS), tr) == 5;
+            }
+            roles_ok &= chordt == 1u && rnd_registers_apart();
+            if (r % 25u == 0u) {
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, rail = 0;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
+                }
+                quiet += peak < 300;
+                clipped_n += rail > 2u * FS / 100u;
+                printf("rnd: fall roll %3u: gens %2u %2u %2u %2u TRN %3d %3d %3d %3d peak %5d\n", r, tessera.mode[0],
+                       tessera.mode[1], tessera.mode[2], tessera.mode[3], trk[0].p[P_TRANS], trk[1].p[P_TRANS],
+                       trk[2].p[P_TRANS], trk[3].p[P_TRANS], peak);
+            }
+        }
+        bad += check("RND FALL: 200 rolls: every track TRIO on three triangles (TRI3, LP), no tremolo, no effects", trio);
+        bad += check("RND FALL: ..AMBIENT's roles, an octave each; the melodies falling (BOUNCE's FALL) often",
+                     roles_ok && falls >= 150u);
+        bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
