@@ -94,7 +94,8 @@ static int settings_import(persist_t *p, int n)
     settings.lowcut = 0;
     /* tessera-rnd: the retired lowcut word (0..2 valid) is FALL's when 1 beside NICE's bit pattern (rnd.c), which no
      * record from before it has: an old LOW CUT of 1 stays nothing */
-    settings_rnd_fall = (uint8_t)(p->lowcut == 1u && (p->favorites.factory[15][24] & 0xC0u) == 0x80u);
+    settings_rnd_fall = (uint8_t)((p->lowcut == 1u || p->lowcut == 2u) && (p->favorites.factory[15][24] & 0xC0u) == 0x80u
+                                  ? p->lowcut : 0u);   /* (1 FALL, 2 LOOPS) */
     settings.zoom = (p->zoom & 0xFFu) == 1u;
     uint32_t rp = (p->zoom & 0xFFFF0000u) == RECORD_PREF_TAG ? (p->zoom >> 8) & 0xFFu : 0u;
     settings_click = (uint8_t)((rp & 3u) < 3u ? rp & 3u : 0u);
@@ -121,7 +122,8 @@ static void settings_export(persist_t *p)
 {
     p->magic = PERSIST_MAGIC;
     p->palette = palette_to_stored(settings.palette);
-    p->lowcut = settings_rnd_fall && (favorites.factory[15][24] & 0xC0u) == 0x80u ? 1u : 0u;   /* (FALL: rnd.c) */
+    p->lowcut = settings_rnd_fall <= 2u && (favorites.factory[15][24] & 0xC0u) == 0x80u ? settings_rnd_fall : 0u;   /* (FALL,
+                                                     * LOOPS: rnd.c) */
     uint32_t rp = settings_click % 3u | (settings_click_level == 0u ? 1u : settings_click_level == 2u ? 2u : 0u) << 2 |
                   (settings_countin % 3u) << 4 | (settings_preview != 0u) << 6 | (settings_chord_add != 0u) << 7;
     p->zoom = (settings.zoom & 0xFFu) | (rp ? RECORD_PREF_TAG | rp << 8 : 0u);

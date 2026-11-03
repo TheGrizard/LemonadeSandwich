@@ -811,8 +811,8 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 
 ## RND: one button, a new piece
 
-After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE** or **FALL**, below) and REC
-becomes a roll:
+After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL** or **LOOPS**,
+below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -864,6 +864,14 @@ TRI3, LP): octaves, fifths and unisons between its oscillators, a little detune,
 are struck and ring out, and most of the time they fall: BOUNCE's **FALL** (after ambalek's norns script Fall), leaves
 landing low on the left and high on the right, the WIND calm. The screen shows **FALL** and the seed.
 
+**LOOPS.** After Brian Eno's *Music for Airports*: with REC BUTTON on **LOOPS**, each track is a **EUCLID** loop of a
+length of its own (four of 7, 9, 11, 13, 15, 17, 19 and 23 steps), one to three notes in it, all four on one slow DIV
+(1/4, 1/8 or 1/2). The loops drift against each other and seldom line up the same way twice. Nothing is dropped, there
+is no ratchet or swing, and no cord moves a generator, so each loop stays as it is (now and then one changes a little
+every 16 bars: EVOLVE). The voices are NICE's with a soft onset and a long tail, the key a bright mode (major, Lydian,
+the pentatonics, Mixolydian, Dorian, minor), each track in an octave of its own, no effects. The first loop starts on
+its first step, so a roll is heard at once. The screen shows **LOOPS** and the seed.
+
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
 at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
 the effects within a CPU budget, no UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
@@ -889,7 +897,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

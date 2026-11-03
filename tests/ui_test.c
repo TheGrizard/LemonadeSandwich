@@ -6274,8 +6274,6 @@ static int test_rnd(void)
         turn(EN_K2, 1);
         bad += check("RND AMBIENT: ..right again: FALL (bit 7 and the lowcut word's 1)", rnd_setting() == RND_FALL &&
                      (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_fall);
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..FALL is the last (right again: stays)", rnd_setting() == RND_FALL);
         {                                           /* FALL kept through the settings record */
             persist_t pr;
             settings_export(&pr);
@@ -6285,8 +6283,22 @@ static int test_rnd(void)
             bad += check("RND AMBIENT: ..FALL saved and loaded with the settings (lowcut 1, a valid record)",
                          rnd_setting() == RND_FALL && pr.lowcut == 1u);
         }
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..right again: LOOPS (the lowcut word's 2)", rnd_setting() == RND_LOOPS &&
+                     settings_rnd_fall == 2u);
+        {
+            persist_t pr;
+            settings_export(&pr);
+            settings_rnd_fall = 0;
+            settings_import(&pr, sizeof pr);
+            bad += check("RND AMBIENT: ..LOOPS saved and loaded with the settings", rnd_setting() == RND_LOOPS && pr.lowcut == 2u);
+        }
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..LOOPS is the last (right again: stays)", rnd_setting() == RND_LOOPS);
         turn(EN_K2, -1);
-        bad += check("RND AMBIENT: ..left: NICE (the lowcut word's 0 again)", rnd_setting() == RND_NICE && !settings_rnd_fall);
+        turn(EN_K2, -1);
+        bad += check("RND AMBIENT: ..left twice: NICE (the lowcut word's 0 again)", rnd_setting() == RND_NICE &&
+                     !settings_rnd_fall);
         turn(EN_K2, -1);
         hold(B_HOME);
         ui.home = 1; ui.force = 1; frame();
@@ -6423,6 +6435,53 @@ static int test_rnd(void)
         bad += check("RND FALL: ..AMBIENT's roles, an octave each; the melodies falling (BOUNCE's FALL) often",
                      roles_ok && falls >= 150u);
         bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* LOOPS: four EUCLID loops of lengths apart, drifting */
+        uint32_t k, loops_ok = 1, quiet = 0, clipped_n = 0, fixed = 1, voices = 1, lens_seen = 0;
+        rnd_mode_put(RND_LOOPS);
+        press(B_REC);
+        bad += check("RND LOOPS: REC tapped: a roll, LOOPS and the seed said", !memcmp(ui.msg, "LOOPS ", 6));
+        for (r = 0; r < 200u; r++) {
+            uint32_t lens = 0;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++) {
+                int32_t st = pid_get(PID_TESS(TX_EUC_STEPS), tr), pu = pid_get(PID_TESS(TX_EUC_PULSES), tr);
+                loops_ok &= tessera.mode[tr] == TESS_ENG_EUCLID && pu >= 1 && pu <= 3 && st >= 7 && st <= 23 && (st & 1) &&
+                            !((lens >> st) & 1u) && trk[tr].p[P_SDIV] == trk[0].p[P_SDIV];
+                lens |= 1u << st;
+                fixed &= pid_get(PID_TESS(TX_TW_DROP), tr) == 0 && pid_get(PID_TESS(TX_SUB_RATCH), tr) == 0 &&
+                         trk[tr].p[P_SSWING] == 0;
+                voices &= trk[tr].p[P_ATK] >= 10 && trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_FXTYPE] == FX_OFF &&
+                          trk[tr].p[P_SCALE] >= 1 && trk[tr].p[P_SCALE] <= 9;
+            }
+            loops_ok &= pid_get(PID_TESS(TX_EUC_ROT), 0) == 0 && rnd_registers_apart();
+            lens_seen |= lens;
+            for (k = 0; k < CORD_LIVE; k++) fixed &= cord_get(k)->dst < CD_TUR_PROB || cord_get(k)->dst > CD_SUB_HUMAN;
+            if (r % 25u == 0u) {
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, rail = 0;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
+                }
+                quiet += peak < 300;
+                clipped_n += rail > 2u * FS / 100u;
+                printf("rnd: loops roll %3u: steps %2d %2d %2d %2d pulses %d %d %d %d DIV %d peak %5d\n", r,
+                       pid_get(PID_TESS(TX_EUC_STEPS), 0), pid_get(PID_TESS(TX_EUC_STEPS), 1),
+                       pid_get(PID_TESS(TX_EUC_STEPS), 2), pid_get(PID_TESS(TX_EUC_STEPS), 3),
+                       pid_get(PID_TESS(TX_EUC_PULSES), 0), pid_get(PID_TESS(TX_EUC_PULSES), 1),
+                       pid_get(PID_TESS(TX_EUC_PULSES), 2), pid_get(PID_TESS(TX_EUC_PULSES), 3), trk[0].p[P_SDIV], peak);
+            }
+        }
+        bad += check("RND LOOPS: 200 rolls: four EUCLID loops, lengths apart (odd, 7..23), 1-3 notes, one DIV; the "
+                     "first from its first step; an octave each", loops_ok && __builtin_popcount(lens_seen) == 8);
+        bad += check("RND LOOPS: ..the loops kept: nothing dropped, no ratchet or swing, no cord on a generator", fixed);
+        bad += check("RND LOOPS: ..soft onsets, no tremolo, no effects, the bright modes", voices);
+        bad += check("RND LOOPS: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
