@@ -811,7 +811,8 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 
 ## RND: one button, a new piece
 
-After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, below) and REC becomes a roll:
+After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT** or **NICE**, below) and REC becomes a
+roll:
 
 | On REC | What it does |
 |---|---|
@@ -852,6 +853,12 @@ melodies follow the chords. AMBIENT sets no effects of its own (inserts, sends a
 chain; there is no tremolo, and only slow modulation (two to five cords, never on pitch). The screen shows **AMB** and
 the seed.
 
+**NICE.** With REC BUTTON on **NICE**, a roll works as AMBIENT (the same roles, generators and registers, no effects
+of its own) with nicer sounds: each track's factory preset kept close to how it was made, TRIO on its clean waves (no
+noise or ring), ORACLE's noise low, a gentle sine LFO (a little vibrato and filter movement, no tremolo), no pitch
+envelope, and only gentle cords (never on the engines' own eight). The key is always one of the modes (no stranger
+tunings) and no track goes two octaves up. The screen shows **NICE** and the seed.
+
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
 at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
 the effects within a CPU budget, no UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
@@ -877,7 +884,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

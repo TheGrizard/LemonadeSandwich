@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Melodee menu (HOME held): COLOR, HOLD (the layer threshold), LIGHTS (the keys' and buttons'
- * glow: ui_input.c ui_leds), REC BUTTON (RECORD, RND or AMBIENT: REC rolls a new piece, held swaps back; rnd.c), KNOB ACCEL (ui_input.c accel_by), TRACK KNOB (RIGHT: ALGORITHM picks the track, LEFT:
+ * glow: ui_input.c ui_leds), REC BUTTON (RECORD, RND, AMBIENT or NICE: REC rolls a new piece, held swaps back; rnd.c), KNOB ACCEL (ui_input.c accel_by), TRACK KNOB (RIGHT: ALGORITHM picks the track, LEFT:
  * PRESETS does; panel.c), USB AUDIO (IN+OUT, IN, OUT or OFF; usb.c ua_off_set),
  * USB INPUT (stereo master or four track stems; usb.c ua_tracks_set),
  * MIDI OUT (KEYS, ALL or OFF: the notes sent over USB) and CLOCK OUT (midi_out.c), MIDI CC IN (ON or OFF: CCs and
@@ -410,7 +410,7 @@ static const char *menu_value(uint32_t i, char *b, uint32_t size)
 #endif
     if (i == MI_AUTOSAVE) value = settings_autosave ? "ON" : "OFF";
     if (i == MI_BATTERY) value = settings_batt_off ? "WHEN LOW" : "ON";
-    if (i == MI_REC_BTN) value = (const char *const[]){"RECORD", "RND", "AMBIENT"}[rnd_setting() % RND_MODES];
+    if (i == MI_REC_BTN) value = (const char *const[]){"RECORD", "RND", "AMBIENT", "NICE"}[rnd_setting() % RND_MODES];
     if (i == MI_SCREEN) value = (const char *const[]){"NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"}[scr_get()];
     if (i == MI_GAMMA) value = GAMMA_NAME[gamma_get()];
     if (i == MI_LIGHTS) value = LIGHTS_NAME[settings_lights % LIGHTS_N];
@@ -676,7 +676,7 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
         lcd_gamma_switch(gamma_get());                 /* (the panel black and on again: ui.force draws it all) */
         ui.force = 1; ok = 0;
     }
-    if ((s || ok) && ui.menu == 1 && ui.menu_sel == MI_REC_BTN) {   /* KNOB 2 steps RECORD RND AMBIENT, OCT+ wraps */
+    if ((s || ok) && ui.menu == 1 && ui.menu_sel == MI_REC_BTN) {   /* KNOB 2 steps RECORD RND AMBIENT NICE, OCT+ wraps */
         uint32_t v = rnd_setting();
         rnd_mode_put(s > 0 ? (v + 1u < RND_MODES ? v + 1u : v) : s < 0 ? (v ? v - 1u : 0u) : (v + 1u) % RND_MODES);
         ui.force = 1; ok = 0;                          /* (rnd.c: REC rolls, held swaps back) */

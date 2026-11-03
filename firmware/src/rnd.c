@@ -17,23 +17,23 @@
  * of what a roll touches (.pool). */
 
 /* ------------------------------------------------------------ the setting: MENU > REC BUTTON --- */
-/* RND_OFF RECORD (REC as upstream), RND_FREE RND, RND_AMBIENT AMBIENT (the roles: rnd_roll). Saved in
- * favorites.factory[15][24] bits 6 (on) and 7 (AMBIENT) (free: settings_test.c), as the panel gamma's bits are, so it
- * comes back at power-on with the other device settings */
+/* RND_OFF RECORD (REC as upstream), RND_FREE RND, RND_AMBIENT AMBIENT, RND_NICE NICE (AMBIENT's roles with nicer
+ * sounds: rnd_roll). Saved in favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits
+ * are, so it comes back at power-on with the other device settings: neither RECORD, 6 RND, 6 and 7 AMBIENT, 7 NICE */
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
-enum { RND_OFF, RND_FREE, RND_AMBIENT, RND_MODES };
-static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & RND_SET_BIT) != 0u; }
+enum { RND_OFF, RND_FREE, RND_AMBIENT, RND_NICE, RND_MODES };
+static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
 static uint32_t rnd_setting(void)
 {
-    uint8_t b = favorites.factory[15][24];
-    return !(b & RND_SET_BIT) ? RND_OFF : (b & RND_AMB_BIT) ? RND_AMBIENT : RND_FREE;
+    uint8_t b = favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT);
+    return b == (RND_SET_BIT | RND_AMB_BIT) ? RND_AMBIENT : b == RND_SET_BIT ? RND_FREE : b ? RND_NICE : RND_OFF;
 }
 static void rnd_mode_put(uint32_t m)
 {
     uint8_t *b = &favorites.factory[15][24];
-    uint8_t v = (uint8_t)((*b & ~(RND_SET_BIT | RND_AMB_BIT)) | (m != RND_OFF ? RND_SET_BIT : 0u) |
-                          (m == RND_AMBIENT ? RND_AMB_BIT : 0u));
+    uint8_t v = (uint8_t)((*b & ~(RND_SET_BIT | RND_AMB_BIT)) | (m == RND_FREE || m == RND_AMBIENT ? RND_SET_BIT : 0u) |
+                          (m == RND_AMBIENT || m == RND_NICE ? RND_AMB_BIT : 0u));
     if (v == *b) return;
     *b = v;
     settings_save();
@@ -43,6 +43,7 @@ static void rnd_mode_put(uint32_t m)
 static uint32_t rnd_state = 0x6D2B79F5u;          /* xorshift32 (never 0) */
 static uint32_t rnd_seed;                          /* the last roll's seed (shown: RND 1A2B3C4D) */
 static uint8_t rnd_backed;                         /* 1: the hold swapped back to before the roll */
+static uint8_t rnd_nice;                           /* 1: this roll is NICE's (rnd_roll) */
 static uint32_t rnd_next(void)
 {
     uint32_t x = rnd_state;
@@ -260,7 +261,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role);
 static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, uint32_t role)
 {
     track_t *t = &trk[tr];
-    uint32_t e = rnd_engine(fm6s, phys, oracles, role), wild = (uint32_t)rnd_rr(40, 100), k;
+    uint32_t e = rnd_engine(fm6s, phys, oracles, role), wild = (uint32_t)(rnd_nice ? rnd_rr(0, 20) : rnd_rr(40, 100)), k;
     const engine_t *en = ENGINES[e];
     engine_load_of(t, e, (uint32_t)rnd_rr(0, (int32_t)en->npresets - 1));
     for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
@@ -268,10 +269,10 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
         if (!d || d->max <= d->min) continue;
         int32_t lo = d->min, hi = d->max;
         if (e == ENGI_ORACLE && k >= 6u) lo = -20;  /* (LVL A, LVL B: not both shut) */
-        rnd_tp(tr, P_E0 + k, d->fmt == F_ENUM ? (rnd_pct(wild) ? rnd_rr(lo, hi) : t->p[P_E0 + k])
-                                          : rnd_push(t->p[P_E0 + k], lo, hi, wild));
+        rnd_tp(tr, P_E0 + k, d->fmt == F_ENUM ? (!rnd_nice && rnd_pct(wild) ? rnd_rr(lo, hi) : t->p[P_E0 + k])
+                                          : rnd_push(t->p[P_E0 + k], lo, hi, wild));   /* (NICE: the preset's kinds kept) */
     }
-    if (e == ENGI_ORACLE) rnd_oracle(tr, wild * 2u / 3u);
+    if (e == ENGI_ORACLE && !rnd_nice) rnd_oracle(tr, wild * 2u / 3u);
     /* the envelope: slow swells or hard snaps, long tails for the room outside */
     rnd_tp(tr, P_ATK, rnd_pct(60) ? rnd_rr(30, 127) : rnd_rr(0, 20));
     rnd_tp(tr, P_DEC, rnd_rr(20, 127));
@@ -317,6 +318,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
 {
     if (role == RND_ROLE_DRONE) {
         static const uint8_t tw[] = {7, 8, 12, 13, 0, 2}, tww[] = {4, 4, 2, 2, 2, 1};   /* P+N NOIS RING RING3 SAW3 PPT */
+        static const uint8_t nw[] = {0, 4, 5, 3, 2}, nww[] = {4, 4, 3, 2, 2};           /* NICE: SAW3 TRI3 S&T SST PPT */
         rnd_tp(tr, P_ATK, rnd_rr(70, 127));
         rnd_tp(tr, P_DEC, rnd_rr(90, 127));
         rnd_tp(tr, P_SUS, rnd_rr(100, 127));
@@ -332,13 +334,13 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         rnd_tp(tr, P_PAN, rnd_rr(-10, 10));
         if (e == ENGI_ORACLE) {
             uint8_t *p = or_patch[tr];
-            p[OR_NOISE] = (uint8_t)rnd_rr(50, 127);
+            p[OR_NOISE] = (uint8_t)(rnd_nice ? rnd_rr(0, 15) : rnd_rr(50, 127));
             p[OR_ATTACK_AMP] = (uint8_t)rnd_rr(60, 127);
             p[OR_SUSTAIN_AMP] = (uint8_t)rnd_rr(100, 127);
             p[OR_RELEASE_AMP] = (uint8_t)rnd_rr(90, 127);
             p[OR_RELEASE_ON] = 1;
         } else if (e == 6u) {
-            rnd_tp(tr, P_E0, (int32_t)rnd_pick(tw, tww, NELEM(tw)));   /* (TRIO's WAVE) */
+            rnd_tp(tr, P_E0, (int32_t)(rnd_nice ? rnd_pick(nw, nww, NELEM(nw)) : rnd_pick(tw, tww, NELEM(tw))));   /* (WAVE) */
         } else if (e == ENGI_PHYS) {
             rnd_tp(tr, P_E0 + 6u, rnd_rr(60, 127));     /* (BOW) */
         } else if (e == ENGI_FM6) {
@@ -375,6 +377,23 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         if (rnd_pct(30)) rnd_tp(tr, P_VOICE, V_LEGATO);
     }
     rnd_tp(tr, P_LD_AMP, 0);
+    if (rnd_nice) {                                 /* NICE: the patch near the preset, clean and still */
+        static const uint8_t clean[] = {0, 1, 2, 3, 4, 5}, cw[] = {4, 3, 2, 2, 4, 3};   /* SAW3 PLS3 PPT SST TRI3 S&T */
+        rnd_tp(tr, P_ED_FLT, rnd_rr(-10, 30));
+        rnd_tp(tr, P_ED_PIT, 0);
+        rnd_tp(tr, P_ED_SHP, rnd_rr(-15, 15));
+        rnd_tp(tr, P_LRATE, rnd_rr(10, 50));
+        rnd_tp(tr, P_LWAVE, 0);                     /* (a sine) */
+        rnd_tp(tr, P_LD_PIT, rnd_rr(-2, 2));
+        rnd_tp(tr, P_LD_FLT, rnd_rr(-15, 15));
+        rnd_tp(tr, P_LD_SHP, rnd_rr(-15, 15));
+        rnd_tp(tr, P_LSYNC, 0);
+        rnd_tp(tr, P_DETUNE, rnd_rr(0, 40));
+        rnd_tp(tr, P_SPRD, rnd_rr(30, 90));
+        if (role == RND_ROLE_MELODY) rnd_tp(tr, P_GLIDE, rnd_pct(20) ? rnd_rr(10, 50) : 0);
+        if (e == 6u && trk[tr].p[P_E0] > 5) rnd_tp(tr, P_E0, (int32_t)rnd_pick(clean, cw, NELEM(clean)));
+        if (e == ENGI_ORACLE && or_patch[tr][OR_NOISE] > 15u) or_patch[tr][OR_NOISE] = (uint8_t)rnd_rr(0, 15);
+    }
 }
 
 /* ------------------------------------------------------------ the roll: effects within a CPU budget --- */
@@ -703,7 +722,8 @@ static void rnd_key(void)
  * octave. The voices spread over the registers and none covers another */
 static void rnd_registers(void)
 {
-    static const uint8_t drop_w[] = {2, 1, 1, 1, 5};
+    static const uint8_t nice_w[] = {0, 0, 0, 0, 1};    /* (NICE: +24 never) */
+    const uint8_t *drop_w = rnd_nice ? nice_w : (const uint8_t[]){2, 1, 1, 1, 5};
     static const uint8_t idx[] = {0, 1, 2, 3, 4};
     int8_t oct[5] = {-24, -12, 0, 12, 24}, deal[NTRK];
     uint32_t drop = rnd_pick(idx, drop_w, 5), k, n = 0;
@@ -721,8 +741,8 @@ static void rnd_key_ambient(void)
 {
     static const uint8_t sc[] = {2, 3, 4, 5, 6, 8, 9, 1}, sw[] = {4, 5, 3, 3, 4, 2, 3, 2};
     const param_desc_t *d = pid_desc(PID_TRACK(P_SCALE), 0);
-    int32_t top = d ? d->max : 14, scale = rnd_pct(80) ? (int32_t)rnd_pick(sc, sw, NELEM(sc)) : rnd_rr(16, top);
-    int32_t root = rnd_rr(0, 11);
+    int32_t top = d ? d->max : 14, scale = rnd_nice || rnd_pct(80) ? (int32_t)rnd_pick(sc, sw, NELEM(sc)) : rnd_rr(16, top);
+    int32_t root = rnd_rr(0, 11);                       /* (NICE: the modes always, no stranger tuning) */
     uint32_t tr;
     rnd_tx(0, TX_KEY_LINK, 1);
     for (tr = 0; tr < NTRK; tr++) {
@@ -753,6 +773,7 @@ static void rnd_cords_ambient(void)
     static const uint8_t dst[] = {CD_CUTOFF, CD_SHAPE, CD_PAN, CD_SPREAD, CD_LFO_DEPTH, CD_E1, CD_E2, CD_E3, CD_E4, CD_E5,
                                   CD_E6, 0xFF};
     static const uint8_t dw[] = {14, 10, 6, 4, 4, 5, 5, 5, 5, 4, 4, 8};
+    static const uint8_t nw[] = {14, 10, 6, 4, 4, 0, 0, 0, 0, 0, 0, 8};   /* NICE: not the engines' own eight */
     uint32_t i, n = (uint32_t)rnd_rr(2, 5);
     for (i = 0; i < CORD_LIVE; i++) {
         cord_t c;
@@ -761,9 +782,9 @@ static void rnd_cords_ambient(void)
             c.src = (uint8_t)rnd_pick(src, sw, NELEM(src));
             c.src_trk = (uint8_t)rnd_rr(0, NTRK - 1);
             c.dst_trk = (uint8_t)(rnd_pct(60) ? c.src_trk : (uint32_t)rnd_rr(0, NTRK - 1));
-            c.dst = (uint8_t)rnd_pick(dst, dw, NELEM(dst));
+            c.dst = (uint8_t)rnd_pick(dst, rnd_nice ? nw : dw, NELEM(dst));
             if (c.dst == 0xFFu) c.dst = (uint8_t)(c.dst_trk >= 2u ? rnd_gen_dest(c.dst_trk) : CD_CUTOFF);
-            c.amount = (int8_t)(rnd_pct(50) ? rnd_rr(10, 50) : -rnd_rr(10, 50));
+            c.amount = (int8_t)(rnd_pct(50) ? rnd_rr(10, rnd_nice ? 30 : 50) : -rnd_rr(10, rnd_nice ? 30 : 50));
             c.uni = (uint8_t)rnd_pct(30);
         }
         if (!cord_set(i, &c)) { memset(&c, 0, sizeof c); cord_set(i, &c); }
@@ -947,7 +968,7 @@ static void rnd_roles(uint8_t *role, uint32_t ambient)
 
 static void rnd_roll(void)
 {
-    uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0, ambient = rnd_setting() == RND_AMBIENT;
+    uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0, ambient = rnd_setting() >= RND_AMBIENT;
     uint8_t role[NTRK];
     momentary_restore();
     rnd_seed = rnd_next() ^ fm1_ticks() ^ (fm1_ms << 7);
@@ -955,6 +976,7 @@ static void rnd_roll(void)
     rnd_state = rnd_seed;
     rnd_take();                                     /* (the hold swaps back to this) */
     rnd_backed = 0;
+    rnd_nice = (uint8_t)(rnd_setting() == RND_NICE);   /* (NICE: AMBIENT's roles, the nicer sounds) */
     rnd_roles(role, ambient);
     undo_depth++;                                   /* (a roll is not four sound loads to undo one by one) */
     {                                               /* (the drone and the chords pick their engines first) */
@@ -983,7 +1005,7 @@ static void rnd_roll(void)
         rnd_cords();
     }
     sync_reload = 1;
-    rnd_say(ambient ? "AMB " : "RND ", rnd_seed);
+    rnd_say(rnd_nice ? "NICE " : ambient ? "AMB " : "RND ", rnd_seed);
     if (!song.playing && !seq_counting() && !chain_busy()) transport_req = 1;   /* (it plays at once) */
     rnd_guard_start();
 }
@@ -1004,7 +1026,7 @@ static void rnd_back(void)
         rnd_guard_s.on = 0;                         /* (what was there before: not the guard's to change) */
         ui_message("BEFORE THE ROLL");
     } else {
-        rnd_say(rnd_setting() == RND_AMBIENT ? "AMB " : "RND ", rnd_seed);
+        rnd_say(rnd_nice ? "NICE " : rnd_setting() == RND_AMBIENT ? "AMB " : "RND ", rnd_seed);
         rnd_guard_start();
     }
 }

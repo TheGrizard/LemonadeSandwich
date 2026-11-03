@@ -6265,11 +6265,15 @@ static int test_rnd(void)
     }
     {                                               /* AMBIENT: a drone, chords, two melodies; no effects */
         uint32_t k, roles_ok = 1, fx_off = 1, qnt = 1, regs = 1, drone_regs = 0, quiet = 0, amb_heavy = 1, no_trem = 1;
-        hold(B_HOME); ui.menu_sel = MI_REC_BTN; turn(EN_K2, 1); turn(EN_K2, 1);
-        bad += check("RND AMBIENT: MENU > REC BUTTON turned right twice: AMBIENT (bits 6 and 7)",
+        hold(B_HOME); ui.menu_sel = MI_REC_BTN; turn(EN_K2, 1);
+        bad += check("RND AMBIENT: MENU > REC BUTTON turned right from RND: AMBIENT (bits 6 and 7)",
                      rnd_setting() == RND_AMBIENT && (favorites.factory[15][24] & 0xC0u) == 0xC0u);
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..AMBIENT is the last (right again: stays)", rnd_setting() == RND_AMBIENT);
+        bad += check("RND AMBIENT: ..right again: NICE (bit 7 alone); left: AMBIENT", rnd_setting() == RND_NICE &&
+                     (favorites.factory[15][24] & 0xC0u) == 0x80u && rnd_mode());
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..NICE is the last (right again: stays)", rnd_setting() == RND_NICE);
+        turn(EN_K2, -1);
         hold(B_HOME);
         ui.home = 1; ui.force = 1; frame();
         press(B_REC);
@@ -6321,6 +6325,52 @@ static int test_rnd(void)
                      regs && __builtin_popcount(drone_regs) >= 3);
         bad += check("RND AMBIENT: ..no tremolo, two heavy engines at most", no_trem && amb_heavy);
         bad += check("RND AMBIENT: ..each roll listened to sounds within 15 s", !quiet);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* NICE: AMBIENT's roles, nicer sounds */
+        uint32_t k, roles_ok = 1, fx_off = 1, regs = 1, quiet = 0, clean = 1, modal = 1, clipped_n = 0;
+        rnd_mode_put(RND_NICE);
+        press(B_REC);
+        bad += check("RND NICE: REC tapped: a roll, NICE and the seed said", !memcmp(ui.msg, "NICE ", 5) && !song.rec);
+        for (r = 0; r < 200u; r++) {
+            uint32_t chordt = 0, drones = 0;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++) {
+                uint32_t m = tessera.mode[tr], e = trk[tr].eng_req;
+                drones += m == TESS_ENG_TURING && trk[tr].p[P_SDIV] >= 7 && trk[tr].p[P_VOICE] == V_LEGATO;
+                chordt += m == TESS_ENG_CHORD;
+                fx_off &= trk[tr].p[P_FXTYPE] == FX_OFF && !trk[tr].p[P_FXSEND];
+                regs &= trk[tr].p[P_TRANS] <= 19;
+                clean &= trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_LWAVE] == 0 && trk[tr].p[P_ED_PIT] == 0;
+                if (e == 6u) clean &= trk[tr].p[P_E0] <= 5;
+                if (e == ENGI_ORACLE) clean &= or_patch[tr][OR_NOISE] <= 15u;
+                modal &= trk[tr].p[P_SCALE] >= 1 && trk[tr].p[P_SCALE] <= 9 && trk[tr].p[P_QUANT] == Q_CHRD;
+            }
+            roles_ok &= drones >= 1u && chordt == 1u;
+            regs &= rnd_registers_apart();
+            if (r % 25u == 0u) {
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, rail = 0;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
+                }
+                quiet += peak < 300;
+                clipped_n += rail > 2u * FS / 100u;
+                printf("rnd: nice roll %3u: %-6s %-6s %-6s %-6s TRN %3d %3d %3d %3d peak %5d\n", r,
+                       ENGINES[trk[0].eng_req]->name, ENGINES[trk[1].eng_req]->name, ENGINES[trk[2].eng_req]->name,
+                       ENGINES[trk[3].eng_req]->name, trk[0].p[P_TRANS], trk[1].p[P_TRANS], trk[2].p[P_TRANS],
+                       trk[3].p[P_TRANS], peak);
+            }
+        }
+        bad += check("RND NICE: 200 rolls: AMBIENT's roles (a drone, one CHORD track, melodies), no effects", roles_ok && fx_off);
+        bad += check("RND NICE: ..clean sounds: no tremolo, sine LFO, no pitch envelope, TRIO's clean waves, ORACLE's "
+                     "noise low", clean);
+        bad += check("RND NICE: ..the modes only (no stranger tuning), QNT CHRD; an octave each, never +24", modal && regs);
+        bad += check("RND NICE: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
