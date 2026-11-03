@@ -50,7 +50,7 @@ void Voice::Init(BufferAllocator* allocator) {
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
-#ifndef PLAITS_LEAN
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)  // tessera-rnd
   engines_.RegisterInstance(&string_machine_engine_, false, 0.8f, 0.8f);
   engines_.RegisterInstance(&chiptune_engine_, false, 0.5f, 0.5f);
 #else  // melodee-tess (2026-10-17): STRING MACHINE and CHIPTUNE out (their chords)
@@ -59,13 +59,13 @@ void Voice::Init(BufferAllocator* allocator) {
 #endif
   
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
-#ifndef PLAITS_LEAN
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)
   engines_.RegisterInstance(&waveshaping_engine_, false, 0.7f, 0.6f);
 #else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
   engines_.RegisterInstance(&fm_engine_, false, 0.6f, 0.6f);
-#ifndef PLAITS_LEAN
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)
   engines_.RegisterInstance(&grain_engine_, false, 0.7f, 0.6f);
 #else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
@@ -83,11 +83,17 @@ void Voice::Init(BufferAllocator* allocator) {
 
 #ifndef PLAITS_LEAN
   engines_.RegisterInstance(&swarm_engine_, false, -3.0f, 1.0f);
-  engines_.RegisterInstance(&noise_engine_, false, -1.0f, -1.0f);
-  engines_.RegisterInstance(&particle_engine_, false, -2.0f, 1.0f);
 #else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)
+  engines_.RegisterInstance(&noise_engine_, false, -1.0f, -1.0f);
+#else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#ifndef PLAITS_LEAN
+  engines_.RegisterInstance(&particle_engine_, false, -2.0f, 1.0f);
+#else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
   engines_.RegisterInstance(&string_engine_, true, -1.0f, 0.8f);
@@ -221,6 +227,8 @@ void Voice::Render(
         !modulations.trigger_patched || modulations.morph_patched ?
             0.0f : patch.morph_modulation_amount);
   } else
+#endif
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)  // tessera-rnd: the chiptune's own envelope
   if (engine_index == 7) {
     if (modulations.trigger_patched && !modulations.timbre_patched) {
       // Disable internal envelope on TIMBRE, and enable the envelope generator

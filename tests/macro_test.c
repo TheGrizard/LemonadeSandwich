@@ -72,9 +72,15 @@ int main(void)
           mc_bytes() < 40000u);
 
     models = (uint32_t)ENGINES[ENGI_MACRO]->edit[0].max + 1u;
+#if MELODEE_PLAITS_RND                                /* tessera-rnd: the string machine and chiptune back, chords not */
+    for (k = 0, ok = 1; k < sizeof MC_MODEL; k++)
+        ok &= MC_MODEL[k] != 14u && MC_MODEL[k] != 13u && MC_MODEL[k] != 15u && MC_MODEL[k] != 5u;
+    check("tessera-rnd's set: no wavetable, chords, speech or wave terrain (their tables)", ok && models == sizeof MC_MODEL);
+#else
     for (k = 0, ok = 1; k < sizeof MC_MODEL; k++)      /* (Plaits' 6, 7, 14: string machine, chiptune, chords) */
         ok &= MC_MODEL[k] != 6u && MC_MODEL[k] != 7u && MC_MODEL[k] != 14u;
     check("no chord model: each note plays one pitch (2026-10-17)", ok && models == sizeof MC_MODEL);
+#endif
     for (k = 0; k < models; k++) {                    /* every model, from INIT VA's settings, struck and held */
         sound(0);
         trk[0].p[P_E0] = (int16_t)k;
@@ -186,6 +192,47 @@ int main(void)
         printf("macro: cost on this computer, one note: MACRO (VA) %.0f ns a sample, SID %.0f (%.1f x; a report)\n",
                mc * 1e9 / (4.0 * FS), sid * 1e9 / (4.0 * FS), sid > 0 ? mc / sid : 0);
     }
+#if MELODEE_PLAITS_RND
+    {                                                 /* tessera-rnd: each model's cost against VA's (mid knobs, struck
+                                                       * every 200 ms, the least of three) and its voice units: a model
+                                                       * 2.5x dearer never fewer units, VA's the least (this computer's
+                                                       * timings vary: a check for gross mistakes) */
+        static uint32_t mem[(40000 + 3) / 4];
+        static double cost[sizeof MC_MODEL];
+        mg_params_t q;
+        int16_t o[MG_BLOCK], a[MG_BLOCK];
+        uint32_t j, i, r, m2;
+        for (j = 0; j < sizeof MC_MODEL; j++) {
+            double best = 1e9;
+            memset(&q, 0, sizeof q);
+            q.model = MC_MODEL[j];
+            q.note = 48.0f;
+            q.harmonics = q.timbre = q.morph = 0.5f;
+            q.decay = 0.7f;
+            q.lpg_colour = 0.5f;
+            q.gated = 1;
+            mg_init(mem);
+            for (i = 0; i < 400u; i++) { q.trigger = i % 50u == 0; mg_render(mem, &q, o, a); }
+            for (r = 0; r < 3u; r++) {
+                double t0 = now_s();
+                for (i = 0; i < 2000u; i++) { q.trigger = i % 200u == 0; mg_render(mem, &q, o, a); }
+                t0 = now_s() - t0;
+                if (t0 < best) best = t0;
+            }
+            cost[j] = best;
+        }
+        for (j = 0, ok = 1; j < sizeof MC_MODEL; j++) {
+            printf("    %-5s %.1f x VA, %u units\n", N_MC_MODEL[j], cost[j] / cost[MC_VA], MC_UNITS[j]);
+            ok &= MC_UNITS[j] >= MC_UNITS[MC_VA];
+            for (m2 = 0; m2 < sizeof MC_MODEL; m2++)
+                if (cost[j] > 2.5 * cost[m2] && MC_UNITS[j] < MC_UNITS[m2]) {
+                    ok = 0;
+                    printf("    %s dearer than %s but fewer units\n", N_MC_MODEL[j], N_MC_MODEL[m2]);
+                }
+        }
+        check("tessera-rnd: each model's voice units in the order of its cost (VA the least)", ok);
+    }
+#endif
     printf(bad ? "macro: %d FAILED\n" : "macro: all passed\n", bad);
     return bad != 0;
 }

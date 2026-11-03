@@ -203,11 +203,11 @@ class Voice {
   }
 
   VirtualAnalogEngine virtual_analog_engine_;
-#ifndef PLAITS_LEAN
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)  // tessera-rnd: PLAITS_RND keeps these in the lean set (no tables to speak of)
   WaveshapingEngine waveshaping_engine_;
 #endif
   FMEngine fm_engine_;
-#ifndef PLAITS_LEAN
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)
   GrainEngine grain_engine_;
 #endif
   AdditiveEngine additive_engine_;
@@ -219,8 +219,10 @@ class Voice {
 
 #ifndef PLAITS_LEAN
   SwarmEngine swarm_engine_;
-  NoiseEngine noise_engine_;
   ParticleEngine particle_engine_;
+#endif
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)
+  NoiseEngine noise_engine_;
 #endif
   StringEngine string_engine_;
   ModalEngine modal_engine_;
@@ -235,6 +237,8 @@ class Voice {
 #ifndef PLAITS_LEAN
   SixOpEngine six_op_engine_;
   WaveTerrainEngine wave_terrain_engine_;
+#endif
+#if !defined(PLAITS_LEAN) || defined(PLAITS_RND)
   StringMachineEngine string_machine_engine_;
   ChiptuneEngine chiptune_engine_;
 #endif

@@ -239,6 +239,11 @@ macro_tests() {                                  # MACRO (eng_macro.c): Plaits' 
         c++ -o "$OUT/macro_test" "$OUT/macro_test.o" $_objs -lm || { fail "compile tests/macro_test.c (MACRO)"; return 1; }
     step "MACRO: Plaits' models play, pitch, HIT, every knob, arena memory, cost against SID" "$OUT/macro_test"
 }
+rnd_plaits_tests() {                             # tessera-rnd: its Plaits (lean + PLAITS_RND, half rate) and PLAITS rolls
+    if ! command -v c++ >/dev/null 2>&1; then echo "== RND PLAITS: skipped (no c++)"; return; fi
+    step "RND PLAITS: Plaits' twelve models at half rate, their costs and units; PLAITS rolls, the arpeggio, the guard" \
+        sh tests/rnd_plaits_test.sh
+}
 phys_ref() {
     D=${DAISYSP:-vendor/DaisySP}/Source
     if [ ! -d "$D/PhysicalModeling" ] || ! command -v c++ >/dev/null 2>&1; then
@@ -395,6 +400,7 @@ if sound && [ $TABLES = 1 ]; then
     t "native fp32: FM6 against an independent reference, exact pitch" synth_fpu_test \
         -O2 $FW
     job macro_tests
+    job rnd_plaits_tests
     t "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" mod_test \
         -DMELODEE_LEGACY_EXTRAS=1 -O2 $FW -- "$OUT/mod_test" build/mod_demo
     t "matrix S&H / SLEW / DEPTH, SPREAD: off = bit-identical, stereo sides and routing" mod_spread_test -O2 $FW
