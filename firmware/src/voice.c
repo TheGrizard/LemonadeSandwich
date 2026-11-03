@@ -192,14 +192,15 @@ static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
             if (!v->active || v->stage == 4u)
                 continue;
             if (!v->gate)
-                c = 1;                                  /* released */
+                c = 1;                                  /* released: the quietest (then the oldest) */
             else if (mode != V_POLY && i > 0)
                 c = 2;                                  /* extra UNISON, or a voice left by a mode / cap change */
             else if (!soft && mode == V_POLY && i != low)
                 c = 3;                                  /* held, not the bass */
             else
                 continue;
-            if (c < cat || (c == cat && v->age < (*pp)->v[best].age)) {
+            if (c < cat || (c == cat && (c == 1u && v->env != (*pp)->v[best].env ? v->env < (*pp)->v[best].env
+                                                                                : v->age < (*pp)->v[best].age))) {
                 cat = c;
                 best = i;
                 *pp = t;
@@ -220,10 +221,23 @@ static void voice_kill(voice_t *v)                      /* fade out over the nex
     if (part < NPART) voice_kills_part[part]++;
 }
 
+/* RND's modes (rnd.c sets it): a voice the budget takes fades over ~12 ms, as a one-block fade of a ringing tail
+ * clicks. A roll keeps the budget 4 below the default 16, so at most 4 such fades at a time stay within it.
+ * 0 (the rest of the firmware): the strict budget, a taken voice gone within its block. */
+static uint8_t voice_soft_fade;
+#define VOICE_SOFT_FADES 4u
+
 static void voice_capacity_kill(voice_t *v)
 {
+    uint32_t p, i, n = 0;
     capacity_steals++;
     voice_kill(v); /* preserve the legacy explicit-fade counter */
+    if (!voice_soft_fade)
+        return;
+    for (p = 0; p < NPART; p++)
+        for (i = 0; i < NVOICE; i++)
+            n += trk[p].v[i].active && trk[p].v[i].stage == 4u && trk[p].v[i].fade;
+    v->fade = n < VOICE_SOFT_FADES;
 }
 
 /* the budget is full: free room for a voice of part t. 0 = nothing to take (soft) */
@@ -367,6 +381,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->gate = 1;
     v->active = 1;
     v->stage = 1;
+    v->fade = 0;
     v->age = ++vage;
     voice_scale_pitch(t, v, note);
     v->mvel = t->m_vel;                                 /* mod.c: the note's VEL and RAND */
@@ -652,9 +667,14 @@ static int32_t env_tick(track_t *t, voice_t *v)
         }
         break;
     case 4:                                             /* given up for another part: this block fades it */
+        if (v->fade && v->env >= (1 << 17)) {          /* (the budget's: -2.5 dB a block to -42 dB, ~12 ms) */
+            v->env -= v->env >> 2;
+            break;
+        }
         v->env = 0;
         v->stage = 0;
         v->active = 0;
+        v->fade = 0;
         break;
     default:
         v->env = 0;
@@ -782,10 +802,10 @@ static __attribute__((noinline)) uint32_t track_render_audio(track_t *t, int32_t
                     v->stage = 0;
                     v->env = 0;
                     env = 0;
-                } else {
+                } else if (v->stage != 4u) {
                     v->env = 1 << 24;                   /* (the ADSR's release never ends it) */
                     env = 32767;
-                }
+                }                                       /* given up: env_tick's fade over the engine's own level */
             }
             if (e->amp)                                 /* the engine's own amplitude curve */
                 env = e->amp(t, v, env);

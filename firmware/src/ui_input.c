@@ -1969,7 +1969,8 @@ static void ui_input(void)
         return;
     }
     if(ui.import_refresh){pop.on=0;brw.on=0;ui.import_refresh=0;ui.force=1;}
-    if (rnd_mode()) rnd_guard();                        /* (rnd.c: a roll too heavy for the FM-1 lightens itself) */
+    voice_soft_fade = (uint8_t)rnd_mode();              /* (voice.c: the budget's gentle fades) */
+    if (voice_soft_fade) rnd_guard();                        /* (rnd.c: a roll too heavy for the FM-1 lightens itself) */
     cu_adopt();                                         /* (Tessera: MOD's routes into MODS, ui_cords.c) */
     if (scr_input(pressed, notes)) return;
     if (designer_on() && !name_on() && !ui.confirm && designer_input(pressed, notes)) return;

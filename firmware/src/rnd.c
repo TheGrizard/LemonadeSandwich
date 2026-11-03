@@ -1127,6 +1127,7 @@ static void rnd_roll(void)
     uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0, ambient = rnd_setting() >= RND_AMBIENT;
     uint8_t role[NTRK];
     momentary_restore();
+    voice_soft_fade = 1;                            /* (ui_input sets it each frame too: the budget's gentle fades) */
     rnd_seed = rnd_next() ^ fm1_ticks() ^ (fm1_ms << 7);
     if (!rnd_seed) rnd_seed = 0x2545F491u;
     rnd_state = rnd_seed;

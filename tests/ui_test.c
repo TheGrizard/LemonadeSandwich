@@ -6557,6 +6557,42 @@ static int test_rnd(void)
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
     }
+    {                                               /* no clicks: a voice the budget takes fades gently (voice.c) */
+        static voice_t was[NPART][NVOICE];
+        uint32_t k, b, p, v, loud = 0, kills0 = voice_kills, most = 0, fading = 0, cap = 0;
+        int32_t o[2 * CTL];
+        rnd_mode_put(RND_NICE);
+        for (k = 0; k < 6u; k++) {
+            rnd_roll();
+            if (!song.playing) transport_req = 1;
+            for (b = 0; b < 20u * FS / CTL; b++) {
+                uint32_t n = 0, f = 0;
+                for (p = 0; p < NPART; p++) memcpy(was[p], trk[p].v, sizeof was[p]);
+                mix_block(o, CTL);
+                for (p = 0; p < NPART; p++)
+                    for (v = 0; v < NVOICE; v++) {
+                        const voice_t *a = &was[p][v], *z = &trk[p].v[v];
+                        n += z->active;
+                        f += z->active && z->stage == 4u && z->fade;
+                        int32_t left = a->stage == 3u ? a->env - mulq16(a->env, ENV_EXP[trk[p].p[P_REL] & 127]) : a->env;
+                        if (b > 16u && !ENGINES[trk[p].engine]->ownenv && a->active && a->stage && !z->active &&
+                            a->env > (1 << 21) && left >= (1 << 12))   /* gone within a block from above -18 dB, */
+                            loud++;                                     /* not by its own release */
+                    }
+                most = n > most ? n : most;
+                fading += f;
+                cap |= f > VOICE_SOFT_FADES;
+            }
+        }
+        printf("rnd: 2 min of NICE: %u voices taken, %u blocks of gentle fades, at most %u voices, %u loud cut-offs\n",
+               voice_kills - kills0, fading, most, loud);
+        bad += check("RND: a voice the budget takes fades gently (no loud cut-off), at most 4 such fades, 16 voices",
+                     voice_kills > kills0 && fading && !loud && !cap && most <= 16u);
+        voice_soft_fade = 0;
+        transport_req = 2;
+        for (k = 0; k < 8u; k++) mix_block(o, CTL);
+        rnd_mode_put(RND_FREE);
+    }
     {                                               /* the guard: a heavy roll lightens itself, step by step */
         uint32_t k, steps;
         transport_req = 2;

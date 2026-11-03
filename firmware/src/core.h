@@ -229,7 +229,8 @@ enum { Q_OFF, Q_SNAP, Q_WHITE, Q_ALL, Q_MPC, Q_CHRD };  /* P_QUANT (seq.c kb_map
 typedef struct {
     uint8_t side; /* stereo spread side, retained while sounding */
     uint8_t note, vel, gate, active;
-    uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release */
+    uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release, 4 given up */
+    uint8_t fade;                /* stage 4: 1 = a gentle fade (~12 ms, the budget), 0 = this block (overload, panic) */
     int32_t env;                 /* Q24 */
     int32_t env_out;             /* last control-rate amplitude, Q15 */
     int32_t pitch16, pitch_cur;  /* 1/16 semitone, with glide */
