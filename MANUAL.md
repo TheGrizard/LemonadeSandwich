@@ -685,7 +685,8 @@ link is saved with the project (a project saved before it loads as OWN). TRN sti
 A **CHORD** track plays a progression; with **QNT CHRD** the other tracks follow it.
 
 - On the CHORD track: GEN, MODE **CHORD**, then **PROG**, **BARS** and **HIT**. The chord's kind and voicing come
-  from **SCL > CHORD** (CHRD, VOIC), or the OCT+ layer. CHRD OFF plays triads.
+  from **SCL > CHORD** (CHRD, VOIC), or the OCT+ layer. CHRD OFF plays triads. On an engine of one voice (MACRO,
+  Plaits) the chord is an arpeggio: each strike plays its next note, up and down (HIT STEP: a note a step).
 - On any other track: **SCL**, **QNT** to **CHRD**. Its keys, its MIDI input and its generator snap to the nearest
   note of the chord playing now, and KNOB 2 on NOTES steps through its notes. With no CHORD track, CHRD acts as
   SNAP.
@@ -811,8 +812,8 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 
 ## RND: one button, a new piece
 
-After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS** or
-**ORBIT**, below) and REC becomes a roll:
+After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS**,
+**ORBIT** or **PLAITS**, below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -879,6 +880,20 @@ a little dropped now and then, no ratchet or swing. The voices are LOOPS' (soft 
 mode, each track in an octave of its own, no effects; slow cords may move the balls and the stars. The screen shows
 **ORBIT** and the seed.
 
+**PLAITS.** With REC BUTTON on **PLAITS**, a roll works as FALL (the drone, the chords, the two melodies falling as
+leaves, the registers, the key, no effects) with every track on **MACRO**: Mutable Instruments Plaits' synthesis, one
+voice a track. Each roll picks each track's model and puts HARM, TIMBR and MORPH anywhere, DECAY and COLOR by the
+role, and now and then some of Plaits' second output (AUX). The twelve models: VCF (VA through a filter), PHASE
+(phase distortion), VA, FM (2-op), HARM (additive), PLUCK (a string), BELL (modal), WSHAP (a triangle through a
+waveshaper and folder), GRAIN (formants and grains), STMCH (the string machine) and CHIP (chiptune) (each a chord
+from one voice: HARM picks it) and NOISE (filtered noise). The drone is held (HIT OFF) on a model that sustains; the
+melodies are mostly struck (HIT ON: Plaits' own gate shapes them, DECAY its length); the chords track, one voice,
+plays its chords as an **arpeggio**, a note a step, up and down (HIT STEP, 1/8 or 1/4). Plaits runs at half the rate
+(22 kHz: half the cost; nothing above 11 kHz). The four models' costs share the roll's BUDGET of 13: a light model (VA,
+CHIP) costs 2, FM 7, so a roll has at most one heavy model; if the FM-1 still runs hot, the guard's last step turns
+the dearest model into VA. Left out (their tables do not fit, or they cost too much alone): wavetable, chords, wave
+terrain, speech, the 6-op DX7, swarm, particles and the drums. The screen shows **PLAITS** and the seed.
+
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
 at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
 the effects within a CPU budget, no UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
@@ -904,7 +919,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **PLAITS**: FALL's on Plaits, its models rolled (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |
