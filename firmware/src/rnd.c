@@ -1260,11 +1260,25 @@ static void rnd_roles_pulse(uint8_t *role)
  * lydian), dark (little above 2 kHz), off the grid, tape-worn. The BED (RND_ROLE_DRONE): a dark pad or organ moving
  * every bar to four, legato, now and then a slow tremolo. The OSTINATO (RND_ROLE_OSTI): two notes taking turns
  * (SERIES, two steps), a beat or two each. The MELODY: an itty bitty line on three to five notes, repeats, short phrases
- * and gaps (TURING short and nearly locked, AWAKE, MARKOV sparse; DROP), struck and ringing (FM6's tines, PHYS). The
+ * and gaps (TURING short and nearly locked, AWAKE, MARKOV sparse; DROP), piano mostly (PHYS' stiff string hammered,
+ * FM6's tines), the ostinato a low piano when one is left. The
  * TEXTURE (RND_ROLE_NOISE): NOISE's hiss, rumble and crackle held low under it all; or, now and then, a second melody
  * high up and sparser. The pitched voices wobble as worn tape (the LFO a sine at about 2.5 Hz on the pitch: the
  * references' wow); each step late by a player's amount (TIMING HUMAN). Effects: rnd_fx_wozza */
 #define RND_WZ_WOW 75                               /* (LFO RATE: about 2.5 Hz) */
+/* PHYS as a piano: the string model stiff (STRC past a quarter: dispersion, piano-like), hammered near its end, a
+ * soft tone, a long decay, the hammer's thump a little (EXC); never bowed. A preset's knobs, set whatever it was */
+static void rnd_wozza_piano(uint32_t tr)
+{
+    if (trk[tr].p[P_E0] != PM_STRING) return;       /* (VIBES, KALIMBA, MARIMBA: bars, as they are) */
+    rnd_tp(tr, P_E0 + 1u, rnd_rr(70, 105));         /* STRC: stiff */
+    rnd_tp(tr, P_E0 + 2u, rnd_rr(35, 65));          /* BRIT: soft, felt */
+    rnd_tp(tr, P_E0 + 3u, rnd_rr(80, 102));         /* DAMP: rings on */
+    rnd_tp(tr, P_E0 + 4u, rnd_rr(12, 22));          /* POS: near the end, as a hammer */
+    rnd_tp(tr, P_E0 + 5u, rnd_rr(85, 110));         /* ACC */
+    rnd_tp(tr, P_E0 + 6u, 0);                       /* BOW off */
+    rnd_tp(tr, P_E0 + 7u, rnd_rr(5, 25));           /* EXC: the hammer */
+}
 static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     uint8_t nice = rnd_nice;
@@ -1272,26 +1286,22 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     if (role == RND_ROLE_NOISE) {
         rnd_want_e = eng_ok(11u) ? 11u : 6u;        /* (NOISE; TRIO's noise wave without it) */
         rnd_want_pi = 0;
-    } else if (role == RND_ROLE_MELODY) {           /* struck: FM6's tines, PHYS's bars and strings */
-        static const uint8_t fp[] = {0, 8, 38, 19, 5}, fw[] = {6, 5, 2, 2, 1};   /* TINE EP, DX TINE, KOTO WARM, KALIMBA, MARIMBA */
-        static const uint8_t pp[] = {9, 12, 8, 4, 1}, pw[] = {4, 3, 3, 2, 2};    /* VIBES, DULCIMER, HARP, KALIMBA, MARIMBA */
+    } else if (role == RND_ROLE_MELODY) {           /* piano mostly: PHYS' hammered string, FM6's tines */
+        static const uint8_t fp[] = {0, 8, 38, 19}, fw[] = {6, 5, 1, 1};   /* TINE EP, DX TINE, KOTO WARM, KALIMBA */
+        static const uint8_t pp[] = {9, 4, 1}, pw[] = {2, 1, 1};           /* VIBES, KALIMBA, MARIMBA */
         uint32_t k = (uint32_t)rnd_rr(0, 99);
-        if (k < 55u && !*fm6s && eng_ok(ENGI_FM6)) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
-        else if (k < 90u && !*phys && eng_ok(ENGI_PHYS)) rnd_want_e = ENGI_PHYS, rnd_want_pi = rnd_pick(pp, pw, NELEM(pp));
-        else if (!*fm6s && eng_ok(ENGI_FM6)) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
-        else if (!*phys && eng_ok(ENGI_PHYS)) rnd_want_e = ENGI_PHYS, rnd_want_pi = rnd_pick(pp, pw, NELEM(pp));
+        int ph = !*phys && eng_ok(ENGI_PHYS), fm = !*fm6s && eng_ok(ENGI_FM6);
+        if (ph && (k < 50u || !fm)) rnd_want_e = ENGI_PHYS, rnd_want_pi = k < 92u || !fm ? 12 : rnd_pick(pp, pw, NELEM(pp));
+        else if (fm) rnd_want_e = ENGI_FM6, rnd_want_pi = k < 90u ? (rnd_pct(55) ? 0 : 8) : rnd_pick(fp, fw, NELEM(fp));
         else rnd_want_e = 6u, rnd_want_pi = 10;     /* (TRIO's SOFT LEAD) */
-    } else if (role == RND_ROLE_OSTI) {             /* soft keys: TRIO's pads plucked, WHEEL's flute, FM6's tines low */
-        uint32_t k = (uint32_t)rnd_rr(0, 99);
-        if (k < 20u && !*fm6s && eng_ok(ENGI_FM6)) rnd_want_e = ENGI_FM6, rnd_want_pi = 0;
-        else if (k < 50u && eng_ok(7u)) rnd_want_e = 7u, rnd_want_pi = 3;   /* (SOFT FLUTE) */
+    } else if (role == RND_ROLE_OSTI) {             /* a low piano when one is left; else TRIO's pads plucked */
+        if (!*phys && eng_ok(ENGI_PHYS) && rnd_pct(75)) rnd_want_e = ENGI_PHYS, rnd_want_pi = 12;
+        else if (!*fm6s && eng_ok(ENGI_FM6) && rnd_pct(75)) rnd_want_e = ENGI_FM6, rnd_want_pi = 0;
+        else if (rnd_pct(30) && eng_ok(7u)) rnd_want_e = 7u, rnd_want_pi = 3;   /* (WHEEL's SOFT FLUTE, where built) */
         else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 8 : 5;        /* (SOFT PAD, WARM PAD) */
-    } else {                                        /* the bed: a dark pad or organ */
+    } else {                                        /* the bed: a dark pad (TRIO: the pianos keep FM6 and PHYS) */
         static const uint8_t tp[] = {5, 7, 8, 14, 6}, tw[] = {4, 3, 3, 2, 2};    /* WARM HOLLOW SOFT PAD, FIFTH DRONE, STRING MACH */
-        static const uint8_t mp[] = {25, 27, 16}, mw[] = {3, 3, 1};              /* SOFT PAD, DEEP PAD, GLASS PAD */
-        uint32_t k = (uint32_t)rnd_rr(0, 99);
-        if (k < 20u && !*fm6s && eng_ok(ENGI_FM6)) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(mp, mw, NELEM(mp));
-        else if (k < 45u && eng_ok(7u)) rnd_want_e = 7u, rnd_want_pi = rnd_pct(60) ? 3 : 0;   /* (SOFT FLUTE, FULL ORGAN) */
+        if (rnd_pct(30) && eng_ok(7u)) rnd_want_e = 7u, rnd_want_pi = rnd_pct(60) ? 3 : 0;   /* (WHEEL, where built) */
         else rnd_want_e = 6u, rnd_want_pi = rnd_pick(tp, tw, NELEM(tp));
     }
     rnd_nice = 1;                                   /* (the presets' kinds kept, their knobs pushed a little) */
@@ -1370,6 +1380,13 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(35, 65));
         if (e == 7u) { rnd_tp(tr, P_E0 + 3u, rnd_rr(0, 20)); rnd_tp(tr, P_E0 + 5u, 0); }
         if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 5));   /* (MLVL: mellow) */
+        if (e == ENGI_PHYS) {                       /* (the low piano: struck, ringing) */
+            rnd_wozza_piano(tr);
+            rnd_tp(tr, P_ATK, 0);
+            rnd_tp(tr, P_DEC, rnd_rr(80, 110));
+            rnd_tp(tr, P_SUS, rnd_rr(0, 30));
+            rnd_tp(tr, P_VOICE, V_POLY);
+        }
         return;
     }
     rnd_tp(tr, P_ATK, rnd_rr(0, 3));                /* the melody: struck, ringing */
@@ -1381,7 +1398,7 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     rnd_tp(tr, P_PAN, rnd_rr(-35, 35));
     if (e == ENGI_FM6) { rnd_tp(tr, P_E0 + 2u, rnd_rr(-25, 5)); rnd_tp(tr, P_E0 + 7u, rnd_rr(0, 20)); }   /* (MLVL mellow, AEG
                                                      * ringing) */
-    if (e == ENGI_PHYS) { rnd_tp(tr, P_E0 + 2u, rnd_rr(20, 60)); rnd_tp(tr, P_E0 + 6u, 0); }   /* (BRIT dull, no BOW) */
+    if (e == ENGI_PHYS) rnd_wozza_piano(tr);
     if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(45, 70));
 }
 /* an itty bitty line: a few notes, repeats, phrases and gaps, a player's timing */

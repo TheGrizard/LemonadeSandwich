@@ -916,13 +916,13 @@ the cutoff). The screen shows **PULSE** and the seed.
 reference tracks measured on the PC (their tempo, keys, timing, timbre and lo-fi). It sets a slow tempo (72 to 84 BPM;
 held REC brings yours back) and a plain key (major pentatonic or major mostly; minor pentatonic, minor, dorian or
 lydian now and then), and deals four parts in a random order. The **bed** is a dark pad on TRIO (WARM, HOLLOW or SOFT
-PAD, FIFTH DRONE, STRING MACH) or FM6 (SOFT, DEEP or GLASS PAD): two to four notes, a bar to four bars each, held
+PAD, FIFTH DRONE, STRING MACH; FM6 and PHYS are kept for the pianos): two to four notes, a bar to four bars each, held
 (SERIES, so it never drops out), low or now and then in the middle, a slow tremolo now and then. The **ostinato** is
-two notes taking turns (SERIES on a two-step loop, a third, fourth or fifth apart), a beat or two each, soft (TRIO's
-pads plucked, or FM6's tines low). The **melody** is an itty bitty line on a few notes, with repeats, short phrases and
+two notes taking turns (SERIES on a two-step loop, a third, fourth or fifth apart), a beat or two each, soft. The **melody** is an itty bitty line on a few notes, with repeats, short phrases and
 gaps (a short, nearly locked TURING, AWAKE or a sparse MARKOV, with DROP; on the beat, now and then a note struck two or
-three times), struck and ringing: FM6's TINE EP, DX TINE, KOTO WARM, KALIMBA or MARIMBA, or PHYS' VIBES, DULCIMER, HARP,
-KALIMBA or MARIMBA, mellow. The fourth part is the **texture** (TRIO's noise, low and dark: a rumble or a hiss, held
+three times), piano mostly, struck and ringing: PHYS' string made a piano (stiff, hammered near its end, soft, long)
+or FM6's electric pianos (TINE EP, DX TINE), now and then VIBES, KALIMBA, MARIMBA or KOTO WARM. The ostinato is a low
+piano too when one is left (FM6 and PHYS once each a roll), otherwise TRIO's pads plucked. The fourth part is the **texture** (TRIO's noise, low and dark: a rumble or a hiss, held
 under it all) or, in a quarter of the rolls, a second melody, higher and sparser. Every pitched part wobbles like worn
 tape (the LFO a sine at about 2.5 Hz, a fifth of a semitone on the pitch, as the references' wow measured), and every
 step plays a little late by a new amount (TIMING HUMAN), so the parts sit off the grid. Cords move the bed's and
