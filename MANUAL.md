@@ -834,8 +834,8 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   none, one up and two up, so the voices never sit on top of each other.
 - **The key**: one ROOT and SCALE for all four (KEY LINK on), a mode often, often something stranger (an EDO, just
   intonation, a gamelan or maqam scale).
-- **Effects**: FX 1 on up to two tracks, the sends, and the send effects in SPLIT (a REVERB or ROOM, often an ECHO).
-  The effects share a CPU budget, so an expensive one (FORMANT, WIDTH, PHASER) leaves less room for the others.
+- **Effects**: FX 1 on up to two tracks, the sends, and the send effects in SPLIT (a ROOM or an ECHO, often both).
+  Only the light effects are rolled (ECHO, FILTER, ROOM, TAPE, CHORUS), within a CPU budget.
 - **MODS**: three to nine cords, slow sources (DRIFT, the SLOTHs, OCHD, S&H, the LFO) into the sound, the effects
   and the generators' own settings. The tracks' four MOD routes are cleared.
 
@@ -852,14 +852,15 @@ The registers are dealt as in RND, so the drone can be low one roll and high the
 melodies follow the chords. There is no tremolo, and only slow modulation (two to five cords, never on pitch). The
 screen shows **AMB** and the seed.
 
-**Effects in the modes after RND.** AMBIENT, NICE, FALL, LOOPS, ORBIT, GLITCH and PULSE roll an effect into each of
-the three send effects (SPLIT, each track its own sends), never two alike, then into each track's FX 1 while the
-mode's effect points last (the same points as RND's, found on the FM-1: AMBIENT and NICE 14, ORBIT 15, LOOPS 16, FALL
-and GLITCH 18, PULSE 20, as their engines leave room); FX 2 and 3 stay off. The gentle modes lean to REVERB, ROOM,
-ECHO, CHORUS, TAPE and PHASER (NICE, FALL, LOOPS and ORBIT never FORMANT or SPIT); GLITCH and PULSE to ECHO, FILTER,
-SPIT, ROOM, PHASER, TAPE and FORMANT. About half the inserts and up to two send effects get a cord on their MIX, RATE
-or CHAR: a slow wanderer in the gentle modes, S&H, the gate, the envelope or fast chaos in GLITCH and PULSE. DRIFT
-nudges them too. If the FM-1 runs hot, the guard takes them back as RND's (LIGHTER).
+**Effects in the modes after RND.** AMBIENT, NICE, FALL, LOOPS, ORBIT, GLITCH and PULSE roll the light effects only
+(ECHO, FILTER, ROOM, TAPE, CHORUS; never REVERB, FORMANT, WIDTH, PHASER or SPIT, which took the FM-1 to 70 or 80 %):
+send effect 1 always, send effect 2 on most rolls (SPLIT, each track its own sends, the two never alike), send effect 3
+off, then FX 1 on up to two tracks while the mode's effect points last (as RND's, a send's bus counted: AMBIENT and
+NICE 8, LOOPS and ORBIT 9, FALL and GLITCH 10, PULSE 11, as their engines leave room); FX 2 and 3 stay off. The gentle
+modes lean to ROOM, ECHO, CHORUS and TAPE; GLITCH and PULSE to ECHO and FILTER. About half the inserts and up to two
+send effects get a cord on their MIX, RATE or CHAR: a slow wanderer in the gentle modes, S&H, the gate, the envelope or
+fast chaos in GLITCH and PULSE. DRIFT nudges them too. If the FM-1 runs hot, the guard takes them back as RND's
+(LIGHTER). For a REVERB, set one yourself after the roll.
 
 **NICE.** With REC BUTTON on **NICE**, a roll works as AMBIENT (the same roles, generators and registers) with nicer
 sounds: each track's factory preset kept close to how it was made, TRIO on its clean waves (no
@@ -936,7 +937,7 @@ turn it back up there if you want more voices.
 
 **LIGHTER.** What a roll costs is only known once it plays, so while it plays the FM-1 watches its own CPU load. If the
 load stays over about 72 % for a third of a second, or touches 85 %, the roll takes one step off itself and the screen
-says **LIGHTER**: first the REVERB becomes a ROOM, then the most expensive inserts go, then the ECHO send, then the
+says **LIGHTER**: first the REVERB becomes a ROOM, then the most expensive inserts go, then send effect 2, then the
 busiest POLY tracks become MONO. It waits a second and a half after each step to hear the difference. Only a roll's
 own sound is changed: holding REC to go back to before the roll stops it.
 

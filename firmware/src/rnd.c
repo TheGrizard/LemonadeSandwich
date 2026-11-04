@@ -537,11 +537,21 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
 
 /* ------------------------------------------------------------ the roll: effects within a CPU budget --- */
 /* What each effect costs, in points (measured on the host, tests/ui_test.c test_rnd: four tracks rolled, one insert of
- * a kind on each, or one send effect; a point is about a twentieth of what a roll's engines cost). On the FM-1 a roll's
- * effects had cost as much again as its engines (80 to 105 % CPU, the overload: late blocks are a digital crunch and the
- * voices it sheds a stutter), so a roll's effects share RND_FX_POINTS. Inserts: FX 1 only, on two tracks at most. */
+ * a kind on each, or one send effect; a point is about a twentieth of what a roll's engines cost), a send effect
+ * RND_FX_BUS more (its bus: the tracks' sends summed, its output mixed back). On the FM-1 a roll's effects had cost as
+ * much again as its engines (80 to 105 % CPU, the overload: late blocks are a digital crunch and the voices it sheds a
+ * stutter), and the modes' three sends and inserts at 14 to 20 points 70 to 80 %, so a roll's effects share
+ * RND_FX_POINTS, and only the light ones are rolled (rnd_fx_light: ECHO FILTER ROOM TAPE CHORUS; never REVERB,
+ * FORMANT, WIDTH, PHASER or SPIT). Inserts: FX 1 only. */
+#define RND_FX_BUS 2u
+static int rnd_fx_light(uint32_t type)
+{
+    return type == FX_OFF || type == FX_ECHO || type == FX_FILTER || type == FX_ROOM || type == FX_TAPE ||
+           type == FX_CHORUS;
+}
 static uint32_t rnd_fx_points(uint32_t type, int send)
 {
+    if (send && type != FX_OFF) return RND_FX_BUS + rnd_fx_points(type, 0);
     switch (type) {
     case FX_OFF: return 0u;
     case FX_ECHO: case FX_FILTER: return 1u;
@@ -550,21 +560,21 @@ static uint32_t rnd_fx_points(uint32_t type, int send)
     case FX_PHASER: return 5u;
     case FX_WIDTH: return 7u;
     case FX_FORMANT: return 9u;
-    case FX_REVERB: return send ? 11u : 14u;
+    case FX_REVERB: return 14u;
     default: return 6u;
     }
 }
-#define RND_FX_POINTS 18u
+#define RND_FX_POINTS 10u
 #define RND_INSERT_TRACKS 2u
 
-/* the send effects (SPLIT: a send to each): a space (REVERB, or the cheaper ROOM), now and then an echo; the third
- * off. -> the points they use */
+/* the send effects (SPLIT: a send to each): a space (ROOM) or an echo, now and then the other too; the third off.
+ * -> the points they use */
 static uint32_t rnd_sends(void)
 {
     uint32_t used = 0, s;
     uint32_t type[3];
-    type[0] = rnd_pct(60) ? FX_REVERB : FX_ROOM;
-    type[1] = rnd_pct(55) ? FX_ECHO : FX_OFF;
+    type[0] = rnd_pct(65) ? FX_ROOM : FX_ECHO;
+    type[1] = rnd_pct(50) ? (type[0] == FX_ROOM ? FX_ECHO : FX_ROOM) : FX_OFF;
     type[2] = FX_OFF;
     pid_set(PID_GLOBAL(G_FXMODE), 0, 1);
     for (s = 0; s < 3u; s++) {
@@ -579,12 +589,11 @@ static uint32_t rnd_sends(void)
     return used;
 }
 
-/* the inserts: FX 1 on RND_INSERT_TRACKS tracks at most, each kind if the points left allow it; FX 2 and 3 off. SPIT
- * (its drive: a hard digital edge) rare */
+/* the inserts: FX 1 on RND_INSERT_TRACKS tracks at most, each kind if the points left allow it; FX 2 and 3 off */
 static void rnd_inserts(uint32_t used)
 {
-    static const uint8_t fx[] = {FX_FILTER, FX_ECHO, FX_TAPE, FX_CHORUS, FX_PHASER, FX_SPIT, FX_WIDTH, FX_FORMANT};
-    static const uint8_t fw[] = {18, 12, 16, 12, 10, 3, 4, 6};
+    static const uint8_t fx[] = {FX_FILTER, FX_ECHO, FX_TAPE, FX_CHORUS};
+    static const uint8_t fw[] = {18, 12, 8, 6};
     uint8_t ok[NELEM(fx)], tracks[TESSERA_TRACKS] = {0, 1, 2, 3};
     uint32_t tr, k, n = 0, want = (uint32_t)rnd_rr(0, (int32_t)RND_INSERT_TRACKS);
     for (k = TESSERA_TRACKS - 1u; k > 0u; k--) {    /* (which tracks: shuffled) */
@@ -606,7 +615,7 @@ static void rnd_inserts(uint32_t used)
             rnd_tp(t, P_FXCHAR, type == FX_SPIT ? rnd_rr(0, 70) : rnd_rr(0, 127));   /* (SPIT: its BITE not flat out) */
         }
         rnd_tp(t, P_FXSEND, rnd_rr(20, 110));
-        rnd_tp(t, P_FXSEND2, rnd_rr(0, 100));
+        rnd_tp(t, P_FXSEND2, song.g[G_MFX2TYPE] != FX_OFF ? rnd_rr(0, 100) : 0);
         rnd_tp(t, P_FXSEND3, 0);
     }
 }
@@ -1486,20 +1495,18 @@ static void rnd_loops_sound(uint32_t tr)
     }
 }
 
-/* The effects of the modes after RND (AMBIENT .. PULSE): an effect in each slot the mode's points allow: each of the
- * three send effects first (SPLIT: a send to each; a point kept for each send still to come, so the three have one),
- * then each track's FX 1 (the tracks in a random order) while points are left, each of a kind by the mode's weights
- * among those its points allow (two sends never alike). The points as RND's (rnd_fx_points; RND's 18 found on the FM-1:
- * its effects had cost as much as its engines), the mode's by what its engines leave (rnd_fx_mode_points: AMBIENT and
- * NICE heavy before any effect, PULSE and GLITCH light); FX 2 and 3 off. Cords modulate them: about half the inserts and up to two of the send
- * effects, a slow source in the gentle modes, a fast one (S&H, the gate, the envelope, fast chaos) in GLITCH and PULSE.
- * The guard (rnd_guard) trims them as RND's if the FM-1 runs hot. Kinds: PHASER WIDTH FORMANT TAPE SPIT ECHO ROOM REVERB
- * CHORUS FILTER (fx.c's order) */
-#define RND_FX_MODE_POINTS 20u                     /* (the most: PULSE's) */
+/* The effects of the modes after RND (AMBIENT .. PULSE), the light ones only (rnd_fx_light): send effect 1 always,
+ * send 2 most rolls (SPLIT: a send to each; the two never alike), send 3 off, then FX 1 on two tracks at most (the
+ * tracks in a random order) while points are left, each of a kind by the mode's weights among those its points allow.
+ * The points as RND's (rnd_fx_points, a send's bus counted), the mode's by what its engines leave (rnd_fx_mode_points:
+ * AMBIENT and NICE heavy before any effect, PULSE and GLITCH light; the three sends and four inserts at 14 to 20 points
+ * had taken the FM-1 to 70 or 80 %); FX 2 and 3 off. Cords modulate them: about half the inserts and up to two of the
+ * send effects, a slow source in the gentle modes, a fast one (S&H, the gate, the envelope, fast chaos) in GLITCH and
+ * PULSE. The guard (rnd_guard) trims them as RND's if the FM-1 runs hot. */
+#define RND_FX_MODE_POINTS 11u                     /* (the most: PULSE's) */
 static uint32_t rnd_fx_mode_points(void)
 {
-    return rnd_pulse ? 20u : rnd_glitch || rnd_fall ? 18u : rnd_loops ? 16u : rnd_orbit ? 15u : 14u;   /* (AMBIENT,
-                                                                                                 * NICE: 14) */
+    return rnd_pulse ? 11u : rnd_glitch || rnd_fall ? 10u : rnd_loops || rnd_orbit ? 9u : 8u;   /* (AMBIENT, NICE: 8) */
 }
 static int rnd_cord_add(const cord_t *c)           /* (the first free cord) */
 {
@@ -1510,37 +1517,32 @@ static int rnd_cord_add(const cord_t *c)           /* (the first free cord) */
 }
 static void rnd_fx_mode(void)
 {
-    static const uint8_t fx[] = {FX_PHASER, FX_WIDTH, FX_FORMANT, FX_TAPE, FX_SPIT, FX_ECHO, FX_ROOM, FX_REVERB, FX_CHORUS,
-                                 FX_FILTER};
-    /*                                   PHA WID FOR TAP SPI ECH ROO REV CHO FIL */
-    static const uint8_t gs[10] = {2, 2, 0, 4, 0, 8, 4, 10, 4, 1}, gi[10] = {6, 3, 0, 8, 0, 6, 0, 0, 8, 6};   /* gentle */
-    static const uint8_t es[10] = {3, 1, 2, 3, 4, 10, 6, 4, 1, 3}, ei[10] = {5, 1, 4, 5, 7, 6, 0, 0, 2, 10};  /* GLITCH PULSE */
+    static const uint8_t fx[] = {FX_ECHO, FX_ROOM, FX_TAPE, FX_CHORUS, FX_FILTER};
+    /*                                   ECH ROO TAP CHO FIL */
+    static const uint8_t gs[5] = {8, 10, 3, 4, 0}, gi[5] = {5, 0, 6, 6, 6};    /* gentle */
+    static const uint8_t es[5] = {10, 6, 3, 1, 3}, ei[5] = {6, 0, 4, 2, 10};   /* GLITCH PULSE */
     static const uint8_t ssrc[] = {CS_DRIFT, CS_TORPOR, CS_APATHY, CS_INERTIA, CS_LFO, CS_OCHD1, CS_OCHD3};
     static const uint8_t fsrc[] = {CS_SH, CS_LFO, CS_GATE, CS_ENV, CS_OCHD5, CS_OCHD7, CS_OCHD8, CS_NOTE};
-    int el = rnd_glitch || rnd_pulse, harsh = !rnd_nice && !rnd_fall && !rnd_loops && !rnd_orbit;   /* (AMBIENT: a
-                                                     * little FORMANT and SPIT; NICE and the rest clean) */
+    int el = rnd_glitch || rnd_pulse;
     const uint8_t *ws = el ? es : gs, *wi = el ? ei : gi;
-    uint8_t w[10], tracks[NTRK] = {0, 1, 2, 3};
-    uint32_t used = 0, s, k, tr, n_sendmods = 0, pts = rnd_fx_mode_points();
+    uint8_t w[5], tracks[NTRK] = {0, 1, 2, 3};
+    uint32_t used = 0, s, k, tr, n_sendmods = 0, n_ins = 0, pts = rnd_fx_mode_points();
     pid_set(PID_GLOBAL(G_FXMODE), 0, 1);
     for (s = 0; s < 3u; s++) {                      /* the send effects */
-        uint32_t base = G_MFXTYPE + s * 4u, type, j, keep = 2u - s;   /* (a point for each send to come) */
-        for (k = 0; k < 10u; k++) {
-            w[k] = ws[k];
-            if (!el && harsh && (fx[k] == FX_FORMANT || fx[k] == FX_SPIT)) w[k] = 1;
-            for (j = 0; j < s; j++) if (song.g[G_MFXTYPE + j * 4u] == fx[k]) w[k] = 0;   /* (never alike) */
-            if (used + rnd_fx_points(fx[k], 1) + keep > pts) w[k] = 0;
+        uint32_t base = G_MFXTYPE + s * 4u, type = FX_OFF, j;
+        if (s == 0u || (s == 1u && rnd_pct(70))) {
+            for (k = 0, j = 0; k < 5u; k++) {
+                w[k] = ws[k];
+                if (s && song.g[G_MFXTYPE] == fx[k]) w[k] = 0;   /* (never alike) */
+                if (used + rnd_fx_points(fx[k], 1) > pts) w[k] = 0;
+                j += w[k];
+            }
+            type = j ? rnd_pick(fx, w, 5u) : FX_OFF;   /* (nothing the points allow: off) */
         }
-        if (!w[5] && !w[9]) {                       /* (the two cheapest taken by the sends before: one of them) */
-            for (j = 0; j < s; j++) if (song.g[G_MFXTYPE + j * 4u] == FX_ROOM) break;
-            if (j == s && used + rnd_fx_points(FX_ROOM, 1) + keep <= pts) w[6] = 1;
-        }
-        for (k = 0, j = 0; k < 10u; k++) j += w[k];
-        type = j ? rnd_pick(fx, w, 10u) : FX_OFF;   /* (nothing the points allow: off) */
         pid_set(PID_GLOBAL(base), 0, (int32_t)type);
         pid_set(PID_GLOBAL(base + 1u), 0, rnd_rr(60, 120));
         pid_set(PID_GLOBAL(base + 2u), 0, rnd_rr(0, 127));
-        pid_set(PID_GLOBAL(base + 3u), 0, type == FX_SPIT ? rnd_rr(0, 70) : rnd_rr(20, 120));
+        pid_set(PID_GLOBAL(base + 3u), 0, rnd_rr(20, 120));
         used += rnd_fx_points(type, 1);
         if (type != FX_OFF && n_sendmods < 2u && rnd_pct(50)) {   /* (a cord on it) */
             cord_t c;
@@ -1559,19 +1561,18 @@ static void rnd_fx_mode(void)
     }
     for (tr = 0; tr < NTRK; tr++) {
         uint32_t t = tracks[tr], type, j;
-        for (k = 0, j = 0; k < 10u; k++) {
-            int fits = used + rnd_fx_points(fx[k], 0) <= pts;
-            w[k] = fits ? wi[k] : 0u;
-            if (!el && harsh && fx[k] == FX_FORMANT && fits) w[k] = 1;
+        for (k = 0, j = 0; k < 5u; k++) {
+            w[k] = used + rnd_fx_points(fx[k], 0) <= pts ? wi[k] : 0u;
             j += w[k];
         }
-        type = j ? rnd_pick(fx, w, 10u) : FX_OFF;
+        type = j && n_ins < RND_INSERT_TRACKS ? rnd_pick(fx, w, 5u) : FX_OFF;   /* (two tracks at most, as RND's) */
         used += rnd_fx_points(type, 0);
+        n_ins += type != FX_OFF;
         for (s = 0; s < 3u; s++) rnd_tp(t, P_FXTYPE + s * 4u, s == 0u ? (int32_t)type : FX_OFF);
         if (type != FX_OFF) {
             rnd_tp(t, P_FXMIX, el ? rnd_rr(40, 110) : rnd_rr(30, 90));
             rnd_tp(t, P_FXRATE, rnd_rr(0, 127));
-            rnd_tp(t, P_FXCHAR, type == FX_SPIT ? rnd_rr(0, 70) : rnd_rr(0, 127));   /* (SPIT: its BITE not flat out) */
+            rnd_tp(t, P_FXCHAR, rnd_rr(0, 127));
             if (rnd_pct(50)) {                      /* (a cord on it) */
                 cord_t c;
                 memset(&c, 0, sizeof c);
@@ -1583,8 +1584,8 @@ static void rnd_fx_mode(void)
             }
         }
         rnd_tp(t, P_FXSEND, rnd_rr(el ? 10 : 30, el ? 80 : 110));
-        rnd_tp(t, P_FXSEND2, rnd_rr(0, el ? 90 : 80));
-        rnd_tp(t, P_FXSEND3, rnd_rr(0, 70));
+        rnd_tp(t, P_FXSEND2, song.g[G_MFX2TYPE] != FX_OFF ? rnd_rr(0, el ? 90 : 80) : 0);
+        rnd_tp(t, P_FXSEND3, 0);
     }
 }
 static uint32_t rnd_gen_dest(uint32_t tr);

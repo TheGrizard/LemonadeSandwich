@@ -6134,29 +6134,30 @@ static double rnd_note_rate(uint32_t secs)
     }
     return n * 60.0 / secs;
 }
-/* the modes after RND: the three sends an effect each, the inserts while the points last, never past the mode's
- * (rnd_fx_mode_points), FX 2 and 3 off, two sends never alike; clean: no FORMANT or SPIT. -> how many slots have one
- * (0 when wrong) */
+/* the modes after RND: the light effects only (rnd_fx_light), send 1 an effect, send 3 off (no track sends to it),
+ * the inserts (two at most) while the points last, never past the mode's (rnd_fx_mode_points, a send's bus counted), FX 2 and 3 off,
+ * the two sends never alike. -> how many slots have one (0 when wrong) */
 static uint32_t rnd_fx_mode_ok(int clean)
 {
-    uint32_t tr, s, j, pts = 0, n = 0;
+    uint32_t tr, s, j, pts = 0, n = 0, ins = 0;
+    (void)clean;
     for (s = 0; s < 3u; s++) {
         uint32_t t = (uint32_t)song.g[G_MFXTYPE + s * 4u];
         pts += rnd_fx_points(t, 1);
         n += t != FX_OFF;
-        if (clean && (t == FX_FORMANT || t == FX_SPIT)) return 0;
+        if (!rnd_fx_light(t)) return 0;
         for (j = 0; j < s; j++) if (t != FX_OFF && (uint32_t)song.g[G_MFXTYPE + j * 4u] == t) return 0;
     }
     for (tr = 0; tr < NTRK; tr++) {
         uint32_t t = (uint32_t)trk[tr].p[P_FXTYPE];
         pts += rnd_fx_points(t, 0);
         n += t != FX_OFF;
+        ins += t != FX_OFF;
         if (trk[tr].p[P_FXTYPE + 4u] != FX_OFF || trk[tr].p[P_FXTYPE + 8u] != FX_OFF) return 0;
-        if (clean && (t == FX_FORMANT || t == FX_SPIT)) return 0;
-        if (t == FX_SPIT && trk[tr].p[P_FXCHAR] > 70) return 0;
+        if (!rnd_fx_light(t) || trk[tr].p[P_FXSEND3]) return 0;
     }
-    return pts <= rnd_fx_mode_points() && song.g[G_FXMODE] == 1 && song.g[G_MFXTYPE] != FX_OFF &&
-           song.g[G_MFX2TYPE] != FX_OFF && song.g[G_MFX3TYPE] != FX_OFF ? n : 0u;
+    return pts <= rnd_fx_mode_points() && ins <= RND_INSERT_TRACKS && song.g[G_FXMODE] == 1 &&
+           song.g[G_MFXTYPE] != FX_OFF && song.g[G_MFX3TYPE] == FX_OFF ? n : 0u;
 }
 /* what a roll set, as one number (DRIFT's tests: did anything change). gens 0: the sounds and cords only (some
  * generators move a knob of their own as they play: CONSTELLATION's AUTO its Y) */
@@ -6271,6 +6272,8 @@ static int test_rnd(void)
             }
             for (s2 = 0; s2 < 3u; s2++) points += rnd_fx_points((uint32_t)song.g[G_MFXTYPE + 4u * s2], 1);
             fx_ok &= fx <= RND_INSERT_TRACKS && points <= RND_FX_POINTS && song.g[G_MFX3TYPE] == FX_OFF;
+            for (s2 = 0; s2 < 3u; s2++) fx_ok &= rnd_fx_light((uint32_t)song.g[G_MFXTYPE + 4u * s2]);
+            for (tr = 0; tr < NTRK; tr++) fx_ok &= rnd_fx_light((uint32_t)trk[tr].p[P_FXTYPE]);
             tails_ok &= longt <= 2u;
             cpu_ok &= settings_budget <= RND_BUDGET;
         }
@@ -6421,7 +6424,7 @@ static int test_rnd(void)
             }
             {
                 uint32_t nfx = rnd_fx_mode_ok(0);
-                fx_off &= nfx >= 3u;                /* (the three sends at least) */
+                fx_off &= nfx >= 1u;                /* (a send at least) */
                 fx_slots += nfx;
             }
             roles_ok &= drones >= 1u && chordt == 1u && drones + chordt + melodies == NTRK;
@@ -6444,8 +6447,8 @@ static int test_rnd(void)
         }
         bad += check("RND AMBIENT: 200 rolls: a drone (TURING, a bar to four, legato), one CHORD track, the rest melodies",
                      roles_ok);
-        printf("rnd: AMBIENT: %.1f of the 7 effect slots filled a roll (its 14 points)\n", fx_slots / 200.0);
-        bad += check("RND AMBIENT: ..the three sends an effect each, the inserts while its 14 points last; QNT CHRD on every "
+        printf("rnd: AMBIENT: %.1f of the 7 effect slots filled a roll (its 8 points)\n", fx_slots / 200.0);
+        bad += check("RND AMBIENT: ..light effects: a send or two, the inserts while its 8 points last; QNT CHRD on every "
                      "track", fx_off && qnt);
         bad += check("RND AMBIENT: ..an octave each, and the drone's not always low (three registers and more seen)",
                      regs && __builtin_popcount(drone_regs) >= 3);
@@ -6474,7 +6477,7 @@ static int test_rnd(void)
                 modal &= trk[tr].p[P_SCALE] >= 1 && trk[tr].p[P_SCALE] <= 9 && trk[tr].p[P_QUANT] == Q_CHRD;
             }
             roles_ok &= drones >= 1u && chordt == 1u;
-            fx_off &= rnd_fx_mode_ok(1) >= 3u;    /* (an effect in each slot the points allow; clean) */
+            fx_off &= rnd_fx_mode_ok(1) >= 1u;    /* (an effect in each slot the points allow; clean) */
             regs &= rnd_registers_apart();
             if (r % 25u == 0u) {
                 int32_t o[2 * CTL], peak = 0;
@@ -6516,7 +6519,7 @@ static int test_rnd(void)
                 chordt += tessera.mode[tr] == TESS_ENG_CHORD;
                 falls += tessera.mode[tr] == TESS_ENG_BOUNCE && pid_get(PID_TESS(TX_BNC_BALLS), tr) == 5;
             }
-            trio &= rnd_fx_mode_ok(1) >= 3u;
+            trio &= rnd_fx_mode_ok(1) >= 1u;
             roles_ok &= chordt == 1u && rnd_registers_apart();
             if (r % 25u == 0u) {
                 int32_t o[2 * CTL], peak = 0;
@@ -6559,7 +6562,7 @@ static int test_rnd(void)
                 voices &= trk[tr].p[P_ATK] >= 10 && trk[tr].p[P_LD_AMP] == 0 &&
                           trk[tr].p[P_SCALE] >= 1 && trk[tr].p[P_SCALE] <= 9;
             }
-            voices &= rnd_fx_mode_ok(1) >= 3u;
+            voices &= rnd_fx_mode_ok(1) >= 1u;
             loops_ok &= pid_get(PID_TESS(TX_EUC_ROT), 0) == 0 && rnd_registers_apart();
             lens_seen |= lens;
             for (k = 0; k < CORD_LIVE; k++) fixed &= cord_get(k)->dst < CD_TUR_PROB || cord_get(k)->dst > CD_SUB_HUMAN;
@@ -6607,7 +6610,7 @@ static int test_rnd(void)
                 smooth &= trk[tr].p[P_ATK] >= 10 && trk[tr].p[P_LD_AMP] == 0 &&
                           pid_get(PID_TESS(TX_SUB_RATCH), tr) == 0;
             }
-            smooth &= rnd_fx_mode_ok(1) >= 3u;
+            smooth &= rnd_fx_mode_ok(1) >= 1u;
             both += kinds == 3u;
             gens_ok &= rnd_registers_apart();
             if (r % 25u == 0u) {
@@ -6674,7 +6677,7 @@ static int test_rnd(void)
             roles_ok &= nd == 1u && nm == 1u && ng == 2u;
             regs &= lo == 1u && hi == 1u && rnd_registers_apart();
             limits_g += f6 > 1u || ph > 1u || orc > 1u || f6 + ph + orc > RND_HEAVY;
-            dry &= rnd_fx_mode_ok(0) >= 3u;       /* (an effect in each slot the points allow) */
+            dry &= rnd_fx_mode_ok(0) >= 1u;       /* (an effect in each slot the points allow) */
             cpu &= settings_budget <= RND_BUDGET;
             chr += trk[0].p[P_SCALE] == 0;
             edo += trk[0].p[P_SCALE] >= 16;
@@ -6818,7 +6821,7 @@ static int test_rnd(void)
                 }
                 cords_ok &= cl >= 2u && cn >= 2u;
             }
-            dry &= rnd_fx_mode_ok(0) >= 3u;       /* (an effect in each slot the points allow) */
+            dry &= rnd_fx_mode_ok(0) >= 1u;       /* (an effect in each slot the points allow) */
             cpu &= settings_budget <= RND_BUDGET;
             tempo_ok &= (song.g[G_BPM] >= 122 && song.g[G_BPM] <= 145) || (song.g[G_BPM] >= 160 && song.g[G_BPM] <= 174);
             key_ok &= trk[0].p[P_SCALE] >= 2 && trk[0].p[P_SCALE] <= 8 && trk[0].p[P_SCALE] != 5;
