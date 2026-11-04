@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The boot screen: Tessera's mark, a 3 x 3 mosaic of lapis tiles with one gold tessera, over TESSERA and a line.
+/* The boot screen: Tessera's mark, a 3 x 3 mosaic of lapis tiles with one gold tessera, over the name (tessera-rnd:
+ * LEMONADE SANDWICH, on two lines: SPL_NAME) and a line.
  * While the firmware starts, the mosaic's bed shows (the nine places in the grout's colour); when it is ready,
  * splash_lay() sets the tiles from the middle outwards, one every SPL_STEP_MS, the gold one last with a press,
  * in the wait the boot already makes before the first frame, then holds the finished mark a moment (SPL_HOLD_MS;
@@ -9,7 +10,11 @@
 #define SPL_U 22                                /* a tile, px */
 #define SPL_G 4                                 /* the grout between two */
 #define SPL_CX 120
-#define SPL_CY 78                               /* the mosaic's centre */
+#define SPL_CY 66                               /* the mosaic's centre (tessera-rnd: up 12, room for two lines) */
+static const char *const SPL_NAME[2] = {"LEMONADE", "SANDWICH"};   /* (AF_L: Mono's font pixels of 4, 8 letters at most) */
+#define SPL_NAME_Y 108                          /* the name's first box (AF_L; the next SPL_NAME_DY under it) */
+#define SPL_NAME_DY 34
+#define SPL_LINE_Y 184                          /* the line under it (AF_S) */
 #define SPL_STEP_MS 60u
 #define SPL_HOLD_MS 800u                        /* the finished mark held (a press ends it sooner) */
 #define SPL_GOLD 2u                             /* the gold tessera: top right */
@@ -43,7 +48,7 @@ static void spl_tile(uint32_t i, int32_t grow, uint16_t c)
 #if MELODEE_LOOK
 static const char *spl_line;                    /* splash()'s line (the outro sweeps it too) */
 #endif
-static void splash(const char *line)          /* the boot screen: the mosaic's bed, TESSERA, then a line */
+static void splash(const char *line)          /* the boot screen: the mosaic's bed, the name, then a line */
 {
     uint32_t i;
 #if MELODEE_LOOK
@@ -52,8 +57,9 @@ static void splash(const char *line)          /* the boot screen: the mosaic's b
     lcd_fill(0, 0, 240, 240, T_BG);
     for (i = 0; i < 9u; i++)
         spl_tile(i, 0, T_LINE);
-    draw_text_box(0, 120, 240, &AF_L, "TESSERA", T_TEXT, 1);
-    draw_text_box(0, 160, 240, &AF_S, line, T_MID, 1);
+    for (i = 0; i < 2u; i++)
+        draw_text_box(0, SPL_NAME_Y + i * SPL_NAME_DY, 240, &AF_L, SPL_NAME[i], T_TEXT, 1);
+    draw_text_box(0, SPL_LINE_Y, 240, &AF_S, line, T_MID, 1);
 }
 
 static void spl_wait(uint32_t ms)              /* (the boot's wait, the watchdog fed) */
@@ -82,8 +88,9 @@ static int spl_hold(uint32_t ms)
  * ink), they shiver loose, then a wind from the left sweeps them off, column by column, each grain speeding up,
  * drifting and dimming to a pixel. Nothing kept per grain: frame f is drawn from the mark itself (spl_ink), in the
  * band the mark covers, through the canvas (the diff sends what changed: the SPI sets the pace, ~40 ms a frame). */
-#define SPL_Y0 36                               /* the band: rows SPL_Y0 .. SPL_Y0 + 124 + SPL_H1 - 1 */
-#define SPL_H1 20u                              /* (its foot, on the small canvas) */
+#define SPL_Y0 24                               /* the band: rows SPL_Y0 .. SPL_Y0 + 124 + SPL_H1 - 1 */
+#define SPL_H1 52u                              /* (its foot, on the small canvas: the name's second line, the line) */
+#define SPL_X0 24                               /* (its columns: SPL_X0 .. 240 - SPL_X0) */
 #define SPL_LOOSE 2                             /* frames the grains shiver before the wind */
 #define SPL_FRONT 20                            /* the wind's front, px a frame */
 #define SPL_LIFE 8                              /* frames a grain flies */
@@ -98,13 +105,17 @@ static uint16_t spl_ink(int32_t x, int32_t y)   /* the mark's colour at x, y (0:
         if (tx >= 0 && ty >= 0 && tx < SPL_U && ty < SPL_U)
             return i == SPL_GOLD || tx < 2 || ty < 2 || tx >= SPL_U - 2 || ty >= SPL_U - 2 ? T_TEXT : 0;
     }
-    t = x - 36;                                 /* TESSERA (AF_L: font pixels of 4, centred at row 120) */
-    if (y >= 124 && y < 152 && t >= 0 && t < 168 && t % 24 < 20)
-        return MO_FONT["TESSERA"[t / 24] - 32][(y - 124) / 4] & (16u >> (t % 24 / 4)) ? T_TEXT : 0;
-    n = str_len(spl_line);                      /* the line (AF_S: of 2, centred at row 160) */
+    for (i = 0; i < 2u; i++) {                  /* the name (AF_L: font pixels of 4, each line centred in its box) */
+        int32_t y0 = SPL_NAME_Y + (int32_t)i * SPL_NAME_DY + 4;
+        n = str_len(SPL_NAME[i]);
+        t = x - (240 - 24 * (int32_t)n) / 2;
+        if (y >= y0 && y < y0 + 28 && t >= 0 && t < 24 * (int32_t)n && t % 24 < 20)
+            return MO_FONT[mono_ch((uint8_t)SPL_NAME[i][t / 24]) - 32u][(y - y0) / 4] & (16u >> (t % 24 / 4)) ? T_TEXT : 0;
+    }
+    n = str_len(spl_line);                      /* the line (AF_S: of 2) */
     t = x - (240 - 12 * (int32_t)n) / 2;
-    if (y >= 160 && y < 174 && t >= 0 && t < 12 * (int32_t)n && t % 12 < 10)
-        return MO_FONT[mono_ch((uint8_t)spl_line[t / 12]) - 32u][(y - 160) / 2] & (16u >> (t % 12 / 2)) ? T_MID : 0;
+    if (y >= SPL_LINE_Y && y < SPL_LINE_Y + 14 && t >= 0 && t < 12 * (int32_t)n && t % 12 < 10)
+        return MO_FONT[mono_ch((uint8_t)spl_line[t / 12]) - 32u][(y - SPL_LINE_Y) / 2] & (16u >> (t % 12 / 2)) ? T_MID : 0;
     return 0;
 }
 static uint32_t spl_frame(int32_t f)            /* frame f of the outro, band by band; the grains still flying */
@@ -114,9 +125,9 @@ static uint32_t spl_frame(int32_t f)            /* frame f of the outro, band by
         int32_t oy = SPL_Y0 + (part ? 124 : 0), cx, cy;
         cv_begin(240, part ? SPL_H1 : 124u, T_BG);
         for (cy = SPL_Y0; cy < SPL_Y0 + 124 + (int32_t)SPL_H1; cy += 2)
-            for (cx = 32; cx < 208; cx += 2) {
+            for (cx = SPL_X0; cx < 240 - SPL_X0; cx += 2) {
                 uint32_t h = ((uint32_t)cx * 73856093u ^ (uint32_t)cy * 19349663u) * 2654435761u;
-                int32_t x = cx, y = cy, s = 2, a = f - SPL_LOOSE - (cx - 32) / SPL_FRONT - (int32_t)(h >> 30);
+                int32_t x = cx, y = cy, s = 2, a = f - SPL_LOOSE - (cx - SPL_X0) / SPL_FRONT - (int32_t)(h >> 30);
                 uint16_t c = spl_ink(cx, cy), c1 = spl_ink(cx + 1, cy + 1);
                 if (!c && !c1)
                     continue;
