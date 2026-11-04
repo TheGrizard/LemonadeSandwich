@@ -6361,7 +6361,11 @@ static int test_rnd(void)
             settings_rnd_drift = 0;
         }
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..GLITCH is the last (right again: stays)", rnd_setting() == RND_GLITCH);
+        bad += check("RND AMBIENT: ..right again: PULSE (RND's bit with variant 2)", rnd_setting() == RND_PULSE &&
+                     (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 2u);
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..PULSE is the last (right again: stays)", rnd_setting() == RND_PULSE);
+        turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
@@ -6721,6 +6725,115 @@ static int test_rnd(void)
             settings_rnd_drift = RND_DRIFT_OFF;
             song.g[G_BPM] = (int16_t)bpm;
         }
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* PULSE: dance music: a kick, hats, a bass, a riff */
+        uint32_t k, roles_ok = 1, regs = 1, lowperc_ok = 1, noise_ok = 1, slow_ok = 1, dry = 1, cpu = 1, atlas = 0, micro = 0;
+        uint32_t presets_ok = 1, phys_slow = 0, tri_slow = 0, drone_low = 0, human = 1, cords_ok = 1, quiet = 0, clipped_n = 0;
+        uint32_t four = 0, tempo_ok = 1, key_ok = 1, fast = 0;
+        double prate = 0;
+        rnd_mode_put(RND_PULSE);
+        press(B_REC);
+        bad += check("RND PULSE: REC tapped: a roll, PULSE and the seed said", !memcmp(ui.msg, "PULSE ", 6));
+        for (r = 0; r < 200u; r++) {
+            uint32_t n[8] = {0}, lp = NTRK, nz = NTRK;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++) {
+                const int16_t *p = trk[tr].p;
+                uint32_t role = rnd_role_of[tr], e = trk[tr].eng_req, m = tessera.mode[tr];
+                n[role]++;
+                dry &= p[P_FXTYPE] == FX_OFF && p[P_FXTYPE + 4u] == FX_OFF && p[P_FXTYPE + 8u] == FX_OFF;
+                if (role == RND_ROLE_LOWPERC) {
+                    uint32_t k2, known = 0;
+                    lp = tr;
+                    for (k2 = 0; k2 < NELEM(RND_FM6_PERC); k2++) known |= trk[tr].preset == RND_FM6_PERC[k2];
+                    lowperc_ok &= e == ENGI_FM6 && p[P_TRANS] < 0 && p[P_ATK] == 0 && p[P_SDIV] == 2 && p[P_ED_PIT] < 0;
+                    presets_ok &= known;
+                    four += m == TESS_ENG_EUCLID && pid_get(PID_TESS(TX_EUC_PULSES), tr) == 4 &&
+                            pid_get(PID_TESS(TX_EUC_STEPS), tr) == 16 && pid_get(PID_TESS(TX_EUC_ROT), tr) == 0;
+                } else if (role == RND_ROLE_NOISE) {
+                    nz = tr;
+                    noise_ok &= e == 6u && p[P_TRANS] >= 0 && p[P_ATK] == 0 && p[P_DEC] <= 50 && p[P_SDIV] == 2;
+                    micro += p[P_E0] != 8 && p[P_E0] != 7;
+                } else if (role == RND_ROLE_DRONE || role == RND_ROLE_MELODY) {
+                    slow_ok &= ((e == 6u && p[P_E0] == 4) || (e == ENGI_PHYS && p[P_E0 + 6u] == 0)) &&   /* (TRI3; PHYS struck) */
+                               p[P_ATK] <= 4 && rnd_speed((uint32_t)p[P_SDIV]) != RND_SLOW &&
+                               (role == RND_ROLE_DRONE ? p[P_TRANS] < 0 : p[P_TRANS] > 0);   /* (the bass low, the riff high) */
+                    phys_slow += e == ENGI_PHYS; tri_slow += e == 6u;
+                    if (role == RND_ROLE_DRONE) drone_low += p[P_TRANS] < 0;
+                    fast += p[P_SDIV] == 2;
+                }
+                if (role == RND_ROLE_LOWPERC || role == RND_ROLE_NOISE) {
+                    atlas += m == TESS_ENG_GRIDS;
+                    human &= pid_get(PID_TESS(TX_TW_HUMAN), tr) >= (role == RND_ROLE_NOISE ? 50 : 20);   /* (the kick steadier) */
+                    cpu &= p[P_VOICE] != V_LEGATO && (!pid_get(PID_TESS(TX_SUB_RATCH), tr) ||
+                                                     (p[P_VOICE] == V_MONO && (p[P_SDIV] == 1 || role == RND_ROLE_NOISE)));
+                    cpu &= role != RND_ROLE_LOWPERC || p[P_VOICE] == V_MONO;
+                }
+            }
+            roles_ok &= n[RND_ROLE_DRONE] == 1u && n[RND_ROLE_MELODY] == 1u && n[RND_ROLE_LOWPERC] == 1u && n[RND_ROLE_NOISE] == 1u;
+            regs &= rnd_registers_apart();
+            {                                       /* (each percussion track: cords of its own, a hit each its own) */
+                uint32_t i, cl = 0, cn = 0;
+                for (i = 0; i < CORD_LIVE; i++) {
+                    const cord_t *c = cord_get(i);
+                    if (!c->amount || c->dst == CD_OFF) continue;
+                    cl += c->dst_trk == lp; cn += c->dst_trk == nz;
+                }
+                cords_ok &= cl >= 2u && cn >= 2u;
+            }
+            dry &= song.g[G_MFXTYPE] == FX_OFF && song.g[G_MFX2TYPE] == FX_OFF && song.g[G_MFX3TYPE] == FX_OFF;
+            cpu &= settings_budget <= RND_BUDGET;
+            tempo_ok &= (song.g[G_BPM] >= 122 && song.g[G_BPM] <= 145) || (song.g[G_BPM] >= 160 && song.g[G_BPM] <= 174);
+            key_ok &= trk[0].p[P_SCALE] >= 2 && trk[0].p[P_SCALE] <= 8 && trk[0].p[P_SCALE] != 5;
+            if (r % 25u == 0u) {
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, rail = 0, pn = 0;
+                uint8_t was[NTRK] = {0};
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
+                    for (tr = 0; tr < NTRK; tr++) {
+                        uint32_t on = tessera.active_gate[tr] != 0;
+                        if (on && !was[tr] && (tr == lp || tr == nz)) pn++;
+                        was[tr] = (uint8_t)on;
+                    }
+                }
+                prate += pn * 4.0 / 2.0 / 8.0;
+                quiet += peak < 300;
+                clipped_n += rail > 2u * FS / 100u;
+            }
+        }
+        printf("rnd: PULSE: four on the floor in %u of 200, ATLAS on %u of 400 drum tracks, %u micro sounds, bass and riff: "
+               "%u PHYS %u TRIO, %u at 1/16; a drum track's hits a minute %.0f\n", four, atlas, micro, phys_slow, tri_slow, fast,
+               prate);
+        bad += check("RND PULSE: 200 rolls: a kick, hats, a bass, a riff; an octave each; a dance tempo, a minor or modal "
+                     "key", roles_ok && regs && tempo_ok && key_ok);
+        bad += check("RND PULSE: ..the kick FM6 (a percussive preset) low at 1/16, its pitch dropping, four on the floor "
+                     "often; the hats TRIO's noise at 1/16 (a micro sound seldom)", lowperc_ok && presets_ok && noise_ok &&
+                     four > 60u && micro > 8u && micro < 50u);
+        bad += check("RND PULSE: ..the bass low and the riff high, plucked, at 1/16 or 1/8, on TRIO's triangles or PHYS "
+                     "struck", slow_ok && phys_slow > 50u && tri_slow > 150u && drone_low == 200u && fast > 150u);
+        bad += check("RND PULSE: ..ATLAS often, HUMAN on, cords on each drum track; dry, CPU rules (the kick one voice; "
+                     "rolls on the hats' one voice)", atlas > 120u && human &&
+                     cords_ok && dry && cpu);
+        bad += check("RND PULSE: ..each roll heard within 15 s, none at the rail; the drums busy (120 hits a minute and more)",
+                     !quiet && !clipped_n && prate > 120.0);
+        settings_rnd_drift = RND_DRIFT_FAST;        /* (DRIFT on PULSE: its roles kept) */
+        rnd_drift_start();
+        song.g[G_BPM] = 240;
+        rnd_play_bars(48);
+        song.g[G_BPM] = 120;
+        settings_rnd_drift = RND_DRIFT_OFF;
+        for (tr = 0, k = 1; tr < NTRK; tr++) {
+            if (rnd_role_of[tr] == RND_ROLE_LOWPERC) k &= trk[tr].eng_req == ENGI_FM6 && trk[tr].p[P_ATK] == 0;
+            if (rnd_role_of[tr] == RND_ROLE_NOISE) k &= trk[tr].eng_req == 6u && trk[tr].p[P_DEC] <= 70;
+        }
+        bad += check("RND PULSE: ..48 bars of DRIFT FAST: still FM6 percussion and TRIO noise, BUDGET kept",
+                     k && settings_budget <= RND_BUDGET);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);

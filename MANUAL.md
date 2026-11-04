@@ -812,7 +812,7 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 ## RND: one button, a new piece
 
 After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS**,
-**ORBIT** or **GLITCH**, below) and REC becomes a roll:
+**ORBIT**, **GLITCH** or **PULSE**, below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -893,6 +893,19 @@ Fast cords (S&H, RANDOM, the note, the gate) move their sound from hit to hit; s
 melody. The key is no key, mostly: chromatic, an EDO between the semitones (13, 17, 19, 22, 31) or a dark scale. Dry,
 for the effects outside. The screen shows **GLITCH** and the seed.
 
+**PULSE.** With REC BUTTON on **PULSE**, a roll is electronic dance music, busy and fast: it sets a dance tempo
+(122 to 132, 133 to 145, now and then 160 to 174 BPM; held REC brings yours back) and a minor or modal key (MIN,
+DOR, PHRY, HARM, MPEN, MIX), and deals four parts in a random order. The **kick** is FM6 on a bass, drop or mallet
+preset (FM BASS, SOLID BASS, DROP, MALLET, MOKUGYO and more) low, its pitch dropping hard, harder hits brighter: four
+on the floor about half the time, otherwise a broken beat (EUCLID, or ATLAS' kick and toms). The **hats** are TRIO's
+noise through its high- or band-pass at 1/16: ATLAS' hats, snares and claps (the Grids map, its accents), a busy
+EUCLID line or offbeat open hats, with rolls of two to four now and then and, seldom, a synthesized micro sound. The
+**bass** (low) and the **riff** (above) are on TRIO's three triangles or PHYS struck, plucked: a short line at 1/16
+or 1/8 (a locked TURING, AWAKE, MARKOV, BOUNCE; EUCLID or TURING for the bass) that turns every few bars, often
+pumping under the beat (the LFO a saw at 1/4 on the level). One swing for all four; TWEAK HUMAN varies each hit's
+velocity; cords make every hit its own (velocity into the decay and brightness, RANDOM into the drop, the gain and
+the cutoff). Dry. The screen shows **PULSE** and the seed.
+
 **DRIFT.** **MENU > DRIFT** (OFF, SLOW, FAST; saved) makes a roll change a little at a time while it plays, within
 its mode's rules, so it becomes another piece over the minutes without a new roll: **SLOW** one change every 4 to 8
 bars, **FAST** every bar or two; **OFF** (the default) none. A change is one of: a track's engine knob nudged (never
@@ -926,7 +939,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody; **PULSE**: dance music, an FM6 kick, TRIO's noise hats, a pumping bass and riff (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

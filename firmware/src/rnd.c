@@ -20,16 +20,17 @@
 /* RND_OFF RECORD (REC as upstream), RND_FREE RND, RND_AMBIENT AMBIENT, RND_NICE NICE (AMBIENT's roles with nicer
  * sounds: rnd_roll), RND_FALL FALL (NICE's on TRIO's triangles, the melodies falling as norns' Fall), RND_LOOPS LOOPS
  * (after Eno's Music for Airports: sparse loops of lengths apart, drifting), RND_ORBIT ORBIT (BOUNCE and CONSTELLATION
- * only, LOOPS' smooth voices), RND_GLITCH GLITCH (two microsound tracks, a drone and a slow atonal melody). Saved as
- * RND_CODE: favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a
- * variant 0..2 beside them (settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back
- * at power-on with the other device settings. Room left: 0x40's variant 2, 0xC0's 2. MENU > DRIFT beside it
+ * only, LOOPS' smooth voices), RND_GLITCH GLITCH (two microsound tracks, a drone and a slow atonal melody), RND_PULSE
+ * PULSE (FM6's low percussion, TRIO's noise percussion, a triangle or PHYS drone and melody). Saved as RND_CODE:
+ * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
+ * beside them (settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
+ * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
  * (settings_rnd_drift: the same word's bits 8 and 9; rnd_drift) */
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
-enum { RND_OFF, RND_FREE, RND_AMBIENT, RND_NICE, RND_FALL, RND_LOOPS, RND_ORBIT, RND_GLITCH, RND_MODES };
+enum { RND_OFF, RND_FREE, RND_AMBIENT, RND_NICE, RND_FALL, RND_LOOPS, RND_ORBIT, RND_GLITCH, RND_PULSE, RND_MODES };
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
-    {0x00u, 0}, {0x40u, 0}, {0xC0u, 0}, {0x80u, 0}, {0x80u, 1}, {0x80u, 2}, {0xC0u, 1}, {0x40u, 1},
+    {0x00u, 0}, {0x40u, 0}, {0xC0u, 0}, {0x80u, 0}, {0x80u, 1}, {0x80u, 2}, {0xC0u, 1}, {0x40u, 1}, {0x40u, 2},
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
 static uint32_t rnd_setting(void)
@@ -117,6 +118,7 @@ static const uint8_t RND_TX[] = {
     TX_NL_MODE, TX_NL_LEN,
     TX_SUB_RATCH, TX_SUB_CHANCE, TX_SUB_HUMAN,
     TX_TW_LG_WITH, TX_TW_BR_MODE, TX_SUB_SHAPE,     /* (GLITCH's links and rolls) */
+    TX_GRD_X, TX_GRD_Y, TX_GRD_DENS, TX_GRD_KICK, TX_GRD_SNR, TX_GRD_HAT, TX_GRD_TOMS, TX_GRD_PART4,   /* (PULSE's ATLAS) */
 };
 #define RND_NTX (sizeof RND_TX / sizeof RND_TX[0])
 static const uint8_t RND_G[] = {                    /* the project's: the send effects */
@@ -124,6 +126,7 @@ static const uint8_t RND_G[] = {                    /* the project's: the send e
     G_MFX2TYPE, G_MFX2MIX, G_MFX2RATE, G_MFX2CHAR,
     G_MFX3TYPE, G_MFX3MIX, G_MFX3RATE, G_MFX3CHAR,
     G_FXRETURN, G_FXMODE,
+    G_BPM,                                          /* (PULSE sets a dance tempo: held REC brings yours back) */
 };
 #define RND_NG (sizeof RND_G / sizeof RND_G[0])
 
@@ -227,9 +230,16 @@ static void rnd_tx(uint32_t tr, uint32_t id, int32_t v) { pid_set(PID_TESS(id), 
  * 80 % CPU (host profile, 80 rolls: all of the heaviest held the three; the lightest two TRIO tracks) */
 #define RND_HEAVY 2u
 /* the roles of AMBIENT's four tracks (RND: RND_ROLE_FREE on each; GLITCH: two RND_ROLE_GLITCH, a drone, a melody) */
-enum { RND_ROLE_FREE, RND_ROLE_DRONE, RND_ROLE_CHORDS, RND_ROLE_MELODY, RND_ROLE_GLITCH };
+enum { RND_ROLE_FREE, RND_ROLE_DRONE, RND_ROLE_CHORDS, RND_ROLE_MELODY, RND_ROLE_GLITCH,
+       RND_ROLE_LOWPERC, RND_ROLE_NOISE };         /* (PULSE: FM6's low percussion, TRIO's noise percussion) */
 static uint8_t rnd_role_of[NTRK];                  /* the last roll's roles (rnd_cpu, rnd_drift, the tests) */
 static uint8_t rnd_glitch;                         /* 1: this roll is GLITCH's */
+static uint8_t rnd_pulse;                          /* 1: this roll is PULSE's */
+static uint8_t rnd_want_e = 0xFFu, rnd_want_pi = 0xFFu;   /* PULSE: the engine and preset its role wants (0xFF: rolled) */
+static int rnd_perc(uint32_t tr)                   /* GLITCH's glitch tracks, PULSE's percussion: each hit its attack */
+{
+    return rnd_role_of[tr] == RND_ROLE_GLITCH || rnd_role_of[tr] == RND_ROLE_LOWPERC || rnd_role_of[tr] == RND_ROLE_NOISE;
+}
 /* an engine's weight for a role (FM6 ORACLE PHYS TRIO; 2 for any other): a drone noisy (ORACLE's noise, TRIO's noise
  * waves, PHYS bowed), chords a pad, a melody struck */
 static uint32_t rnd_engine_weight(uint32_t e, uint32_t role)
@@ -244,6 +254,10 @@ static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, ui
     uint8_t code[NENG_SHOWN], w[NENG_SHOWN];
     uint32_t n = 0, k, full = *fm6s + *phys + *oracles >= RND_HEAVY;
     if (rnd_fall && eng_ok(6u)) return 6u;          /* (FALL: TRIO on every track) */
+    if (rnd_want_e != 0xFFu && eng_ok(rnd_want_e)) { /* (PULSE: its role's own engine) */
+        *fm6s += rnd_want_e == ENGI_FM6; *phys += rnd_want_e == ENGI_PHYS; *oracles += rnd_want_e == ENGI_ORACLE;
+        return rnd_want_e;
+    }
     for (k = 0; k < NENG_SHOWN; k++) {
         uint32_t e = eng_vis(k), wt = rnd_engine_weight(e, role);
         if (!eng_ok(e) || e == ENGI_DRUM || !ENGINES[e]->npresets) continue;
@@ -285,9 +299,11 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role);
 static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, uint32_t role)
 {
     track_t *t = &trk[tr];
-    uint32_t e = rnd_engine(fm6s, phys, oracles, role), wild = (uint32_t)(rnd_nice ? rnd_rr(0, 20) : rnd_rr(40, 100)), k;
+    uint32_t e = rnd_engine(fm6s, phys, oracles, role), k;
+    uint32_t wild = (uint32_t)(rnd_nice ? rnd_rr(0, 20) : rnd_pulse ? rnd_rr(0, 25) : rnd_rr(40, 100));
     const engine_t *en = ENGINES[e];
-    engine_load_of(t, e, (uint32_t)rnd_rr(0, (int32_t)en->npresets - 1));
+    engine_load_of(t, e, rnd_want_pi < en->npresets && e == rnd_want_e ? rnd_want_pi
+                                                                     : (uint32_t)rnd_rr(0, (int32_t)en->npresets - 1));
     for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
         const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + k), tr);
         if (!d || d->max <= d->min) continue;
@@ -390,6 +406,59 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
             p[OR_RELEASE_AMP] = (uint8_t)rnd_rr(70, 110);
             p[OR_RELEASE_ON] = 1;
         }
+    } else if (role == RND_ROLE_LOWPERC) {         /* PULSE: the kick, FM6's (a body, a drop, a mallet) */
+        rnd_tp(tr, P_ATK, 0);
+        rnd_tp(tr, P_DEC, rnd_rr(10, 35));          /* (the pitch's drop, how long) */
+        rnd_tp(tr, P_SUS, rnd_rr(0, 20));
+        rnd_tp(tr, P_REL, rnd_rr(10, 40));
+        rnd_tp(tr, P_ED_PIT, rnd_pct(85) ? -rnd_rr(40, 64) : -rnd_rr(10, 30));   /* (a kick's drop) */
+        rnd_tp(tr, P_ED_FLT, 0);
+        rnd_tp(tr, P_LD_PIT, 0);
+        rnd_tp(tr, P_LD_FLT, rnd_rr(-20, 20));
+        rnd_tp(tr, P_LD_SHP, 0);
+        rnd_tp(tr, P_LRATE, rnd_rr(0, 60));
+        rnd_tp(tr, P_VOICE, V_MONO);
+        rnd_tp(tr, P_GLIDE, 0);
+        rnd_tp(tr, P_CHRD, 0);
+        rnd_tp(tr, P_LEVEL, rnd_rr(92, 100));
+        rnd_tp(tr, P_PAN, 0);
+        if (e == ENGI_FM6) {                        /* (ALG FB MLVL MRAT MEG VMOD DTUN AEG: the preset's, moved) */
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(-3, 5));   /* FB: grit */
+            rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 30)); /* MLVL: brightness */
+            rnd_tp(tr, P_E0 + 3u, rnd_pct(75) ? 0 : rnd_rr(-3, 3));   /* MRAT: now and then metal */
+            rnd_tp(tr, P_E0 + 4u, rnd_rr(-30, 30)); /* MEG: the attack's bite */
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(3, 7));    /* VMOD: harder hits brighter */
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 30));
+            rnd_tp(tr, P_E0 + 7u, rnd_rr(-30, 20)); /* AEG: tight to ringing */
+        } else if (e == ENGI_PHYS) {
+            rnd_tp(tr, P_E0 + 6u, 0);               /* (no BOW: struck) */
+        }
+    } else if (role == RND_ROLE_NOISE) {           /* PULSE: TRIO's noise percussion (hats, snares, rims), or now and
+                                                     * then a synthesized micro sound (ring, sync, a zap) */
+        static const uint8_t micro[] = {13, 14, 9, 11, 12};   /* RING3 R+S SYNC SYNC3 RING */
+        int mic = rnd_pct(12);
+        rnd_tp(tr, P_ATK, 0);
+        rnd_tp(tr, P_DEC, mic ? rnd_rr(0, 30) : rnd_rr(3, 45));   /* (closed to open, rims to snares) */
+        rnd_tp(tr, P_SUS, 0);
+        rnd_tp(tr, P_REL, mic ? rnd_rr(0, 20) : rnd_rr(0, 35));
+        rnd_tp(tr, P_ED_PIT, mic && rnd_pct(60) ? (rnd_pct(50) ? rnd_rr(25, 63) : -rnd_rr(25, 64)) : 0);
+        rnd_tp(tr, P_ED_FLT, rnd_pct(60) ? (rnd_pct(50) ? rnd_rr(20, 63) : -rnd_rr(20, 64)) : 0);
+        rnd_tp(tr, P_LD_PIT, 0);
+        rnd_tp(tr, P_LD_FLT, rnd_rr(-30, 30));
+        rnd_tp(tr, P_LRATE, rnd_rr(0, 80));
+        rnd_tp(tr, P_VOICE, rnd_pct(60) ? V_MONO : V_POLY);
+        rnd_tp(tr, P_GLIDE, 0);
+        rnd_tp(tr, P_CHRD, 0);
+        rnd_tp(tr, P_LEVEL, rnd_rr(70, 90));
+        rnd_tp(tr, P_PAN, rnd_rr(-50, 50));
+        if (e == 6u) {                              /* (WAVE INT2 INT3 DTN MODE CUT RES PW) */
+            rnd_tp(tr, P_E0, mic ? (int32_t)micro[rnd_next() % NELEM(micro)] : rnd_pct(60) ? 8 : 7);   /* NOIS, P+N */
+            rnd_tp(tr, P_E0 + 1u, mic ? rnd_rr(-24, 24) : 0);
+            rnd_tp(tr, P_E0 + 2u, mic ? rnd_rr(-24, 24) : 0);
+            rnd_tp(tr, P_E0 + 4u, mic ? rnd_rr(0, 3) : rnd_pick((const uint8_t[]){2, 1, 0, 3}, (const uint8_t[]){6, 3, 1, 1}, 4));
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(50, 127)); /* CUT */
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 90));   /* RES: a ring in the noise */
+        }
     } else if (role == RND_ROLE_GLITCH) {          /* GLITCH: microsound, a click, a zap, a grain (short to nothing) */
         rnd_tp(tr, P_ATK, rnd_rr(0, 3));
         rnd_tp(tr, P_DEC, rnd_rr(0, 35));
@@ -445,7 +514,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         rnd_tp(tr, P_SPRD, rnd_rr(30, 90));
         if (role == RND_ROLE_MELODY) rnd_tp(tr, P_GLIDE, rnd_pct(20) ? rnd_rr(10, 50) : 0);
         if (e == 6u && trk[tr].p[P_E0] > 5) rnd_tp(tr, P_E0, (int32_t)rnd_pick(clean, cw, NELEM(clean)));
-        if (rnd_fall && e == 6u) {                  /* FALL: three triangles, consonant, soft (TRIO's EDIT) */
+        if ((rnd_fall || rnd_pulse) && e == 6u) {   /* FALL (PULSE's slow two): three triangles, consonant, soft */
             static const uint8_t i2[] = {24, 36, 31, 12, 43}, i2w[] = {3, 3, 2, 1, 1};   /* (+24: 0 +12 +7 -12 +19) */
             static const uint8_t i3[] = {12, 24, 36, 0, 31}, i3w[] = {3, 2, 2, 1, 1};    /* (-12 0 +12 -24 +7) */
             rnd_tp(tr, P_E0, 4);                    /* WAVE TRI3 */
@@ -887,6 +956,245 @@ static void rnd_cords_glitch(const uint8_t *role)
     }
 }
 
+/* ------------------------------------------------------------ PULSE --- */
+/* PULSE: electronic dance music, busy and fast. A dance tempo (122-132, 133-145, now and then 160-174); a minor or
+ * modal key. The KICK (RND_ROLE_LOWPERC): FM6 on a bass, drop or mallet preset low, the pitch dropping hard, four on
+ * the floor or a broken beat (EUCLID, ATLAS), harder hits brighter (VMOD). The HATS (RND_ROLE_NOISE): TRIO's noise
+ * through its high- or band-pass (hats, snares, claps by ATLAS' map, offbeat hats), rolls of two to four now and then,
+ * a synthesized micro sound seldom. The BASS (RND_ROLE_DRONE in PULSE) low and the RIFF (RND_ROLE_MELODY) above, on
+ * TRIO's three triangles or PHYS struck: a short repeating line (TURING locked, AWAKE, MARKOV, EUCLID, BOUNCE) at 1/16
+ * or 1/8 that turns every few bars, plucked, pumping under the beat (the LFO a saw at 1/4 on the level, a sidechain's
+ * feel). One swing for all four; TWEAK HUMAN's velocity on the drums; cords make each hit its own. Dry */
+static const uint8_t RND_FM6_PERC[] = {2, 10, 28, 29, 35, 5, 12, 34, 32, 21, 19, 13, 7};
+static const uint8_t RND_FM6_PERC_W[] = {6, 5, 4, 3, 2, 2, 2, 1, 1, 1, 1, 1, 1};
+/* FM BASS, SOLID BASS, DROP, MALLET, MOKUGYO, MARIMBA, DX MARIMBA, HYOSHIGI, BAMBOO, STEEL DRUM, KALIMBA, CLAVINET,
+ * PLUCK */
+static void rnd_pulse_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
+{
+    uint8_t nice = rnd_nice;
+    int slow = role == RND_ROLE_DRONE || role == RND_ROLE_MELODY;
+    if (role == RND_ROLE_LOWPERC) {
+        rnd_want_e = eng_ok(ENGI_FM6) && !*fm6s ? ENGI_FM6 : ENGI_PHYS;
+        rnd_want_pi = rnd_want_e == ENGI_FM6 ? (uint8_t)rnd_pick(RND_FM6_PERC, RND_FM6_PERC_W, NELEM(RND_FM6_PERC)) : 0xFFu;
+    } else if (role == RND_ROLE_NOISE) {
+        rnd_want_e = 6u;
+        rnd_want_pi = 0xFFu;
+    } else {                                        /* (the bass and the riff: triangles or PHYS, one PHYS at most) */
+        rnd_want_e = !*phys && eng_ok(ENGI_PHYS) && rnd_pct(role == RND_ROLE_DRONE ? 35 : 45) ? ENGI_PHYS : 6u;
+        rnd_want_pi = 0xFFu;
+        rnd_nice = 1;                               /* (NICE's still and clean voices) */
+    }
+    rnd_sound(tr, fm6s, phys, oracles, role);
+    rnd_nice = nice;
+    rnd_want_e = rnd_want_pi = 0xFFu;
+    if (trk[tr].eng_req == ENGI_PHYS) rnd_tp(tr, P_E0 + 6u, 0);   /* (PHYS struck) */
+    if (!slow) return;
+    rnd_tp(tr, P_ATK, rnd_rr(0, 4));                /* (plucked: the bass, the riff) */
+    rnd_tp(tr, P_DEC, rnd_rr(20, 70));
+    rnd_tp(tr, P_SUS, role == RND_ROLE_DRONE ? rnd_rr(20, 90) : rnd_rr(0, 40));
+    rnd_tp(tr, P_REL, rnd_rr(10, 50));
+    rnd_tp(tr, P_ED_FLT, rnd_rr(15, 60));
+    rnd_tp(tr, P_ED_PIT, 0);
+    rnd_tp(tr, P_VOICE, role == RND_ROLE_DRONE ? V_MONO : rnd_pct(50) ? V_MONO : V_POLY);
+    rnd_tp(tr, P_GLIDE, role == RND_ROLE_DRONE && rnd_pct(20) ? rnd_rr(5, 25) : 0);
+    rnd_tp(tr, P_LEVEL, role == RND_ROLE_DRONE ? rnd_rr(84, 98) : rnd_rr(70, 88));
+    rnd_tp(tr, P_PAN, role == RND_ROLE_DRONE ? 0 : rnd_rr(-35, 35));
+    if (rnd_pct(role == RND_ROLE_DRONE ? 65 : 40)) {   /* (the pump: a saw at 1/4 on the level) */
+        rnd_tp(tr, P_LWAVE, 2);
+        rnd_tp(tr, P_LSYNC, 5);
+        rnd_tp(tr, P_LD_AMP, rnd_rr(40, 85));
+        rnd_tp(tr, P_LD_PIT, 0);
+        rnd_tp(tr, P_LFADE, 0);
+        rnd_tp(tr, P_LTRIG, 0);
+    }
+}
+static void rnd_pulse_generator(uint32_t tr, uint32_t role, uint32_t *chords)
+{
+    uint32_t mode;
+    int32_t st;
+    rnd_generator(tr, chords);
+    if (tessera.mode[tr] == TESS_ENG_CHORD && *chords) (*chords)--;
+    rnd_tx(tr, TX_FM_FORM, 0);
+    rnd_tx(tr, TX_TW_BRANCH, 0); rnd_tx(tr, TX_TW_BR_TO, 0); rnd_tx(tr, TX_TW_LOGIC, 0); rnd_tx(tr, TX_TW_COND, 0);
+    rnd_tx(tr, TX_SUB_RATCH, 0);
+    rnd_tx(tr, TX_NL_MODE, 0);
+    rnd_tx(tr, TX_TW_DROP, 0);
+    rnd_tp(tr, P_SLEN, 16);
+    rnd_tx(tr, TX_EV_EVERY, rnd_rr(4, 8));          /* (a phrase a few bars, then it turns) */
+    rnd_tx(tr, TX_EV_AMOUNT, rnd_rr(10, 30));
+    if (role == RND_ROLE_LOWPERC) {                 /* the kick: four on the floor, or broken */
+        uint32_t k = (uint32_t)rnd_rr(0, 99);
+        if (k < 45u || k >= 70u) {
+            static const uint8_t br[] = {3, 5, 6, 7};
+            mode = TESS_ENG_EUCLID;
+            rnd_tx(tr, TX_MODE, (int32_t)mode);
+            rnd_tx(tr, TX_EUC_STEPS, 16);
+            rnd_tx(tr, TX_EUC_PULSES, k < 45u ? 4 : br[rnd_next() % NELEM(br)]);
+            rnd_tx(tr, TX_EUC_ROT, k < 45u ? 0 : rnd_rr(0, 15));
+        } else {
+            mode = TESS_ENG_GRIDS;
+            rnd_tx(tr, TX_MODE, (int32_t)mode);
+            rnd_tx(tr, TX_GRD_X, rnd_rr(0, 255)); rnd_tx(tr, TX_GRD_Y, rnd_rr(0, 255)); rnd_tx(tr, TX_GRD_DENS, rnd_rr(40, 70));
+            rnd_tx(tr, TX_GRD_KICK, 100); rnd_tx(tr, TX_GRD_SNR, rnd_rr(0, 30)); rnd_tx(tr, TX_GRD_HAT, 0);
+            rnd_tx(tr, TX_GRD_TOMS, rnd_rr(0, 40)); rnd_tx(tr, TX_GRD_PART4, 0);
+        }
+        rnd_tp(tr, P_SDIV, 2);
+        rnd_tp(tr, P_SGATE, rnd_rr(30, 60));
+        rnd_tx(tr, TX_TW_HUMAN, rnd_rr(20, 60));
+    } else if (role == RND_ROLE_NOISE) {            /* the hats: ATLAS' hats and snares, sixteenths, offbeats */
+        uint32_t k = (uint32_t)rnd_rr(0, 99);
+        if (k < 55u) {
+            mode = TESS_ENG_GRIDS;
+            rnd_tx(tr, TX_MODE, (int32_t)mode);
+            rnd_tx(tr, TX_GRD_X, rnd_rr(0, 255)); rnd_tx(tr, TX_GRD_Y, rnd_rr(0, 255)); rnd_tx(tr, TX_GRD_DENS, rnd_rr(50, 85));
+            rnd_tx(tr, TX_GRD_KICK, 0); rnd_tx(tr, TX_GRD_SNR, rnd_rr(60, 100)); rnd_tx(tr, TX_GRD_HAT, 100);
+            rnd_tx(tr, TX_GRD_TOMS, rnd_rr(0, 40)); rnd_tx(tr, TX_GRD_PART4, rnd_rr(1, 3));
+        } else {
+            mode = TESS_ENG_EUCLID;
+            rnd_tx(tr, TX_MODE, (int32_t)mode);
+            rnd_tx(tr, TX_EUC_STEPS, 16);
+            rnd_tx(tr, TX_EUC_PULSES, k < 80u ? rnd_rr(8, 13) : 4);
+            rnd_tx(tr, TX_EUC_ROT, k < 80u ? rnd_rr(0, 15) : 2);   /* (4, turned by 2: the offbeat) */
+            if (k >= 80u) rnd_tp(tr, P_DEC, rnd_rr(30, 50));         /* (an open hat) */
+        }
+        rnd_tp(tr, P_SDIV, 2);
+        rnd_tp(tr, P_SGATE, rnd_rr(20, 60));
+        rnd_tx(tr, TX_TW_HUMAN, rnd_rr(50, 100));
+        if (rnd_pct(40)) {                          /* (rolls of two to four now and then; TRIO, one voice) */
+            rnd_tx(tr, TX_SUB_RATCH, rnd_rr(1, 3));
+            rnd_tx(tr, TX_SUB_CHANCE, rnd_rr(5, 15));
+            rnd_tx(tr, TX_SUB_SHAPE, rnd_rr(0, 2));
+            rnd_tp(tr, P_VOICE, V_MONO);
+        }
+    } else if (role == RND_ROLE_DRONE) {            /* the bass: a short line, offbeat or rolling */
+        if (rnd_pct(50)) {
+            st = rnd_pct(30) ? 4 : rnd_rr(4, 9);
+            mode = TESS_ENG_EUCLID;
+            rnd_tx(tr, TX_MODE, (int32_t)mode);
+            rnd_tx(tr, TX_EUC_STEPS, 16); rnd_tx(tr, TX_EUC_PULSES, st);
+            rnd_tx(tr, TX_EUC_ROT, st == 4 ? 2 : rnd_rr(0, 15));
+        } else {
+            mode = TESS_ENG_TURING;
+            rnd_tx(tr, TX_MODE, (int32_t)mode);
+            rnd_tx(tr, TX_TUR_LEN, rnd_pct(50) ? 8 : 16); rnd_tx(tr, TX_TUR_PROB, rnd_rr(0, 12)); rnd_tx(tr, TX_TUR_SPAN, 1);
+        }
+        rnd_tp(tr, P_SDIV, rnd_pct(70) ? 2 : 1);
+        rnd_tp(tr, P_SGATE, rnd_rr(30, 80));
+        rnd_tx(tr, TX_TW_HUMAN, rnd_rr(0, 30));
+    } else {                                        /* the riff: a short repeating line that turns */
+        static const uint8_t gm[] = {TESS_ENG_TURING, TESS_ENG_AWAKE, TESS_ENG_MARKOV, TESS_ENG_BOUNCE};
+        static const uint8_t gw[] = {35, 25, 20, 20};
+        static const uint8_t dv[] = {2, 1, 5}, dw[] = {55, 30, 15};   /* 1/16 1/8 16T */
+        mode = rnd_pick(gm, gw, NELEM(gm));
+        rnd_tx(tr, TX_MODE, (int32_t)mode);
+        switch (mode) {
+        case TESS_ENG_TURING:
+            rnd_tx(tr, TX_TUR_LEN, (int32_t)(4u << (rnd_next() % 3u))); rnd_tx(tr, TX_TUR_PROB, rnd_rr(0, 15));
+            rnd_tx(tr, TX_TUR_SPAN, rnd_rr(1, 2)); break;
+        case TESS_ENG_AWAKE:
+            rnd_tx(tr, TX_AWK_LENA, rnd_rr(4, 8)); rnd_tx(tr, TX_AWK_LENB, rnd_rr(3, 7)); rnd_tx(tr, TX_AWK_PROB, rnd_rr(20, 50));
+            break;
+        case TESS_ENG_MARKOV:
+            rnd_tx(tr, TX_MKV_LEAP, rnd_rr(20, 60)); rnd_tx(tr, TX_MKV_DENS, rnd_rr(50, 90)); rnd_tx(tr, TX_MKV_SPAN, rnd_rr(1, 2));
+            break;
+        default:
+            rnd_tx(tr, TX_BNC_BALLS, rnd_rr(1, 3)); rnd_tx(tr, TX_BNC_SPEED, rnd_rr(25, 60)); rnd_tx(tr, TX_BNC_ANGLE, rnd_rr(15, 75));
+            break;
+        }
+        rnd_tp(tr, P_SDIV, rnd_pick(dv, dw, NELEM(dv)));
+        rnd_tp(tr, P_SGATE, rnd_rr(25, 70));
+        rnd_tx(tr, TX_TW_HUMAN, rnd_rr(0, 40));
+    }
+}
+/* the noise where the low hits are not (LOGIC NOT), a condition now and then */
+static void rnd_pulse_links(const uint8_t *role)
+{
+    uint32_t tr, lo = NTRK, nz = NTRK;
+    for (tr = 0; tr < NTRK; tr++) {
+        if (role[tr] == RND_ROLE_LOWPERC) lo = tr;
+        if (role[tr] == RND_ROLE_NOISE) nz = tr;
+    }
+    if (lo == NTRK || nz == NTRK) return;
+    if (rnd_pct(20)) { rnd_tx(nz, TX_TW_LOGIC, 4); rnd_tx(nz, TX_TW_LG_WITH, (int32_t)lo + 1); }   /* (NOT) */
+}
+/* PULSE's registers: the kick -24 or -12 and the bass the other, the riff +12 or +24, the hats 0 or the high left; and
+ * its tempo: a dance tempo, one swing for all four */
+static void rnd_pulse_registers(const uint8_t *role)
+{
+    int32_t lp = rnd_pct(70) ? -24 : -12, sl = lp == -24 ? -12 : -24, sh = rnd_pct(50) ? 12 : 24, nz = rnd_pct(50) ? 0 : 36 - sh;
+    uint32_t tr, k = (uint32_t)rnd_rr(0, 99);
+    int32_t swing = rnd_pct(55) ? 0 : rnd_rr(10, 35);
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_LOWPERC ? lp : role[tr] == RND_ROLE_NOISE ? nz :
+                            role[tr] == RND_ROLE_DRONE ? sl : sh);
+        rnd_tp(tr, P_SSWING, swing);
+    }
+    pid_set(PID_GLOBAL(G_BPM), 0, k < 50u ? rnd_rr(122, 132) : k < 80u ? rnd_rr(133, 145) : rnd_rr(160, 174));
+}
+/* PULSE's key: a minor or modal one (MIN DOR PHRY HARM MPEN MIX) */
+static void rnd_key_pulse(void)
+{
+    static const uint8_t sc[] = {2, 3, 8, 7, 6, 4}, sw[] = {8, 6, 3, 2, 3, 1};
+    int32_t scale = (int32_t)rnd_pick(sc, sw, NELEM(sc)), root = rnd_rr(0, 11);
+    uint32_t tr;
+    rnd_tx(0, TX_KEY_LINK, 1);
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_SCALE, scale);
+        rnd_tp(tr, P_ROOT, root);
+        rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+    }
+    scale_share(&trk[0]);
+}
+/* PULSE's cords: each hit its own (velocity into the decay and the brightness, RANDOM into the drop, the gain, the
+ * cutoff, S&H the pan), the slow two wandering slowly */
+static void rnd_cords_pulse(const uint8_t *role)
+{
+    static const uint8_t lsrc[] = {CS_VEL, CS_VEL, CS_RAND, CS_RAND, CS_RAND, CS_SH};
+    static const uint8_t ldst[] = {CD_DECAY, CD_E2, CD_ENV_PIT, CD_GAIN, CD_E5, CD_E4};   /* (FM6: MLVL, MEG) */
+    static const uint8_t nsrc[] = {CS_VEL, CS_RAND, CS_RAND, CS_SH, CS_RAND};
+    static const uint8_t ndst[] = {CD_CUTOFF, CD_DECAY, CD_CUTOFF, CD_PAN, CD_GAIN};
+    static const uint8_t ssrc[] = {CS_DRIFT, CS_TORPOR, CS_APATHY, CS_INERTIA}, ssw[] = {10, 5, 5, 5};
+    static const uint8_t sdst[] = {CD_CUTOFF, CD_SHAPE, CD_PAN}, sdw[] = {10, 5, 3};   /* (never TRIO's intervals) */
+    uint32_t i = 0, k, tr;
+    cord_t c;
+    for (tr = 0; tr < NTRK; tr++) {
+        uint32_t n = role[tr] == RND_ROLE_LOWPERC || role[tr] == RND_ROLE_NOISE ? (uint32_t)rnd_rr(2, 3) : rnd_pct(60) ? 1u : 0u;
+        uint8_t used = 0;
+        for (k = 0; k < n && i < CORD_LIVE; k++) {
+            uint32_t j;
+            memset(&c, 0, sizeof c);
+            c.src_trk = c.dst_trk = (uint8_t)tr;
+            if (role[tr] == RND_ROLE_LOWPERC || role[tr] == RND_ROLE_NOISE) {
+                const uint8_t *src = role[tr] == RND_ROLE_LOWPERC ? lsrc : nsrc, *dst = role[tr] == RND_ROLE_LOWPERC ? ldst : ndst;
+                uint32_t m = role[tr] == RND_ROLE_LOWPERC ? NELEM(lsrc) : NELEM(nsrc);
+                do j = rnd_next() % m; while ((used >> j) & 1u);
+                used |= (uint8_t)(1u << j);
+                c.src = src[j];
+                c.dst = dst[j];
+                if (trk[tr].eng_req != ENGI_FM6 && (c.dst == CD_E2 || c.dst == CD_E4 || c.dst == CD_E5)) c.dst = CD_CUTOFF;
+                c.amount = (int8_t)(c.src == CS_VEL ? rnd_rr(20, 50) : c.dst == CD_ENV_PIT ? rnd_rr(10, 30) :
+                                    rnd_pct(50) ? rnd_rr(15, 40) : -rnd_rr(15, 40));
+            } else {
+                c.src = (uint8_t)rnd_pick(ssrc, ssw, NELEM(ssrc));
+                c.dst = (uint8_t)rnd_pick(sdst, sdw, NELEM(sdst));
+                c.amount = (int8_t)(rnd_pct(50) ? rnd_rr(10, 35) : -rnd_rr(10, 35));
+            }
+            if (cord_set(i, &c)) i++;
+        }
+    }
+    for (memset(&c, 0, sizeof c); i < CORD_LIVE; i++) cord_set(i, &c);
+}
+/* PULSE's four: a drone, a melody, the low percussion, the noise, in a random order */
+static void rnd_roles_pulse(uint8_t *role)
+{
+    uint32_t k;
+    role[0] = RND_ROLE_DRONE; role[1] = RND_ROLE_MELODY; role[2] = RND_ROLE_LOWPERC; role[3] = RND_ROLE_NOISE;
+    for (k = NTRK - 1u; k > 0u; k--) {
+        uint32_t j = rnd_next() % (k + 1u);
+        uint8_t v = role[k]; role[k] = role[j]; role[j] = v;
+    }
+}
+
 /* ------------------------------------------------------------ the roll: what the FM-1 can play --- */
 /* BUDGET (GLO > GLOBAL, the voices' shared pool, 16 by default) during rolls: 12 leaves the FM-1 headroom (MANUAL "How
  * many voices at once"). Only ever lowered, and saved only when it changes: a BUDGET set lower stays */
@@ -929,10 +1237,12 @@ static void rnd_cpu(uint32_t tr)
 {
     track_t *t = &trk[tr];
     uint32_t e = t->eng_req, sp;
-    if (e == ENGI_FM6 && rnd_speed((uint32_t)t->p[P_SDIV]) == RND_FAST)   /* (FM6 is the heaviest: 1/8 at most;
+    if (e == ENGI_FM6 && rnd_speed((uint32_t)t->p[P_SDIV]) == RND_FAST &&
+        !(rnd_pulse && rnd_role_of[tr] == RND_ROLE_LOWPERC))   /* (FM6 is the heaviest: 1/8 at most (PULSE's kick on
+                                                     * its 1/16 grid: one voice, four to eight hits a bar);
                                                                           * GLITCH's 1/8, a ratchet on one voice) */
-        rnd_tp(tr, P_SDIV, rnd_pct(50) || (rnd_glitch && rnd_role_of[tr] == RND_ROLE_GLITCH) ? 1 : 0);
-    if (rnd_glitch && rnd_role_of[tr] == RND_ROLE_GLITCH && e == ENGI_FM6 && t->p[P_SDIV] == 1 && rnd_pct(60) &&
+        rnd_tp(tr, P_SDIV, rnd_pct(50) || rnd_perc(tr) ? 1 : 0);
+    if (rnd_glitch && rnd_perc(tr) && e == ENGI_FM6 && t->p[P_SDIV] == 1 && rnd_pct(60) &&
         !pid_get(PID_TESS(TX_SUB_RATCH), tr)) {
         rnd_tx(tr, TX_SUB_RATCH, rnd_rr(2, 7));
         rnd_tx(tr, TX_SUB_CHANCE, rnd_rr(15, 60));
@@ -943,7 +1253,9 @@ static void rnd_cpu(uint32_t tr)
     if (sp != RND_SLOW) {
         rnd_tail_cap(tr, sp == RND_FAST ? 55 : 85);
         rnd_cap(tr, P_SGATE, sp == RND_FAST ? 90 : 127);
-        if (!(rnd_glitch && rnd_role_of[tr] == RND_ROLE_GLITCH && sp == RND_MID && t->p[P_VOICE] == V_MONO))
+        if (!((rnd_glitch || rnd_pulse) && rnd_perc(tr) && sp == RND_MID && t->p[P_VOICE] == V_MONO) &&
+            !(rnd_pulse && rnd_role_of[tr] == RND_ROLE_NOISE && e == 6u && t->p[P_VOICE] == V_MONO))   /* (PULSE's
+                                                     * hats: rolls on TRIO's one voice) */
             rnd_tx(tr, TX_SUB_RATCH, 0);            /* (ratchets only on a slow track; GLITCH's 1/8 on one voice: the
                                                      * hits as short as the step's eighth, one voice to steal) */
         if (t->p[P_CHRD]) rnd_tp(tr, P_CHRD, 0);    /* (a chord: three voices a note) */
@@ -957,7 +1269,7 @@ static void rnd_cpu(uint32_t tr)
     if (tessera.mode[tr] == TESS_ENG_CHORD)          /* (a chord holds three or four voices: a shorter tail) */
         rnd_tail_cap(tr, 75);
     else if (sp == RND_FAST && tessera.mode[tr] != TESS_ENG_POLY && tessera.mode[tr] != TESS_ENG_QUAD && rnd_pct(50))
-        rnd_tp(tr, P_VOICE, rnd_pct(50) || rnd_role_of[tr] == RND_ROLE_GLITCH ? V_MONO : V_LEGATO);   /* (a line on one
+        rnd_tp(tr, P_VOICE, rnd_pct(50) || rnd_perc(tr) ? V_MONO : V_LEGATO);   /* (a line on one
                                                      * voice: nothing overlaps; GLITCH's hits each their attack) */
     if (e == ENGI_FM6) {
         rnd_tail_cap(tr, 90);                       /* (AEG at most +26: FM6's pads ring, but not for ever) */
@@ -1384,12 +1696,12 @@ static void rnd_drift_step(void)
 {
     static const uint8_t kinds[] = {0, 1, 2, 3, 4, 5, 6};
     static const uint8_t shape[] = {P_DEC, P_ED_FLT, P_LD_FLT, P_LRATE, P_PAN, P_DETUNE, P_LD_SHP, P_ED_SHP};
-    uint32_t tr = rnd_next() % NTRK, k, wild = rnd_glitch || rnd_setting() == RND_FREE;
+    uint32_t tr = rnd_next() % NTRK, k, wild = rnd_glitch || rnd_pulse || rnd_setting() == RND_FREE;
     int32_t small = rnd_nice ? 3 : 6, big = rnd_nice ? 10 : 22;
     track_t *t = &trk[tr];
     uint8_t kw[7] = {30, 20, 25, 15, 0, 0, 0};
     if (rnd_loops) kw[2] = 0;                       /* (LOOPS: its loops as they are) */
-    if (rnd_glitch) kw[4] = 4;
+    if (rnd_glitch) kw[4] = 4;                      /* (PULSE: its bass stays low) */
     if (wild) kw[5] = settings_rnd_drift == RND_DRIFT_FAST ? 6 : 4, kw[6] = 3;
     rnd_drift_s.steps++;
     switch (rnd_pick(kinds, kw, NELEM(kinds))) {
@@ -1406,9 +1718,10 @@ static void rnd_drift_step(void)
     case 1: {                                       /* the envelope, filter, LFO or pan */
         uint32_t id = shape[rnd_next() % NELEM(shape)];
         const param_desc_t *d = pid_desc(PID_TRACK(id), tr);
-        if (rnd_glitch && rnd_role_of[tr] == RND_ROLE_GLITCH && rnd_pct(25)) id = P_ED_PIT, d = pid_desc(PID_TRACK(id), tr);
+        if ((rnd_glitch || rnd_pulse) && rnd_perc(tr) && rnd_pct(25)) id = P_ED_PIT, d = pid_desc(PID_TRACK(id), tr);
         if (d && d->max > d->min) rnd_tp(tr, id, rnd_nudge(t->p[id], d->min, d->max, small, big));
         if (id == P_DEC && rnd_glitch && rnd_role_of[tr] == RND_ROLE_GLITCH) rnd_cap(tr, P_DEC, 40);
+        if (id == P_DEC && rnd_pulse && rnd_perc(tr)) rnd_cap(tr, P_DEC, 70);
         return;
     }
     case 2: {                                       /* a knob of its generator */
@@ -1450,6 +1763,7 @@ static void rnd_drift_step(void)
         for (k = 0; k < NTRK; k++) chords += k != tr && tessera.mode[k] == TESS_ENG_CHORD;
         if (tessera.mode[tr] == TESS_ENG_CHORD) return;   /* (the chords the others follow: kept) */
         if (rnd_glitch) rnd_glitch_generator(tr, rnd_role_of[tr], &chords);
+        else if (rnd_pulse) rnd_pulse_generator(tr, rnd_role_of[tr], &chords);
         else rnd_generator(tr, &chords);
         rnd_cpu(tr);
         return;
@@ -1466,7 +1780,8 @@ static void rnd_drift_step(void)
         }
         for (k = 0; k < 4u; k++) keep[k] = t->p[kept[k]];
         undo_depth++;
-        rnd_sound(tr, &fm6s, &phys, &oracles, rnd_role_of[tr]);
+        if (rnd_pulse) rnd_pulse_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
+        else rnd_sound(tr, &fm6s, &phys, &oracles, rnd_role_of[tr]);
         undo_depth--;
         undo_clear();
         for (k = 0; k < 4u; k++) rnd_tp(tr, kept[k], keep[k]);
@@ -1539,7 +1854,7 @@ static void rnd_drift_start(void);
 static void rnd_roll(void)
 {
     uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0;
-    uint32_t ambient = rnd_setting() >= RND_AMBIENT && rnd_setting() != RND_GLITCH;
+    uint32_t ambient = rnd_setting() >= RND_AMBIENT && rnd_setting() != RND_GLITCH && rnd_setting() != RND_PULSE;
     uint8_t role[NTRK];
     momentary_restore();
     voice_soft_fade = 1;                            /* (ui_input sets it each frame too: the budget's gentle fades) */
@@ -1554,25 +1869,32 @@ static void rnd_roll(void)
     rnd_loops = (uint8_t)(rnd_setting() == RND_LOOPS);
     rnd_orbit = (uint8_t)(rnd_setting() == RND_ORBIT);
     rnd_glitch = (uint8_t)(rnd_setting() == RND_GLITCH);
+    rnd_pulse = (uint8_t)(rnd_setting() == RND_PULSE);
     if (rnd_loops || rnd_orbit) rnd_nice = 1;       /* (LOOPS, ORBIT: NICE's gentle voices too) */
     rnd_roles(role, ambient && !rnd_loops && !rnd_orbit);
     if (rnd_loops || rnd_orbit)                     /* (LOOPS, ORBIT: four voices alike) */
         for (tr = 0; tr < NTRK; tr++) role[tr] = RND_ROLE_MELODY;
     if (rnd_glitch) rnd_roles_glitch(role);
+    if (rnd_pulse) rnd_roles_pulse(role);
     memcpy(rnd_role_of, role, sizeof rnd_role_of);
     undo_depth++;                                   /* (a roll is not four sound loads to undo one by one) */
     {                                               /* (the drone and the chords pick their engines first) */
-        static const uint8_t order[] = {RND_ROLE_DRONE, RND_ROLE_CHORDS, RND_ROLE_MELODY, RND_ROLE_GLITCH, RND_ROLE_FREE};
+        static const uint8_t order[] = {RND_ROLE_LOWPERC, RND_ROLE_DRONE, RND_ROLE_CHORDS, RND_ROLE_MELODY,
+                                        RND_ROLE_GLITCH, RND_ROLE_NOISE, RND_ROLE_FREE};   /* (PULSE: FM6 first) */
         uint32_t o;
         for (o = 0; o < NELEM(order); o++)
             for (tr = 0; tr < NTRK; tr++)
-                if (role[tr] == order[o]) rnd_sound(tr, &fm6s, &phys, &oracles, role[tr]);
+                if (role[tr] != order[o]) continue;
+                else if (rnd_pulse) rnd_pulse_sound(tr, role[tr], &fm6s, &phys, &oracles);
+                else rnd_sound(tr, &fm6s, &phys, &oracles, role[tr]);
     }
     undo_depth--;
     undo_clear();
     if (rnd_glitch) rnd_glitch_registers(role);
+    else if (rnd_pulse) rnd_pulse_registers(role);
     else rnd_registers();
     if (rnd_glitch) rnd_key_glitch();
+    else if (rnd_pulse) rnd_key_pulse();
     else if (rnd_loops || rnd_orbit) rnd_key_loops();
     else if (ambient) rnd_key_ambient();
     else rnd_key();
@@ -1582,6 +1904,12 @@ static void rnd_roll(void)
             rnd_cpu(tr);
         }
         rnd_glitch_links(role);
+    } else if (rnd_pulse) {
+        for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+            rnd_pulse_generator(tr, role[tr], &chords);
+            rnd_cpu(tr);
+        }
+        rnd_pulse_links(role);
     } else if (rnd_loops || rnd_orbit) {
         if (rnd_loops) rnd_loops_generators();
         else rnd_orbit_generators();
@@ -1597,9 +1925,10 @@ static void rnd_roll(void)
     }
     rnd_tails();
     rnd_budget();
-    if (rnd_glitch) {                               /* (dry: the effects outside) */
+    if (rnd_glitch || rnd_pulse) {                  /* (dry: the effects outside) */
         rnd_fx_off();
-        rnd_cords_glitch(role);
+        if (rnd_glitch) rnd_cords_glitch(role);
+        else rnd_cords_pulse(role);
     } else if (ambient) {
         rnd_fx_off();
         rnd_cords_ambient();
@@ -1608,7 +1937,7 @@ static void rnd_roll(void)
         rnd_cords();
     }
     sync_reload = 1;
-    rnd_say(rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
+    rnd_say(rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
             ambient ? "AMB " : "RND ", rnd_seed);
     if (!song.playing && !seq_counting() && !chain_busy()) transport_req = 1;   /* (it plays at once) */
     rnd_guard_start();
@@ -1631,7 +1960,7 @@ static void rnd_back(void)
         rnd_guard_s.on = 0;                         /* (what was there before: not the guard's to change) */
         ui_message("BEFORE THE ROLL");
     } else {
-        rnd_say(rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
+        rnd_say(rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
                 rnd_setting() == RND_AMBIENT ? "AMB " : "RND ", rnd_seed);
         rnd_guard_start();
     }
