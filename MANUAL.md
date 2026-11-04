@@ -849,12 +849,20 @@ What a roll writes, every one an ordinary setting you can then change on its pag
 
 The registers are dealt as in RND, so the drone can be low one roll and high the next. The key leans to modes
 (minor, Dorian, Mixolydian, the pentatonics, Phrygian, Lydian, major) and **QNT CHRD** is on, so the drone and the
-melodies follow the chords. AMBIENT sets no effects of its own (inserts, sends and send effects off), for an outboard
-chain; there is no tremolo, and only slow modulation (two to five cords, never on pitch). The screen shows **AMB** and
-the seed.
+melodies follow the chords. There is no tremolo, and only slow modulation (two to five cords, never on pitch). The
+screen shows **AMB** and the seed.
 
-**NICE.** With REC BUTTON on **NICE**, a roll works as AMBIENT (the same roles, generators and registers, no effects
-of its own) with nicer sounds: each track's factory preset kept close to how it was made, TRIO on its clean waves (no
+**Effects in the modes after RND.** AMBIENT, NICE, FALL, LOOPS, ORBIT, GLITCH and PULSE roll an effect into each of
+the three send effects (SPLIT, each track its own sends), never two alike, then into each track's FX 1 while the
+mode's effect points last (the same points as RND's, found on the FM-1: AMBIENT and NICE 14, ORBIT 15, LOOPS 16, FALL
+and GLITCH 18, PULSE 20, as their engines leave room); FX 2 and 3 stay off. The gentle modes lean to REVERB, ROOM,
+ECHO, CHORUS, TAPE and PHASER (NICE, FALL, LOOPS and ORBIT never FORMANT or SPIT); GLITCH and PULSE to ECHO, FILTER,
+SPIT, ROOM, PHASER, TAPE and FORMANT. About half the inserts and up to two send effects get a cord on their MIX, RATE
+or CHAR: a slow wanderer in the gentle modes, S&H, the gate, the envelope or fast chaos in GLITCH and PULSE. DRIFT
+nudges them too. If the FM-1 runs hot, the guard takes them back as RND's (LIGHTER).
+
+**NICE.** With REC BUTTON on **NICE**, a roll works as AMBIENT (the same roles, generators and registers) with nicer
+sounds: each track's factory preset kept close to how it was made, TRIO on its clean waves (no
 noise or ring), ORACLE's noise low, a gentle sine LFO (a little vibrato and filter movement, no tremolo), no pitch
 envelope, and only gentle cords (never on the engines' own eight). The key is always one of the modes (no stranger
 tunings) and no track goes two octaves up. The screen shows **NICE** and the seed.
@@ -869,14 +877,14 @@ length of its own (four of 7, 9, 11, 13, 15, 17, 19 and 23 steps), one to three 
 (1/4, 1/8 or 1/2). The loops drift against each other and seldom line up the same way twice. Nothing is dropped, there
 is no ratchet or swing, and no cord moves a generator, so each loop stays as it is (now and then one changes a little
 every 16 bars: EVOLVE). The voices are NICE's with a soft onset and a long tail, the key a bright mode (major, Lydian,
-the pentatonics, Mixolydian, Dorian, minor), each track in an octave of its own, no effects. The first loop starts on
+the pentatonics, Mixolydian, Dorian, minor), each track in an octave of its own. The first loop starts on
 its first step, so a roll is heard at once. The screen shows **LOOPS** and the seed.
 
 **ORBIT.** With REC BUTTON on **ORBIT**, every track starts on **BOUNCE** or **CONSTELLATION**, at a middling density
 (about twice LOOPS'): BOUNCE two or three balls at a moderate speed (now and then FALL's leaves instead),
 CONSTELLATION a middling sky with the ship steering itself (AUTO); mostly 1/8, some 1/16 and 1/4. EVOLVE now and then,
 a little dropped now and then, no ratchet or swing. The voices are LOOPS' (soft onsets, long tails), the key a bright
-mode, each track in an octave of its own, no effects; slow cords may move the balls and the stars. The screen shows
+mode, each track in an octave of its own; slow cords may move the balls and the stars. The screen shows
 **ORBIT** and the seed.
 
 **GLITCH.** With REC BUTTON on **GLITCH** (after Autechre and Richard Devine), a roll deals two **glitch** tracks and
@@ -890,8 +898,8 @@ up to eight hits that speed up or slow down) on odd lengths, so they run against
 dropped, the phrase mutating every bar or few (EVOLVE); now and then they are tied together: one plays only with, or
 only against, the other (LOGIC), hits jump from one sound to the other (BRANCH), one plays only in some bars (COND).
 Fast cords (S&H, RANDOM, the note, the gate) move their sound from hit to hit; slow ones move the drone and the
-melody. The key is no key, mostly: chromatic, an EDO between the semitones (13, 17, 19, 22, 31) or a dark scale. Dry,
-for the effects outside. The screen shows **GLITCH** and the seed.
+melody. The key is no key, mostly: chromatic, an EDO between the semitones (13, 17, 19, 22, 31) or a dark scale. The
+screen shows **GLITCH** and the seed.
 
 **PULSE.** With REC BUTTON on **PULSE**, a roll is electronic dance music, busy and fast: it sets a dance tempo
 (122 to 132, 133 to 145, now and then 160 to 174 BPM; held REC brings yours back) and a minor or modal key (MIN,
@@ -907,7 +915,7 @@ triplets, often on loops of their own lengths (5, 6, 7, 9, 10, 12 ..), so agains
 **polyrhythmic**; they turn every few bars and often pump under the beat (the LFO a saw at 1/4 on the level). The
 kick's FM is dirty (its feedback up). One swing for all four; TWEAK HUMAN varies each hit's
 velocity; cords make every hit its own (velocity into the decay and brightness, RANDOM into the drop, the gain and
-the cutoff). Dry. The screen shows **PULSE** and the seed.
+the cutoff). The screen shows **PULSE** and the seed.
 
 **DRIFT.** **MENU > DRIFT** (OFF, SLOW, FAST; saved) makes a roll change a little at a time while it plays, within
 its mode's rules, so it becomes another piece over the minutes without a new roll: **SLOW** one change every 4 to 8

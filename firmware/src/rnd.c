@@ -771,7 +771,7 @@ static uint32_t rnd_gen_dest(uint32_t tr);
  * one of them low and one mid-high, whichever. The glitch tracks: fast divisions (1/16, 1/32, triplets) on odd lengths
  * (polymeters), steps dropped, phrases that keep mutating (EVOLVE often), ratchets of up to eight hits (ACCEL, DECEL)
  * on an 1/8 track (one voice: MONO); and the two tied together now and then: one plays only with or against the other
- * (LOGIC), hits branching from one sound to the other (BRANCH), a bar condition (COND). Dry, as AMBIENT */
+ * (LOGIC), hits branching from one sound to the other (BRANCH), a bar condition (COND). Effects: rnd_fx_mode */
 static void rnd_glitch_generator(uint32_t tr, uint32_t role, uint32_t *chords)
 {
     uint32_t mode;
@@ -964,7 +964,8 @@ static void rnd_cords_glitch(const uint8_t *role)
  * a synthesized micro sound seldom. The BASS (RND_ROLE_DRONE in PULSE) low and the RIFF (RND_ROLE_MELODY) above, on
  * TRIO's three triangles or PHYS struck: a short repeating line (TURING locked, AWAKE, MARKOV, EUCLID, BOUNCE) at 1/16
  * or 1/8 that turns every few bars, plucked, pumping under the beat (the LFO a saw at 1/4 on the level, a sidechain's
- * feel). One swing for all four; TWEAK HUMAN's velocity on the drums; cords make each hit its own. Dry */
+ * feel). One swing for all four; TWEAK HUMAN's velocity on the drums; cords make each hit its own. Effects:
+ * rnd_fx_mode */
 static const uint8_t RND_FM6_PERC[] = {2, 10, 28, 29, 35, 5, 12, 34, 32, 21, 19, 13, 7};
 static const uint8_t RND_FM6_PERC_W[] = {6, 5, 4, 3, 2, 2, 2, 1, 1, 1, 1, 1, 1};
 /* FM BASS, SOLID BASS, DROP, MALLET, MOKUGYO, MARIMBA, DX MARIMBA, HYOSHIGI, BAMBOO, STEEL DRUM, KALIMBA, CLAVINET,
@@ -1485,17 +1486,106 @@ static void rnd_loops_sound(uint32_t tr)
     }
 }
 
-/* AMBIENT: no effects of its own (the sound goes out to the outboard's): every insert, send and send effect off */
-static void rnd_fx_off(void)
+/* The effects of the modes after RND (AMBIENT .. PULSE): an effect in each slot the mode's points allow: each of the
+ * three send effects first (SPLIT: a send to each; a point kept for each send still to come, so the three have one),
+ * then each track's FX 1 (the tracks in a random order) while points are left, each of a kind by the mode's weights
+ * among those its points allow (two sends never alike). The points as RND's (rnd_fx_points; RND's 18 found on the FM-1:
+ * its effects had cost as much as its engines), the mode's by what its engines leave (rnd_fx_mode_points: AMBIENT and
+ * NICE heavy before any effect, PULSE and GLITCH light); FX 2 and 3 off. Cords modulate them: about half the inserts and up to two of the send
+ * effects, a slow source in the gentle modes, a fast one (S&H, the gate, the envelope, fast chaos) in GLITCH and PULSE.
+ * The guard (rnd_guard) trims them as RND's if the FM-1 runs hot. Kinds: PHASER WIDTH FORMANT TAPE SPIT ECHO ROOM REVERB
+ * CHORUS FILTER (fx.c's order) */
+#define RND_FX_MODE_POINTS 20u                     /* (the most: PULSE's) */
+static uint32_t rnd_fx_mode_points(void)
 {
-    uint32_t tr, s;
-    for (tr = 0; tr < NTRK; tr++) {
-        for (s = 0; s < 3u; s++) rnd_tp(tr, P_FXTYPE + s * 4u, FX_OFF);
-        rnd_tp(tr, P_FXSEND, 0);
-        rnd_tp(tr, P_FXSEND2, 0);
-        rnd_tp(tr, P_FXSEND3, 0);
+    return rnd_pulse ? 20u : rnd_glitch || rnd_fall ? 18u : rnd_loops ? 16u : rnd_orbit ? 15u : 14u;   /* (AMBIENT,
+                                                                                                 * NICE: 14) */
+}
+static int rnd_cord_add(const cord_t *c)           /* (the first free cord) */
+{
+    uint32_t i;
+    for (i = 0; i < CORD_LIVE; i++)
+        if (!cord_get(i)->amount && cord_get(i)->dst == CD_OFF) return cord_set(i, c);
+    return 0;
+}
+static void rnd_fx_mode(void)
+{
+    static const uint8_t fx[] = {FX_PHASER, FX_WIDTH, FX_FORMANT, FX_TAPE, FX_SPIT, FX_ECHO, FX_ROOM, FX_REVERB, FX_CHORUS,
+                                 FX_FILTER};
+    /*                                   PHA WID FOR TAP SPI ECH ROO REV CHO FIL */
+    static const uint8_t gs[10] = {2, 2, 0, 4, 0, 8, 4, 10, 4, 1}, gi[10] = {6, 3, 0, 8, 0, 6, 0, 0, 8, 6};   /* gentle */
+    static const uint8_t es[10] = {3, 1, 2, 3, 4, 10, 6, 4, 1, 3}, ei[10] = {5, 1, 4, 5, 7, 6, 0, 0, 2, 10};  /* GLITCH PULSE */
+    static const uint8_t ssrc[] = {CS_DRIFT, CS_TORPOR, CS_APATHY, CS_INERTIA, CS_LFO, CS_OCHD1, CS_OCHD3};
+    static const uint8_t fsrc[] = {CS_SH, CS_LFO, CS_GATE, CS_ENV, CS_OCHD5, CS_OCHD7, CS_OCHD8, CS_NOTE};
+    int el = rnd_glitch || rnd_pulse, harsh = !rnd_nice && !rnd_fall && !rnd_loops && !rnd_orbit;   /* (AMBIENT: a
+                                                     * little FORMANT and SPIT; NICE and the rest clean) */
+    const uint8_t *ws = el ? es : gs, *wi = el ? ei : gi;
+    uint8_t w[10], tracks[NTRK] = {0, 1, 2, 3};
+    uint32_t used = 0, s, k, tr, n_sendmods = 0, pts = rnd_fx_mode_points();
+    pid_set(PID_GLOBAL(G_FXMODE), 0, 1);
+    for (s = 0; s < 3u; s++) {                      /* the send effects */
+        uint32_t base = G_MFXTYPE + s * 4u, type, j, keep = 2u - s;   /* (a point for each send to come) */
+        for (k = 0; k < 10u; k++) {
+            w[k] = ws[k];
+            if (!el && harsh && (fx[k] == FX_FORMANT || fx[k] == FX_SPIT)) w[k] = 1;
+            for (j = 0; j < s; j++) if (song.g[G_MFXTYPE + j * 4u] == fx[k]) w[k] = 0;   /* (never alike) */
+            if (used + rnd_fx_points(fx[k], 1) + keep > pts) w[k] = 0;
+        }
+        if (!w[5] && !w[9]) {                       /* (the two cheapest taken by the sends before: one of them) */
+            for (j = 0; j < s; j++) if (song.g[G_MFXTYPE + j * 4u] == FX_ROOM) break;
+            if (j == s && used + rnd_fx_points(FX_ROOM, 1) + keep <= pts) w[6] = 1;
+        }
+        for (k = 0, j = 0; k < 10u; k++) j += w[k];
+        type = j ? rnd_pick(fx, w, 10u) : FX_OFF;   /* (nothing the points allow: off) */
+        pid_set(PID_GLOBAL(base), 0, (int32_t)type);
+        pid_set(PID_GLOBAL(base + 1u), 0, rnd_rr(60, 120));
+        pid_set(PID_GLOBAL(base + 2u), 0, rnd_rr(0, 127));
+        pid_set(PID_GLOBAL(base + 3u), 0, type == FX_SPIT ? rnd_rr(0, 70) : rnd_rr(20, 120));
+        used += rnd_fx_points(type, 1);
+        if (type != FX_OFF && n_sendmods < 2u && rnd_pct(50)) {   /* (a cord on it) */
+            cord_t c;
+            memset(&c, 0, sizeof c);
+            c.src_trk = c.dst_trk = (uint8_t)(rnd_next() % NTRK);
+            c.src = el ? fsrc[rnd_next() % NELEM(fsrc)] : ssrc[rnd_next() % NELEM(ssrc)];
+            c.dst = (uint8_t)(CD_SF1_MIX + s * 3u + (uint32_t)rnd_rr(0, 2));
+            c.amount = (int8_t)(rnd_pct(50) ? rnd_rr(el ? 25 : 15, el ? 70 : 45) : -rnd_rr(el ? 25 : 15, el ? 70 : 45));
+            if (rnd_cord_add(&c)) n_sendmods++;
+        }
     }
-    for (s = 0; s < 3u; s++) pid_set(PID_GLOBAL(G_MFXTYPE + s * 4u), 0, FX_OFF);
+    pid_set(PID_GLOBAL(G_FXRETURN), 0, rnd_rr(60, 100));
+    for (k = NTRK - 1u; k > 0u; k--) {              /* (the inserts: the tracks in a random order) */
+        uint32_t j = rnd_next() % (k + 1u);
+        uint8_t v = tracks[k]; tracks[k] = tracks[j]; tracks[j] = v;
+    }
+    for (tr = 0; tr < NTRK; tr++) {
+        uint32_t t = tracks[tr], type, j;
+        for (k = 0, j = 0; k < 10u; k++) {
+            int fits = used + rnd_fx_points(fx[k], 0) <= pts;
+            w[k] = fits ? wi[k] : 0u;
+            if (!el && harsh && fx[k] == FX_FORMANT && fits) w[k] = 1;
+            j += w[k];
+        }
+        type = j ? rnd_pick(fx, w, 10u) : FX_OFF;
+        used += rnd_fx_points(type, 0);
+        for (s = 0; s < 3u; s++) rnd_tp(t, P_FXTYPE + s * 4u, s == 0u ? (int32_t)type : FX_OFF);
+        if (type != FX_OFF) {
+            rnd_tp(t, P_FXMIX, el ? rnd_rr(40, 110) : rnd_rr(30, 90));
+            rnd_tp(t, P_FXRATE, rnd_rr(0, 127));
+            rnd_tp(t, P_FXCHAR, type == FX_SPIT ? rnd_rr(0, 70) : rnd_rr(0, 127));   /* (SPIT: its BITE not flat out) */
+            if (rnd_pct(50)) {                      /* (a cord on it) */
+                cord_t c;
+                memset(&c, 0, sizeof c);
+                c.src_trk = c.dst_trk = (uint8_t)t;
+                c.src = el ? fsrc[rnd_next() % NELEM(fsrc)] : ssrc[rnd_next() % NELEM(ssrc)];
+                c.dst = (uint8_t)(CD_FX1_MIX + (uint32_t)rnd_rr(0, 2));
+                c.amount = (int8_t)(rnd_pct(50) ? rnd_rr(el ? 25 : 15, el ? 70 : 45) : -rnd_rr(el ? 25 : 15, el ? 70 : 45));
+                rnd_cord_add(&c);
+            }
+        }
+        rnd_tp(t, P_FXSEND, rnd_rr(el ? 10 : 30, el ? 80 : 110));
+        rnd_tp(t, P_FXSEND2, rnd_rr(0, el ? 90 : 80));
+        rnd_tp(t, P_FXSEND3, rnd_rr(0, 70));
+    }
 }
 static uint32_t rnd_gen_dest(uint32_t tr);
 /* AMBIENT's cords: two to five, slow sources only, into the sound (never its pitch) and the melodies' generators */
@@ -1743,9 +1833,18 @@ static void rnd_drift_step(void)
             return;
         }
         return;
-    case 1: {                                       /* the envelope, filter, LFO or pan */
+    case 1: {                                       /* the envelope, filter, LFO or pan; or its effect's */
         uint32_t id = shape[rnd_next() % NELEM(shape)];
-        const param_desc_t *d = pid_desc(PID_TRACK(id), tr);
+        const param_desc_t *d;
+        if (t->p[P_FXTYPE] != FX_OFF && rnd_pct(30)) {
+            static const uint8_t fxp[] = {P_FXMIX, P_FXRATE, P_FXCHAR};
+            id = fxp[rnd_next() % NELEM(fxp)];
+            d = pid_desc(PID_TRACK(id), tr);
+            if (d && d->max > d->min) rnd_tp(tr, id, rnd_nudge(t->p[id], d->min, d->max, small, big));
+            if (t->p[P_FXTYPE] == FX_SPIT) rnd_cap(tr, P_FXCHAR, 70);   /* (SPIT's BITE not flat out) */
+            return;
+        }
+        d = pid_desc(PID_TRACK(id), tr);
         if ((rnd_glitch || rnd_pulse) && rnd_perc(tr) && rnd_pct(25)) id = P_ED_PIT, d = pid_desc(PID_TRACK(id), tr);
         if (d && d->max > d->min) rnd_tp(tr, id, rnd_nudge(t->p[id], d->min, d->max, small, big));
         if (id == P_DEC && rnd_glitch && rnd_role_of[tr] == RND_ROLE_GLITCH) rnd_cap(tr, P_DEC, 40);
@@ -1953,13 +2052,13 @@ static void rnd_roll(void)
     }
     rnd_tails();
     rnd_budget();
-    if (rnd_glitch || rnd_pulse) {                  /* (dry: the effects outside) */
-        rnd_fx_off();
+    if (rnd_glitch || rnd_pulse) {                  /* (the cords, then an effect in every slot, theirs too) */
         if (rnd_glitch) rnd_cords_glitch(role);
         else rnd_cords_pulse(role);
+        rnd_fx_mode();
     } else if (ambient) {
-        rnd_fx_off();
         rnd_cords_ambient();
+        rnd_fx_mode();
     } else {
         rnd_inserts(rnd_sends());
         rnd_cords();

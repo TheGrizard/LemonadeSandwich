@@ -6134,6 +6134,30 @@ static double rnd_note_rate(uint32_t secs)
     }
     return n * 60.0 / secs;
 }
+/* the modes after RND: the three sends an effect each, the inserts while the points last, never past the mode's
+ * (rnd_fx_mode_points), FX 2 and 3 off, two sends never alike; clean: no FORMANT or SPIT. -> how many slots have one
+ * (0 when wrong) */
+static uint32_t rnd_fx_mode_ok(int clean)
+{
+    uint32_t tr, s, j, pts = 0, n = 0;
+    for (s = 0; s < 3u; s++) {
+        uint32_t t = (uint32_t)song.g[G_MFXTYPE + s * 4u];
+        pts += rnd_fx_points(t, 1);
+        n += t != FX_OFF;
+        if (clean && (t == FX_FORMANT || t == FX_SPIT)) return 0;
+        for (j = 0; j < s; j++) if (t != FX_OFF && (uint32_t)song.g[G_MFXTYPE + j * 4u] == t) return 0;
+    }
+    for (tr = 0; tr < NTRK; tr++) {
+        uint32_t t = (uint32_t)trk[tr].p[P_FXTYPE];
+        pts += rnd_fx_points(t, 0);
+        n += t != FX_OFF;
+        if (trk[tr].p[P_FXTYPE + 4u] != FX_OFF || trk[tr].p[P_FXTYPE + 8u] != FX_OFF) return 0;
+        if (clean && (t == FX_FORMANT || t == FX_SPIT)) return 0;
+        if (t == FX_SPIT && trk[tr].p[P_FXCHAR] > 70) return 0;
+    }
+    return pts <= rnd_fx_mode_points() && song.g[G_FXMODE] == 1 && song.g[G_MFXTYPE] != FX_OFF &&
+           song.g[G_MFX2TYPE] != FX_OFF && song.g[G_MFX3TYPE] != FX_OFF ? n : 0u;
+}
 /* what a roll set, as one number (DRIFT's tests: did anything change). gens 0: the sounds and cords only (some
  * generators move a knob of their own as they play: CONSTELLATION's AUTO its Y) */
 static uint32_t rnd_hash_of(int gens)
@@ -6305,7 +6329,7 @@ static int test_rnd(void)
         for (i = 0; i < 8u; i++) mix_block(o, CTL);
     }
     {                                               /* AMBIENT: a drone, chords, two melodies; no effects */
-        uint32_t k, roles_ok = 1, fx_off = 1, qnt = 1, regs = 1, drone_regs = 0, quiet = 0, amb_heavy = 1, no_trem = 1;
+        uint32_t k, roles_ok = 1, fx_off = 1, qnt = 1, regs = 1, drone_regs = 0, quiet = 0, amb_heavy = 1, no_trem = 1, fx_slots = 0;
         hold(B_HOME); ui.menu_sel = MI_REC_BTN; turn(EN_K2, 1);
         bad += check("RND AMBIENT: MENU > REC BUTTON turned right from RND: AMBIENT (bits 6 and 7)",
                      rnd_setting() == RND_AMBIENT && (favorites.factory[15][24] & 0xC0u) == 0xC0u);
@@ -6392,13 +6416,14 @@ static int test_rnd(void)
                 } else if (m != TESS_ENG_CHORD && m != TESS_ENG_POLY && m != TESS_ENG_QUAD && m != TESS_ENG_OFF) {
                     melodies++;
                 }
-                fx_off &= trk[tr].p[P_FXTYPE] == FX_OFF && trk[tr].p[P_FXTYPE + 4u] == FX_OFF &&
-                          trk[tr].p[P_FXTYPE + 8u] == FX_OFF && !trk[tr].p[P_FXSEND] && !trk[tr].p[P_FXSEND2] &&
-                          !trk[tr].p[P_FXSEND3];
                 qnt &= trk[tr].p[P_QUANT] == Q_CHRD;
                 no_trem &= trk[tr].p[P_LD_AMP] == 0;
             }
-            fx_off &= song.g[G_MFXTYPE] == FX_OFF && song.g[G_MFX2TYPE] == FX_OFF && song.g[G_MFX3TYPE] == FX_OFF;
+            {
+                uint32_t nfx = rnd_fx_mode_ok(0);
+                fx_off &= nfx >= 3u;                /* (the three sends at least) */
+                fx_slots += nfx;
+            }
             roles_ok &= drones >= 1u && chordt == 1u && drones + chordt + melodies == NTRK;
             regs &= rnd_registers_apart();
             amb_heavy &= heavy <= 2u;
@@ -6419,7 +6444,9 @@ static int test_rnd(void)
         }
         bad += check("RND AMBIENT: 200 rolls: a drone (TURING, a bar to four, legato), one CHORD track, the rest melodies",
                      roles_ok);
-        bad += check("RND AMBIENT: ..no effects (inserts, sends, send effects off), QNT CHRD on every track", fx_off && qnt);
+        printf("rnd: AMBIENT: %.1f of the 7 effect slots filled a roll (its 14 points)\n", fx_slots / 200.0);
+        bad += check("RND AMBIENT: ..the three sends an effect each, the inserts while its 14 points last; QNT CHRD on every "
+                     "track", fx_off && qnt);
         bad += check("RND AMBIENT: ..an octave each, and the drone's not always low (three registers and more seen)",
                      regs && __builtin_popcount(drone_regs) >= 3);
         bad += check("RND AMBIENT: ..no tremolo, two heavy engines at most", no_trem && amb_heavy);
@@ -6440,7 +6467,6 @@ static int test_rnd(void)
                 uint32_t m = tessera.mode[tr], e = trk[tr].eng_req;
                 drones += m == TESS_ENG_TURING && trk[tr].p[P_SDIV] >= 7 && trk[tr].p[P_VOICE] == V_LEGATO;
                 chordt += m == TESS_ENG_CHORD;
-                fx_off &= trk[tr].p[P_FXTYPE] == FX_OFF && !trk[tr].p[P_FXSEND];
                 regs &= trk[tr].p[P_TRANS] <= 19;
                 clean &= trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_LWAVE] == 0 && trk[tr].p[P_ED_PIT] == 0;
                 if (e == 6u) clean &= trk[tr].p[P_E0] <= 5;
@@ -6448,6 +6474,7 @@ static int test_rnd(void)
                 modal &= trk[tr].p[P_SCALE] >= 1 && trk[tr].p[P_SCALE] <= 9 && trk[tr].p[P_QUANT] == Q_CHRD;
             }
             roles_ok &= drones >= 1u && chordt == 1u;
+            fx_off &= rnd_fx_mode_ok(1) >= 3u;    /* (an effect in each slot the points allow; clean) */
             regs &= rnd_registers_apart();
             if (r % 25u == 0u) {
                 int32_t o[2 * CTL], peak = 0;
@@ -6465,7 +6492,8 @@ static int test_rnd(void)
                        trk[3].p[P_TRANS], peak);
             }
         }
-        bad += check("RND NICE: 200 rolls: AMBIENT's roles (a drone, one CHORD track, melodies), no effects", roles_ok && fx_off);
+        bad += check("RND NICE: 200 rolls: AMBIENT's roles (a drone, one CHORD track, melodies), an effect in each slot the "
+                     "points allow (no FORMANT or SPIT)", roles_ok && fx_off);
         bad += check("RND NICE: ..clean sounds: no tremolo, sine LFO, no pitch envelope, TRIO's clean waves, ORACLE's "
                      "noise low", clean);
         bad += check("RND NICE: ..the modes only (no stranger tuning), QNT CHRD; an octave each, never +24", modal && regs);
@@ -6484,10 +6512,11 @@ static int test_rnd(void)
             rnd_roll();
             for (tr = 0; tr < NTRK; tr++) {
                 trio &= trk[tr].eng_req == 6u && trk[tr].p[P_E0] == 4 && trk[tr].p[P_E0 + 4u] == 0 &&
-                        trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_FXTYPE] == FX_OFF;
+                        trk[tr].p[P_LD_AMP] == 0;
                 chordt += tessera.mode[tr] == TESS_ENG_CHORD;
                 falls += tessera.mode[tr] == TESS_ENG_BOUNCE && pid_get(PID_TESS(TX_BNC_BALLS), tr) == 5;
             }
+            trio &= rnd_fx_mode_ok(1) >= 3u;
             roles_ok &= chordt == 1u && rnd_registers_apart();
             if (r % 25u == 0u) {
                 int32_t o[2 * CTL], peak = 0;
@@ -6504,7 +6533,7 @@ static int test_rnd(void)
                        trk[2].p[P_TRANS], trk[3].p[P_TRANS], peak);
             }
         }
-        bad += check("RND FALL: 200 rolls: every track TRIO on three triangles (TRI3, LP), no tremolo, no effects", trio);
+        bad += check("RND FALL: 200 rolls: every track TRIO on three triangles (TRI3, LP), no tremolo; effects (clean)", trio);
         bad += check("RND FALL: ..AMBIENT's roles, an octave each; the melodies falling (BOUNCE's FALL) often",
                      roles_ok && falls >= 150u);
         bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
@@ -6527,9 +6556,10 @@ static int test_rnd(void)
                 lens |= 1u << st;
                 fixed &= pid_get(PID_TESS(TX_TW_DROP), tr) == 0 && pid_get(PID_TESS(TX_SUB_RATCH), tr) == 0 &&
                          trk[tr].p[P_SSWING] == 0;
-                voices &= trk[tr].p[P_ATK] >= 10 && trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_FXTYPE] == FX_OFF &&
+                voices &= trk[tr].p[P_ATK] >= 10 && trk[tr].p[P_LD_AMP] == 0 &&
                           trk[tr].p[P_SCALE] >= 1 && trk[tr].p[P_SCALE] <= 9;
             }
+            voices &= rnd_fx_mode_ok(1) >= 3u;
             loops_ok &= pid_get(PID_TESS(TX_EUC_ROT), 0) == 0 && rnd_registers_apart();
             lens_seen |= lens;
             for (k = 0; k < CORD_LIVE; k++) fixed &= cord_get(k)->dst < CD_TUR_PROB || cord_get(k)->dst > CD_SUB_HUMAN;
@@ -6553,7 +6583,7 @@ static int test_rnd(void)
         bad += check("RND LOOPS: 200 rolls: four EUCLID loops, lengths apart (odd, 7..23), 1-3 notes, one DIV; the "
                      "first from its first step; an octave each", loops_ok && __builtin_popcount(lens_seen) == 8);
         bad += check("RND LOOPS: ..the loops kept: nothing dropped, no ratchet or swing, no cord on a generator", fixed);
-        bad += check("RND LOOPS: ..soft onsets, no tremolo, no effects, the bright modes", voices);
+        bad += check("RND LOOPS: ..soft onsets, no tremolo, effects (clean), the bright modes", voices);
         bad += check("RND LOOPS: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
@@ -6574,9 +6604,10 @@ static int test_rnd(void)
                 uint32_t m = tessera.mode[tr];
                 gens_ok &= m == TESS_ENG_BOUNCE || m == TESS_ENG_CONSTEL;
                 kinds |= m == TESS_ENG_BOUNCE ? 1u : 2u;
-                smooth &= trk[tr].p[P_ATK] >= 10 && trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_FXTYPE] == FX_OFF &&
+                smooth &= trk[tr].p[P_ATK] >= 10 && trk[tr].p[P_LD_AMP] == 0 &&
                           pid_get(PID_TESS(TX_SUB_RATCH), tr) == 0;
             }
+            smooth &= rnd_fx_mode_ok(1) >= 3u;
             both += kinds == 3u;
             gens_ok &= rnd_registers_apart();
             if (r % 25u == 0u) {
@@ -6595,7 +6626,7 @@ static int test_rnd(void)
         printf("rnd: notes a minute (four tracks): LOOPS %.0f, ORBIT %.0f\n", loops_rate, orbit_rate);
         bad += check("RND ORBIT: 200 rolls: BOUNCE or CONSTELLATION on every track (both kinds in most rolls), an octave each",
                      gens_ok && both > 120u);
-        bad += check("RND ORBIT: ..LOOPS' smooth voices: soft onsets, no tremolo or ratchet, no effects", smooth);
+        bad += check("RND ORBIT: ..LOOPS' smooth voices: soft onsets, no tremolo or ratchet; effects (clean)", smooth);
         bad += check("RND ORBIT: ..busier than LOOPS (twice the notes and more), each roll heard within 15 s, none at the rail",
                      orbit_rate > 2.0 * loops_rate && !quiet && !clipped_n);
         transport_req = 2;
@@ -6616,7 +6647,6 @@ static int test_rnd(void)
                 const int16_t *p = trk[tr].p;
                 uint32_t m = tessera.mode[tr], role = rnd_role_of[tr], e = trk[tr].eng_req;
                 f6 += e == ENGI_FM6; ph += e == ENGI_PHYS; orc += e == ENGI_ORACLE;
-                dry &= p[P_FXTYPE] == FX_OFF && p[P_FXTYPE + 4u] == FX_OFF && p[P_FXTYPE + 8u] == FX_OFF;
                 cpu &= p[P_VOICE] != V_UNISON;
                 if (role == RND_ROLE_DRONE || role == RND_ROLE_MELODY) {
                     lo += p[P_TRANS] <= -12; hi += p[P_TRANS] >= 12;
@@ -6644,7 +6674,7 @@ static int test_rnd(void)
             roles_ok &= nd == 1u && nm == 1u && ng == 2u;
             regs &= lo == 1u && hi == 1u && rnd_registers_apart();
             limits_g += f6 > 1u || ph > 1u || orc > 1u || f6 + ph + orc > RND_HEAVY;
-            dry &= song.g[G_MFXTYPE] == FX_OFF && song.g[G_MFX2TYPE] == FX_OFF && song.g[G_MFX3TYPE] == FX_OFF;
+            dry &= rnd_fx_mode_ok(0) >= 3u;       /* (an effect in each slot the points allow) */
             cpu &= settings_budget <= RND_BUDGET;
             chr += trk[0].p[P_SCALE] == 0;
             edo += trk[0].p[P_SCALE] >= 16;
@@ -6676,7 +6706,7 @@ static int test_rnd(void)
                      "on one voice; linked now and then", glitch_ok && ratch > 10u && links > 30u);
         bad += check("RND GLITCH: ..the drone held slow (TURING, a bar and more); the melody slow and atonal-minded (QUAD, "
                      "SERIES, TURING, MARKOV, AWAKE)", drone_ok && melody_ok);
-        bad += check("RND GLITCH: ..dry, the engines within their limits, BUDGET at most 12; chromatic and EDO keys among "
+        bad += check("RND GLITCH: ..effects in the slots, the engines within their limits, BUDGET at most 12; chromatic and EDO keys among "
                      "them", dry && cpu && !limits_g && chr > 30u && edo > 20u);
         bad += check("RND GLITCH: ..each roll heard within 15 s, none at the rail; the glitch tracks busier than the melody "
                      "(three times and more)", !quiet && !clipped_n && grate > 3.0 * mrate && grate > 60.0);
@@ -6744,7 +6774,6 @@ static int test_rnd(void)
                 const int16_t *p = trk[tr].p;
                 uint32_t role = rnd_role_of[tr], e = trk[tr].eng_req, m = tessera.mode[tr];
                 n[role]++;
-                dry &= p[P_FXTYPE] == FX_OFF && p[P_FXTYPE + 4u] == FX_OFF && p[P_FXTYPE + 8u] == FX_OFF;
                 if (role == RND_ROLE_LOWPERC) {
                     uint32_t k2, known = 0;
                     lp = tr;
@@ -6789,7 +6818,7 @@ static int test_rnd(void)
                 }
                 cords_ok &= cl >= 2u && cn >= 2u;
             }
-            dry &= song.g[G_MFXTYPE] == FX_OFF && song.g[G_MFX2TYPE] == FX_OFF && song.g[G_MFX3TYPE] == FX_OFF;
+            dry &= rnd_fx_mode_ok(0) >= 3u;       /* (an effect in each slot the points allow) */
             cpu &= settings_budget <= RND_BUDGET;
             tempo_ok &= (song.g[G_BPM] >= 122 && song.g[G_BPM] <= 145) || (song.g[G_BPM] >= 160 && song.g[G_BPM] <= 174);
             key_ok &= trk[0].p[P_SCALE] >= 2 && trk[0].p[P_SCALE] <= 8 && trk[0].p[P_SCALE] != 5;
@@ -6823,7 +6852,7 @@ static int test_rnd(void)
         bad += check("RND PULSE: ..the bass low and the riff high, plucked, on TRIO's triangles (roughed up now and then) or "
                      "PHYS struck; polyrhythmic most rolls (a cycle against the kick's 16)", slow_ok && phys_slow > 50u &&
                      tri_slow > 150u && drone_low == 200u && fast > 120u && poly_rolls > 140u);
-        bad += check("RND PULSE: ..ATLAS often, HUMAN on, cords on each drum track; dry, CPU rules (the kick one voice; "
+        bad += check("RND PULSE: ..ATLAS often, HUMAN on, cords on each drum track; effects in the slots, CPU rules (the kick one voice; "
                      "rolls on the hats' one voice)", atlas > 120u && human &&
                      cords_ok && dry && cpu);
         bad += check("RND PULSE: ..each roll heard within 15 s, none at the rail; the drums busy (120 hits a minute and more)",
