@@ -423,8 +423,8 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         rnd_tp(tr, P_LEVEL, rnd_rr(92, 100));
         rnd_tp(tr, P_PAN, 0);
         if (e == ENGI_FM6) {                        /* (ALG FB MLVL MRAT MEG VMOD DTUN AEG: the preset's, moved) */
-            rnd_tp(tr, P_E0 + 1u, rnd_rr(-3, 5));   /* FB: grit */
-            rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 30)); /* MLVL: brightness */
+            rnd_tp(tr, P_E0 + 1u, rnd_pulse ? rnd_rr(2, 7) : rnd_rr(-3, 5));   /* FB: grit (PULSE: dirty) */
+            rnd_tp(tr, P_E0 + 2u, rnd_pulse ? rnd_rr(0, 45) : rnd_rr(-20, 30));   /* MLVL: brightness */
             rnd_tp(tr, P_E0 + 3u, rnd_pct(75) ? 0 : rnd_rr(-3, 3));   /* MRAT: now and then metal */
             rnd_tp(tr, P_E0 + 4u, rnd_rr(-30, 30)); /* MEG: the attack's bite */
             rnd_tp(tr, P_E0 + 5u, rnd_rr(3, 7));    /* VMOD: harder hits brighter */
@@ -436,7 +436,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
     } else if (role == RND_ROLE_NOISE) {           /* PULSE: TRIO's noise percussion (hats, snares, rims), or now and
                                                      * then a synthesized micro sound (ring, sync, a zap) */
         static const uint8_t micro[] = {13, 14, 9, 11, 12};   /* RING3 R+S SYNC SYNC3 RING */
-        int mic = rnd_pct(12);
+        int mic = rnd_pct(25);
         rnd_tp(tr, P_ATK, 0);
         rnd_tp(tr, P_DEC, mic ? rnd_rr(0, 30) : rnd_rr(3, 45));   /* (closed to open, rims to snares) */
         rnd_tp(tr, P_SUS, 0);
@@ -444,12 +444,12 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         rnd_tp(tr, P_ED_PIT, mic && rnd_pct(60) ? (rnd_pct(50) ? rnd_rr(25, 63) : -rnd_rr(25, 64)) : 0);
         rnd_tp(tr, P_ED_FLT, rnd_pct(60) ? (rnd_pct(50) ? rnd_rr(20, 63) : -rnd_rr(20, 64)) : 0);
         rnd_tp(tr, P_LD_PIT, 0);
-        rnd_tp(tr, P_LD_FLT, rnd_rr(-30, 30));
-        rnd_tp(tr, P_LRATE, rnd_rr(0, 80));
+        rnd_tp(tr, P_LD_FLT, rnd_rr(-50, 50));
+        rnd_tp(tr, P_LRATE, rnd_rr(30, 120));       /* (the filter moving under the hits) */
         rnd_tp(tr, P_VOICE, rnd_pct(60) ? V_MONO : V_POLY);
         rnd_tp(tr, P_GLIDE, 0);
         rnd_tp(tr, P_CHRD, 0);
-        rnd_tp(tr, P_LEVEL, rnd_rr(70, 90));
+        rnd_tp(tr, P_LEVEL, rnd_rr(80, 96));
         rnd_tp(tr, P_PAN, rnd_rr(-50, 50));
         if (e == 6u) {                              /* (WAVE INT2 INT3 DTN MODE CUT RES PW) */
             rnd_tp(tr, P_E0, mic ? (int32_t)micro[rnd_next() % NELEM(micro)] : rnd_pct(60) ? 8 : 7);   /* NOIS, P+N */
@@ -457,7 +457,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
             rnd_tp(tr, P_E0 + 2u, mic ? rnd_rr(-24, 24) : 0);
             rnd_tp(tr, P_E0 + 4u, mic ? rnd_rr(0, 3) : rnd_pick((const uint8_t[]){2, 1, 0, 3}, (const uint8_t[]){6, 3, 1, 1}, 4));
             rnd_tp(tr, P_E0 + 5u, rnd_rr(50, 127)); /* CUT */
-            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 90));   /* RES: a ring in the noise */
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(30, 110)); /* RES: a ring in the noise */
         }
     } else if (role == RND_ROLE_GLITCH) {          /* GLITCH: microsound, a click, a zap, a grain (short to nothing) */
         rnd_tp(tr, P_ATK, rnd_rr(0, 3));
@@ -987,8 +987,14 @@ static void rnd_pulse_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     rnd_sound(tr, fm6s, phys, oracles, role);
     rnd_nice = nice;
     rnd_want_e = rnd_want_pi = 0xFFu;
-    if (trk[tr].eng_req == ENGI_PHYS) rnd_tp(tr, P_E0 + 6u, 0);   /* (PHYS struck) */
+    if (trk[tr].eng_req == ENGI_PHYS) rnd_tp(tr, P_E0 + 6u, rnd_pct(30) ? rnd_rr(10, 40) : 0);   /* (PHYS struck; a
+                                                     * little bow's noise now and then) */
     if (!slow) return;
+    if (trk[tr].eng_req == 6u && rnd_pct(40)) {     /* (TRIO: the triangles roughed up: noise in, or ring, or sync) */
+        static const uint8_t wv[] = {7, 13, 14, 9}, ww[] = {4, 3, 2, 2};   /* P+N RING3 R+S SYNC */
+        rnd_tp(tr, P_E0, rnd_pick(wv, ww, NELEM(wv)));
+        rnd_tp(tr, P_E0 + 6u, rnd_rr(20, 80));      /* RES */
+    }
     rnd_tp(tr, P_ATK, rnd_rr(0, 4));                /* (plucked: the bass, the riff) */
     rnd_tp(tr, P_DEC, rnd_rr(20, 70));
     rnd_tp(tr, P_SUS, role == RND_ROLE_DRONE ? rnd_rr(20, 90) : rnd_rr(0, 40));
@@ -1020,7 +1026,7 @@ static void rnd_pulse_generator(uint32_t tr, uint32_t role, uint32_t *chords)
     rnd_tx(tr, TX_NL_MODE, 0);
     rnd_tx(tr, TX_TW_DROP, 0);
     rnd_tp(tr, P_SLEN, 16);
-    rnd_tx(tr, TX_EV_EVERY, rnd_rr(4, 8));          /* (a phrase a few bars, then it turns) */
+    rnd_tx(tr, TX_EV_EVERY, rnd_rr(2, 6));          /* (a phrase a few bars, then it turns) */
     rnd_tx(tr, TX_EV_AMOUNT, rnd_rr(10, 30));
     if (role == RND_ROLE_LOWPERC) {                 /* the kick: four on the floor, or broken */
         uint32_t k = (uint32_t)rnd_rr(0, 99);
@@ -1050,14 +1056,16 @@ static void rnd_pulse_generator(uint32_t tr, uint32_t role, uint32_t *chords)
             rnd_tx(tr, TX_GRD_KICK, 0); rnd_tx(tr, TX_GRD_SNR, rnd_rr(60, 100)); rnd_tx(tr, TX_GRD_HAT, 100);
             rnd_tx(tr, TX_GRD_TOMS, rnd_rr(0, 40)); rnd_tx(tr, TX_GRD_PART4, rnd_rr(1, 3));
         } else {
+            static const uint8_t ln[] = {16, 12, 10, 14, 9, 7, 13}, lw[] = {4, 3, 2, 2, 2, 1, 1};
+            int32_t steps = k < 80u ? (int32_t)rnd_pick(ln, lw, NELEM(ln)) : 16;
             mode = TESS_ENG_EUCLID;
             rnd_tx(tr, TX_MODE, (int32_t)mode);
-            rnd_tx(tr, TX_EUC_STEPS, 16);
-            rnd_tx(tr, TX_EUC_PULSES, k < 80u ? rnd_rr(8, 13) : 4);
-            rnd_tx(tr, TX_EUC_ROT, k < 80u ? rnd_rr(0, 15) : 2);   /* (4, turned by 2: the offbeat) */
+            rnd_tx(tr, TX_EUC_STEPS, steps);        /* (a cycle of its own against the kick's 16: a polyrhythm) */
+            rnd_tx(tr, TX_EUC_PULSES, k < 80u ? rnd_rr(steps / 2, steps * 4 / 5) : 4);
+            rnd_tx(tr, TX_EUC_ROT, k < 80u ? rnd_rr(0, steps - 1) : 2);   /* (4, turned by 2: the offbeat) */
             if (k >= 80u) rnd_tp(tr, P_DEC, rnd_rr(30, 50));         /* (an open hat) */
         }
-        rnd_tp(tr, P_SDIV, 2);
+        rnd_tp(tr, P_SDIV, rnd_pct(30) ? 5 : 2);    /* (16T now and then: three against the kick's four) */
         rnd_tp(tr, P_SGATE, rnd_rr(20, 60));
         rnd_tx(tr, TX_TW_HUMAN, rnd_rr(50, 100));
         if (rnd_pct(40)) {                          /* (rolls of two to four now and then; TRIO, one voice) */
@@ -1066,25 +1074,40 @@ static void rnd_pulse_generator(uint32_t tr, uint32_t role, uint32_t *chords)
             rnd_tx(tr, TX_SUB_SHAPE, rnd_rr(0, 2));
             rnd_tp(tr, P_VOICE, V_MONO);
         }
-    } else if (role == RND_ROLE_DRONE) {            /* the bass: a short line, offbeat or rolling */
-        if (rnd_pct(50)) {
-            st = rnd_pct(30) ? 4 : rnd_rr(4, 9);
+    } else if (role == RND_ROLE_DRONE) {            /* the bass: a short line, offbeat, rolling, or a cycle of its own */
+        uint32_t k = (uint32_t)rnd_rr(0, 99);
+        if (k < 30u) {
+            st = rnd_pct(40) ? 4 : rnd_rr(4, 9);
             mode = TESS_ENG_EUCLID;
             rnd_tx(tr, TX_MODE, (int32_t)mode);
             rnd_tx(tr, TX_EUC_STEPS, 16); rnd_tx(tr, TX_EUC_PULSES, st);
             rnd_tx(tr, TX_EUC_ROT, st == 4 ? 2 : rnd_rr(0, 15));
+        } else if (k < 55u) {                       /* (3 in 8, 5 in 12, 4 in 10 ..: against the kick) */
+            static const uint8_t ln[] = {6, 10, 12, 7, 9, 5}, lw[] = {3, 3, 3, 2, 2, 1};
+            int32_t steps = (int32_t)rnd_pick(ln, lw, NELEM(ln));
+            mode = TESS_ENG_EUCLID;
+            rnd_tx(tr, TX_MODE, (int32_t)mode);
+            rnd_tx(tr, TX_EUC_STEPS, steps); rnd_tx(tr, TX_EUC_PULSES, rnd_rr(2, steps * 2 / 3));
+            rnd_tx(tr, TX_EUC_ROT, rnd_rr(0, steps - 1));
+        } else if (k < 70u) {                       /* (POLY: two or three pulses of their own lengths) */
+            mode = TESS_ENG_POLY;
+            rnd_tx(tr, TX_MODE, (int32_t)mode);
+            rnd_tx(tr, TX_POL_DIV1, rnd_rr(3, 7)); rnd_tx(tr, TX_POL_DIV2, rnd_rr(2, 5));
+            rnd_tx(tr, TX_POL_DIV3, rnd_pct(40) ? rnd_rr(5, 9) : 0); rnd_tx(tr, TX_POL_DIV4, 0); rnd_tx(tr, TX_POL_SPAN, 1);
         } else {
             mode = TESS_ENG_TURING;
             rnd_tx(tr, TX_MODE, (int32_t)mode);
-            rnd_tx(tr, TX_TUR_LEN, rnd_pct(50) ? 8 : 16); rnd_tx(tr, TX_TUR_PROB, rnd_rr(0, 12)); rnd_tx(tr, TX_TUR_SPAN, 1);
+            rnd_tx(tr, TX_TUR_LEN, rnd_pct(50) ? 8 : rnd_pct(50) ? 16 : rnd_rr(5, 13)); rnd_tx(tr, TX_TUR_PROB, rnd_rr(0, 12));
+            rnd_tx(tr, TX_TUR_SPAN, 1);
         }
         rnd_tp(tr, P_SDIV, rnd_pct(70) ? 2 : 1);
+        if (rnd_pct(35)) rnd_tp(tr, P_SLEN, rnd_rr(5, 14));   /* (the loop its own length) */
         rnd_tp(tr, P_SGATE, rnd_rr(30, 80));
         rnd_tx(tr, TX_TW_HUMAN, rnd_rr(0, 30));
     } else {                                        /* the riff: a short repeating line that turns */
-        static const uint8_t gm[] = {TESS_ENG_TURING, TESS_ENG_AWAKE, TESS_ENG_MARKOV, TESS_ENG_BOUNCE};
-        static const uint8_t gw[] = {35, 25, 20, 20};
-        static const uint8_t dv[] = {2, 1, 5}, dw[] = {55, 30, 15};   /* 1/16 1/8 16T */
+        static const uint8_t gm[] = {TESS_ENG_TURING, TESS_ENG_AWAKE, TESS_ENG_MARKOV, TESS_ENG_BOUNCE, TESS_ENG_POLY};
+        static const uint8_t gw[] = {30, 20, 15, 15, 20};
+        static const uint8_t dv[] = {2, 1, 5, 4}, dw[] = {45, 25, 20, 10};   /* 1/16 1/8 16T 8T */
         mode = rnd_pick(gm, gw, NELEM(gm));
         rnd_tx(tr, TX_MODE, (int32_t)mode);
         switch (mode) {
@@ -1097,11 +1120,16 @@ static void rnd_pulse_generator(uint32_t tr, uint32_t role, uint32_t *chords)
         case TESS_ENG_MARKOV:
             rnd_tx(tr, TX_MKV_LEAP, rnd_rr(20, 60)); rnd_tx(tr, TX_MKV_DENS, rnd_rr(50, 90)); rnd_tx(tr, TX_MKV_SPAN, rnd_rr(1, 2));
             break;
+        case TESS_ENG_POLY:                         /* (pulses of their own lengths, each a pitch) */
+            rnd_tx(tr, TX_POL_DIV1, rnd_rr(3, 9)); rnd_tx(tr, TX_POL_DIV2, rnd_rr(2, 7));
+            rnd_tx(tr, TX_POL_DIV3, rnd_pct(50) ? rnd_rr(4, 11) : 0); rnd_tx(tr, TX_POL_DIV4, 0);
+            rnd_tx(tr, TX_POL_SPAN, rnd_rr(1, 2)); break;
         default:
             rnd_tx(tr, TX_BNC_BALLS, rnd_rr(1, 3)); rnd_tx(tr, TX_BNC_SPEED, rnd_rr(25, 60)); rnd_tx(tr, TX_BNC_ANGLE, rnd_rr(15, 75));
             break;
         }
         rnd_tp(tr, P_SDIV, rnd_pick(dv, dw, NELEM(dv)));
+        if (rnd_pct(50)) rnd_tp(tr, P_SLEN, rnd_pick((const uint8_t[]){5, 7, 9, 10, 12, 13, 14}, (const uint8_t[]){3, 3, 2, 2, 3, 1, 1}, 7));
         rnd_tp(tr, P_SGATE, rnd_rr(25, 70));
         rnd_tx(tr, TX_TW_HUMAN, rnd_rr(0, 40));
     }

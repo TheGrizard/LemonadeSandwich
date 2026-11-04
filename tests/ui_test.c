@@ -6732,13 +6732,13 @@ static int test_rnd(void)
     {                                               /* PULSE: dance music: a kick, hats, a bass, a riff */
         uint32_t k, roles_ok = 1, regs = 1, lowperc_ok = 1, noise_ok = 1, slow_ok = 1, dry = 1, cpu = 1, atlas = 0, micro = 0;
         uint32_t presets_ok = 1, phys_slow = 0, tri_slow = 0, drone_low = 0, human = 1, cords_ok = 1, quiet = 0, clipped_n = 0;
-        uint32_t four = 0, tempo_ok = 1, key_ok = 1, fast = 0;
+        uint32_t four = 0, tempo_ok = 1, key_ok = 1, fast = 0, poly_rolls = 0;
         double prate = 0;
         rnd_mode_put(RND_PULSE);
         press(B_REC);
         bad += check("RND PULSE: REC tapped: a roll, PULSE and the seed said", !memcmp(ui.msg, "PULSE ", 6));
         for (r = 0; r < 200u; r++) {
-            uint32_t n[8] = {0}, lp = NTRK, nz = NTRK;
+            uint32_t n[8] = {0}, lp = NTRK, nz = NTRK, poly = 0;
             rnd_roll();
             for (tr = 0; tr < NTRK; tr++) {
                 const int16_t *p = trk[tr].p;
@@ -6755,16 +6755,20 @@ static int test_rnd(void)
                             pid_get(PID_TESS(TX_EUC_STEPS), tr) == 16 && pid_get(PID_TESS(TX_EUC_ROT), tr) == 0;
                 } else if (role == RND_ROLE_NOISE) {
                     nz = tr;
-                    noise_ok &= e == 6u && p[P_TRANS] >= 0 && p[P_ATK] == 0 && p[P_DEC] <= 50 && p[P_SDIV] == 2;
+                    noise_ok &= e == 6u && p[P_TRANS] >= 0 && p[P_ATK] == 0 && p[P_DEC] <= 50 && (p[P_SDIV] == 2 || p[P_SDIV] == 5);
                     micro += p[P_E0] != 8 && p[P_E0] != 7;
                 } else if (role == RND_ROLE_DRONE || role == RND_ROLE_MELODY) {
-                    slow_ok &= ((e == 6u && p[P_E0] == 4) || (e == ENGI_PHYS && p[P_E0 + 6u] == 0)) &&   /* (TRI3; PHYS struck) */
+                    slow_ok &= ((e == 6u && (p[P_E0] == 4 || p[P_E0] == 7 || p[P_E0] == 13 || p[P_E0] == 14 || p[P_E0] == 9)) ||
+                                (e == ENGI_PHYS && p[P_E0 + 6u] <= 40)) &&   /* (TRI3 or roughed up; PHYS struck) */
                                p[P_ATK] <= 4 && rnd_speed((uint32_t)p[P_SDIV]) != RND_SLOW &&
                                (role == RND_ROLE_DRONE ? p[P_TRANS] < 0 : p[P_TRANS] > 0);   /* (the bass low, the riff high) */
                     phys_slow += e == ENGI_PHYS; tri_slow += e == 6u;
                     if (role == RND_ROLE_DRONE) drone_low += p[P_TRANS] < 0;
                     fast += p[P_SDIV] == 2;
                 }
+                if (role != RND_ROLE_LOWPERC)               /* (a cycle of its own against the kick's 16) */
+                    poly |= p[P_SLEN] != 16 || p[P_SDIV] == 4 || p[P_SDIV] == 5 || m == TESS_ENG_POLY ||
+                            (m == TESS_ENG_EUCLID && pid_get(PID_TESS(TX_EUC_STEPS), tr) != 16);
                 if (role == RND_ROLE_LOWPERC || role == RND_ROLE_NOISE) {
                     atlas += m == TESS_ENG_GRIDS;
                     human &= pid_get(PID_TESS(TX_TW_HUMAN), tr) >= (role == RND_ROLE_NOISE ? 50 : 20);   /* (the kick steadier) */
@@ -6774,6 +6778,7 @@ static int test_rnd(void)
                 }
             }
             roles_ok &= n[RND_ROLE_DRONE] == 1u && n[RND_ROLE_MELODY] == 1u && n[RND_ROLE_LOWPERC] == 1u && n[RND_ROLE_NOISE] == 1u;
+            poly_rolls += poly;
             regs &= rnd_registers_apart();
             {                                       /* (each percussion track: cords of its own, a hit each its own) */
                 uint32_t i, cl = 0, cn = 0;
@@ -6807,16 +6812,17 @@ static int test_rnd(void)
                 clipped_n += rail > 2u * FS / 100u;
             }
         }
-        printf("rnd: PULSE: four on the floor in %u of 200, ATLAS on %u of 400 drum tracks, %u micro sounds, bass and riff: "
-               "%u PHYS %u TRIO, %u at 1/16; a drum track's hits a minute %.0f\n", four, atlas, micro, phys_slow, tri_slow, fast,
-               prate);
+        printf("rnd: PULSE: four on the floor in %u of 200, polyrhythmic %u, ATLAS on %u of 400 drum tracks, %u micro sounds, "
+               "bass and riff: %u PHYS %u TRIO, %u at 1/16; a drum track's hits a minute %.0f\n", four, poly_rolls, atlas, micro,
+               phys_slow, tri_slow, fast, prate);
         bad += check("RND PULSE: 200 rolls: a kick, hats, a bass, a riff; an octave each; a dance tempo, a minor or modal "
                      "key", roles_ok && regs && tempo_ok && key_ok);
         bad += check("RND PULSE: ..the kick FM6 (a percussive preset) low at 1/16, its pitch dropping, four on the floor "
                      "often; the hats TRIO's noise at 1/16 (a micro sound seldom)", lowperc_ok && presets_ok && noise_ok &&
-                     four > 60u && micro > 8u && micro < 50u);
-        bad += check("RND PULSE: ..the bass low and the riff high, plucked, at 1/16 or 1/8, on TRIO's triangles or PHYS "
-                     "struck", slow_ok && phys_slow > 50u && tri_slow > 150u && drone_low == 200u && fast > 150u);
+                     four > 60u && micro > 25u && micro < 80u);
+        bad += check("RND PULSE: ..the bass low and the riff high, plucked, on TRIO's triangles (roughed up now and then) or "
+                     "PHYS struck; polyrhythmic most rolls (a cycle against the kick's 16)", slow_ok && phys_slow > 50u &&
+                     tri_slow > 150u && drone_low == 200u && fast > 120u && poly_rolls > 140u);
         bad += check("RND PULSE: ..ATLAS often, HUMAN on, cords on each drum track; dry, CPU rules (the kick one voice; "
                      "rolls on the hats' one voice)", atlas > 120u && human &&
                      cords_ok && dry && cpu);

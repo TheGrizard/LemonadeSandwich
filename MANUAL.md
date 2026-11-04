@@ -898,11 +898,14 @@ for the effects outside. The screen shows **GLITCH** and the seed.
 DOR, PHRY, HARM, MPEN, MIX), and deals four parts in a random order. The **kick** is FM6 on a bass, drop or mallet
 preset (FM BASS, SOLID BASS, DROP, MALLET, MOKUGYO and more) low, its pitch dropping hard, harder hits brighter: four
 on the floor about half the time, otherwise a broken beat (EUCLID, or ATLAS' kick and toms). The **hats** are TRIO's
-noise through its high- or band-pass at 1/16: ATLAS' hats, snares and claps (the Grids map, its accents), a busy
-EUCLID line or offbeat open hats, with rolls of two to four now and then and, seldom, a synthesized micro sound. The
-**bass** (low) and the **riff** (above) are on TRIO's three triangles or PHYS struck, plucked: a short line at 1/16
-or 1/8 (a locked TURING, AWAKE, MARKOV, BOUNCE; EUCLID or TURING for the bass) that turns every few bars, often
-pumping under the beat (the LFO a saw at 1/4 on the level). One swing for all four; TWEAK HUMAN varies each hit's
+noise through its high- or band-pass, resonant, its filter moving, at 1/16 or 16T: ATLAS' hats, snares and claps
+(the Grids map, its accents), a busy EUCLID line on a cycle of its own (12, 10, 14, 9, 7, 13 steps) or offbeat open
+hats, with rolls of two to four now and then and now and then a synthesized micro sound. The **bass** (low) and the
+**riff** (above) are on TRIO's three triangles (roughed up now and then: noise in, ring or sync) or PHYS struck,
+plucked: short lines (a locked TURING, AWAKE, MARKOV, BOUNCE, POLY; EUCLID, POLY or TURING for the bass) at 1/16, 1/8 or
+triplets, often on loops of their own lengths (5, 6, 7, 9, 10, 12 ..), so against the kick's bar the four are
+**polyrhythmic**; they turn every few bars and often pump under the beat (the LFO a saw at 1/4 on the level). The
+kick's FM is dirty (its feedback up). One swing for all four; TWEAK HUMAN varies each hit's
 velocity; cords make every hit its own (velocity into the decay and brightness, RANDOM into the drop, the gain and
 the cutoff). Dry. The screen shows **PULSE** and the seed.
 
