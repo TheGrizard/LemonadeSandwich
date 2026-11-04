@@ -551,17 +551,17 @@ static int rnd_fx_light(uint32_t type)
 }
 static uint32_t rnd_fx_points(uint32_t type, int send)
 {
-    if (send && type != FX_OFF) return RND_FX_BUS + rnd_fx_points(type, 0);
+    uint32_t bus = send ? RND_FX_BUS : 0u;          /* (no recursion: the build's stack audit) */
     switch (type) {
     case FX_OFF: return 0u;
-    case FX_ECHO: case FX_FILTER: return 1u;
-    case FX_ROOM: return 3u;
-    case FX_SPIT: case FX_TAPE: case FX_CHORUS: return 4u;
-    case FX_PHASER: return 5u;
-    case FX_WIDTH: return 7u;
-    case FX_FORMANT: return 9u;
-    case FX_REVERB: return 14u;
-    default: return 6u;
+    case FX_ECHO: case FX_FILTER: return bus + 1u;
+    case FX_ROOM: return bus + 3u;
+    case FX_SPIT: case FX_TAPE: case FX_CHORUS: return bus + 4u;
+    case FX_PHASER: return bus + 5u;
+    case FX_WIDTH: return bus + 7u;
+    case FX_FORMANT: return bus + 9u;
+    case FX_REVERB: return bus + 14u;
+    default: return bus + 6u;
     }
 }
 #define RND_FX_POINTS 10u
