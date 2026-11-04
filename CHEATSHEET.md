@@ -115,7 +115,7 @@ ARP, FX, LFO and OCT+ on GEN work as soon as they are down. Page buttons act whe
 | **REC** + PLAY | Records now |
 | **REC** held | Generator track: prints its last bars into STEP. STEP EVOLVE: keeps the changes. STEP: captures what you played |
 | **REC** held on SONG | Take jam: the patterns played since PLAY become the song |
-| **REC** (MENU > REC BUTTON RND, AMBIENT, NICE, FALL, LOOPS or ORBIT) | Rolls a new piece: sounds, generators, key, effects, mods (AMBIENT: drone, chords, two melodies, no effects; NICE: the same, nicer sounds; FALL: NICE on TRIO's triangles, falling melodies; LOOPS: drifting loops of lengths apart; ORBIT: BOUNCE and CONSTELLATION, smooth). Held: before the roll / the roll again |
+| **REC** (MENU > REC BUTTON RND, AMBIENT, NICE, FALL, LOOPS, ORBIT or GLITCH) | Rolls a new piece: sounds, generators, key, effects, mods (AMBIENT: drone, chords, two melodies, no effects; NICE: the same, nicer sounds; FALL: NICE on TRIO's triangles, falling melodies; LOOPS: drifting loops of lengths apart; ORBIT: BOUNCE and CONSTELLATION, smooth; GLITCH: two microsound tracks, a drone, a slow atonal melody, dry). Held: before the roll / the roll again. MENU > DRIFT SLOW or FAST: the roll keeps changing a little |
 | **EDIT** held, recording on NOTES | Erases as the steps pass |
 | **EDIT** + **REC** on NOTES | Clear pattern? (OCT+), REC stays on for a new take |
 | **OCT-** / **OCT+** on NOTES, REC on | Keys octave down / up; both: octave 0 |

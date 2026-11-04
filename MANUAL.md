@@ -811,8 +811,8 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 
 ## RND: one button, a new piece
 
-After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS** or
-**ORBIT**, below) and REC becomes a roll:
+After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS**,
+**ORBIT** or **GLITCH**, below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -879,6 +879,28 @@ a little dropped now and then, no ratchet or swing. The voices are LOOPS' (soft 
 mode, each track in an octave of its own, no effects; slow cords may move the balls and the stars. The screen shows
 **ORBIT** and the seed.
 
+**GLITCH.** With REC BUTTON on **GLITCH** (after Autechre and Richard Devine), a roll deals two **glitch** tracks and
+two slow ones, in a random order. The slow two are a **drone** (as AMBIENT's) and a slow **melody**, random or
+atonal: a tone row (QUAD), the infinity series in wide leaps (SERIES), or a wandering TURING, MARKOV or AWAKE line at
+1/4, 1/2 or 1/1, many of its steps left out. One of the two is low (-24 or -12) and the other mid-high (+12 or +24),
+whichever: the drone is as often high as low. The glitch tracks are microsound: hits of a few milliseconds (no attack,
+a short decay, almost no release), pitch envelopes that zap, a fast LFO now and then, a chop now and then; FM6's metal,
+PHYS struck, ORACLE's noise, TRIO's noisy waves. Their rhythm is fast (1/16, 1/32, triplets, or 1/8 with ratchets of
+up to eight hits that speed up or slow down) on odd lengths, so they run against each other (polymeters), steps
+dropped, the phrase mutating every bar or few (EVOLVE); now and then they are tied together: one plays only with, or
+only against, the other (LOGIC), hits jump from one sound to the other (BRANCH), one plays only in some bars (COND).
+Fast cords (S&H, RANDOM, the note, the gate) move their sound from hit to hit; slow ones move the drone and the
+melody. The key is no key, mostly: chromatic, an EDO between the semitones (13, 17, 19, 22, 31) or a dark scale. Dry,
+for the effects outside. The screen shows **GLITCH** and the seed.
+
+**DRIFT.** **MENU > DRIFT** (OFF, SLOW, FAST; saved) makes a roll change a little at a time while it plays, within
+its mode's rules, so it becomes another piece over the minutes without a new roll: **SLOW** one change every 4 to 8
+bars, **FAST** every bar or two; **OFF** (the default) none. A change is one of: a track's engine knob nudged (never
+a kind of thing, such as TRIO's WAVE), its envelope, filter, LFO or pan nudged, a knob of its generator nudged (not in
+LOOPS), a cord's depth nudged; in RND and GLITCH also now and then a new generator or a whole new sound for one track
+(the CPU's rules and the guard as for a roll), and in GLITCH the drone and the melody swap registers. NICE, FALL, LOOPS
+and ORBIT nudge by less. Held REC (before the roll) pauses it; any mode, works with all of them.
+
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
 at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
 the effects within a CPU budget, no UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
@@ -904,7 +926,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

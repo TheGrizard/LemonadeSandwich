@@ -6134,6 +6134,31 @@ static double rnd_note_rate(uint32_t secs)
     }
     return n * 60.0 / secs;
 }
+/* what a roll set, as one number (DRIFT's tests: did anything change). gens 0: the sounds and cords only (some
+ * generators move a knob of their own as they play: CONSTELLATION's AUTO its Y) */
+static uint32_t rnd_hash_of(int gens)
+{
+    uint32_t h = 2166136261u, tr, k;
+    for (tr = 0; tr < NTRK; tr++) {
+        for (k = 0; k < P_COUNT; k++) h = (h ^ (uint16_t)trk[tr].p[k]) * 16777619u;
+        h = (h ^ trk[tr].eng_req) * 16777619u;
+    }
+    for (tr = 0; gens && tr < TESSERA_TRACKS; tr++)
+        for (k = 0; k < RND_NTX; k++) h = (h ^ (uint16_t)pid_get(PID_TESS(RND_TX[k]), tr)) * 16777619u;
+    for (k = 0; k < CORD_LIVE; k++) h = (h ^ (uint8_t)cord_get(k)->amount ^ (uint32_t)cord_get(k)->dst << 8) * 16777619u;
+    return h;
+}
+static uint32_t rnd_hash(void) { return rnd_hash_of(1); }
+/* bars played with the UI's DRIFT tick every block (the frames do it on the FM-1) */
+static void rnd_play_bars(uint32_t bars)
+{
+    int32_t o[2 * CTL];
+    uint32_t end;
+    if (!song.playing) transport_req = 1;
+    mix_block(o, CTL);
+    end = bar_n + bars;
+    while ((int32_t)(bar_n - end) < 0) { mix_block(o, CTL); rnd_drift(); }
+}
 static int test_rnd(void)
 {
     static rnd_snap_t before, rolled;
@@ -6321,7 +6346,23 @@ static int test_rnd(void)
             bad += check("RND AMBIENT: ..ORBIT saved and loaded with the settings", rnd_setting() == RND_ORBIT && pr.lowcut == 1u);
         }
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..ORBIT is the last (right again: stays)", rnd_setting() == RND_ORBIT);
+        bad += check("RND AMBIENT: ..right again: GLITCH (RND's bit with variant 1)", rnd_setting() == RND_GLITCH &&
+                     (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 1u);
+        {
+            persist_t pr;
+            settings_rnd_drift = RND_DRIFT_FAST;
+            settings_export(&pr);
+            settings_rnd_variant = 0;
+            settings_rnd_drift = 0;
+            favorites.factory[15][24] &= (uint8_t)~0xC0u;
+            settings_import(&pr, sizeof pr);
+            bad += check("RND AMBIENT: ..GLITCH and DRIFT FAST saved and loaded with the settings (bits 8, 9)",
+                         rnd_setting() == RND_GLITCH && settings_rnd_drift == RND_DRIFT_FAST && pr.lowcut == (1u | 2u << 8));
+            settings_rnd_drift = 0;
+        }
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..GLITCH is the last (right again: stays)", rnd_setting() == RND_GLITCH);
+        turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
@@ -6518,7 +6559,7 @@ static int test_rnd(void)
         uint32_t k, gens_ok = 1, smooth = 1, quiet = 0, clipped_n = 0, both = 0;
         double loops_rate = 0, orbit_rate = 0;
         rnd_mode_put(RND_LOOPS);
-        for (k = 0; k < 8u; k++) { rnd_roll(); loops_rate += rnd_note_rate(20) / 8.0; }
+        for (k = 0; k < 24u; k++) { rnd_roll(); loops_rate += rnd_note_rate(20) / 24.0; }   /* (24: a roll's rate varies) */
         rnd_mode_put(RND_ORBIT);
         press(B_REC);
         bad += check("RND ORBIT: REC tapped: a roll, ORBIT and the seed said", !memcmp(ui.msg, "ORBIT ", 6));
@@ -6546,13 +6587,140 @@ static int test_rnd(void)
                 clipped_n += rail > 2u * FS / 100u;
             }
         }
-        for (k = 0; k < 8u; k++) { rnd_roll(); orbit_rate += rnd_note_rate(20) / 8.0; }
+        for (k = 0; k < 24u; k++) { rnd_roll(); orbit_rate += rnd_note_rate(20) / 24.0; }
         printf("rnd: notes a minute (four tracks): LOOPS %.0f, ORBIT %.0f\n", loops_rate, orbit_rate);
         bad += check("RND ORBIT: 200 rolls: BOUNCE or CONSTELLATION on every track (both kinds in most rolls), an octave each",
                      gens_ok && both > 120u);
         bad += check("RND ORBIT: ..LOOPS' smooth voices: soft onsets, no tremolo or ratchet, no effects", smooth);
         bad += check("RND ORBIT: ..busier than LOOPS (twice the notes and more), each roll heard within 15 s, none at the rail",
                      orbit_rate > 2.0 * loops_rate && !quiet && !clipped_n);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* GLITCH: two microsound tracks, a drone and a slow melody */
+        uint32_t k, roles_ok = 1, regs = 1, drone_low = 0, glitch_ok = 1, melody_ok = 1, drone_ok = 1, dry = 1, cpu = 1;
+        uint32_t links = 0, chr = 0, edo = 0, ratch = 0, quiet = 0, clipped_n = 0, limits_g = 0;
+        double grate = 0, mrate = 0;
+        rnd_mode_put(RND_GLITCH);
+        press(B_REC);
+        bad += check("RND GLITCH: REC tapped: a roll, GLITCH and the seed said", !memcmp(ui.msg, "GLITCH ", 7));
+        for (r = 0; r < 200u; r++) {
+            uint32_t nd = 0, nm = 0, ng = 0, f6 = 0, ph = 0, orc = 0, lo = 0, hi = 0;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++) {
+                const int16_t *p = trk[tr].p;
+                uint32_t m = tessera.mode[tr], role = rnd_role_of[tr], e = trk[tr].eng_req;
+                f6 += e == ENGI_FM6; ph += e == ENGI_PHYS; orc += e == ENGI_ORACLE;
+                dry &= p[P_FXTYPE] == FX_OFF && p[P_FXTYPE + 4u] == FX_OFF && p[P_FXTYPE + 8u] == FX_OFF;
+                cpu &= p[P_VOICE] != V_UNISON;
+                if (role == RND_ROLE_DRONE || role == RND_ROLE_MELODY) {
+                    lo += p[P_TRANS] <= -12; hi += p[P_TRANS] >= 12;
+                    if (role == RND_ROLE_DRONE) {
+                        nd++;
+                        drone_low += p[P_TRANS] < 0;
+                        drone_ok &= m == TESS_ENG_TURING && p[P_SDIV] >= 7;
+                    } else {
+                        nm++;
+                        melody_ok &= (m == TESS_ENG_QUAD || m == TESS_ENG_SERIES || m == TESS_ENG_TURING ||
+                                      m == TESS_ENG_MARKOV || m == TESS_ENG_AWAKE) &&
+                                     (p[P_SDIV] == 0 || p[P_SDIV] == 6 || p[P_SDIV] == 7) &&
+                                     pid_get(PID_TESS(TX_SUB_RATCH), tr) == 0;
+                    }
+                } else if (role == RND_ROLE_GLITCH) {
+                    uint32_t sp = rnd_speed((uint32_t)p[P_SDIV]), rt = (uint32_t)pid_get(PID_TESS(TX_SUB_RATCH), tr);
+                    ng++;
+                    glitch_ok &= sp != RND_SLOW && p[P_SGATE] <= 40 && rnd_tail(tr) <= 25 && p[P_VOICE] != V_LEGATO &&
+                                 m != TESS_ENG_CHORD;
+                    glitch_ok &= !rt || (p[P_SDIV] == 1 && p[P_VOICE] == V_MONO);   /* (ratchets: 1/8, one voice) */
+                    ratch += rt != 0;
+                    links += pid_get(PID_TESS(TX_TW_LOGIC), tr) != 0 || pid_get(PID_TESS(TX_TW_BRANCH), tr) != 0;
+                }
+            }
+            roles_ok &= nd == 1u && nm == 1u && ng == 2u;
+            regs &= lo == 1u && hi == 1u && rnd_registers_apart();
+            limits_g += f6 > 1u || ph > 1u || orc > 1u || f6 + ph + orc > RND_HEAVY;
+            dry &= song.g[G_MFXTYPE] == FX_OFF && song.g[G_MFX2TYPE] == FX_OFF && song.g[G_MFX3TYPE] == FX_OFF;
+            cpu &= settings_budget <= RND_BUDGET;
+            chr += trk[0].p[P_SCALE] == 0;
+            edo += trk[0].p[P_SCALE] >= 16;
+            if (r % 25u == 0u) {
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, rail = 0, gn = 0, mn = 0;
+                uint8_t was[NTRK] = {0};
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
+                    for (tr = 0; tr < NTRK; tr++) {
+                        uint32_t on = tessera.active_gate[tr] != 0;
+                        if (on && !was[tr]) { if (rnd_role_of[tr] == RND_ROLE_GLITCH) gn++; else if (rnd_role_of[tr] == RND_ROLE_MELODY) mn++; }
+                        was[tr] = (uint8_t)on;
+                    }
+                }
+                grate += gn * 4.0 / 2.0 / 8.0;      /* (a glitch track's notes a minute, of 8 listened rolls) */
+                mrate += mn * 4.0 / 8.0;
+                quiet += peak < 300;
+                clipped_n += rail > 2u * FS / 100u;
+            }
+        }
+        printf("rnd: GLITCH: drone low in %u of 200, %u glitch tracks ratcheting, %u linked, %u chromatic, %u EDO; notes a "
+               "minute: a glitch track %.0f, the melody %.0f\n", drone_low, ratch, links, chr, edo, grate, mrate);
+        bad += check("RND GLITCH: 200 rolls: a drone, a slow melody, two glitch tracks; the slow two one low, one mid-high "
+                     "(the drone either), an octave each", roles_ok && regs && drone_low > 60u && drone_low < 140u);
+        bad += check("RND GLITCH: ..the glitch tracks fast, short hits (gate, tail), never LEGATO; ratchets on an 1/8 track "
+                     "on one voice; linked now and then", glitch_ok && ratch > 10u && links > 30u);
+        bad += check("RND GLITCH: ..the drone held slow (TURING, a bar and more); the melody slow and atonal-minded (QUAD, "
+                     "SERIES, TURING, MARKOV, AWAKE)", drone_ok && melody_ok);
+        bad += check("RND GLITCH: ..dry, the engines within their limits, BUDGET at most 12; chromatic and EDO keys among "
+                     "them", dry && cpu && !limits_g && chr > 30u && edo > 20u);
+        bad += check("RND GLITCH: ..each roll heard within 15 s, none at the rail; the glitch tracks busier than the melody "
+                     "(three times and more)", !quiet && !clipped_n && grate > 3.0 * mrate && grate > 60.0);
+        {                                           /* DRIFT: OFF, SLOW, FAST; not before the roll (held) */
+            uint32_t h, s0, st_slow, st_fast, st_back, bpm = (uint32_t)song.g[G_BPM];
+            int changed_slow, changed_fast;
+            song.g[G_BPM] = 240;
+            settings_rnd_drift = RND_DRIFT_OFF;
+            rnd_roll();
+            h = rnd_hash_of(0);
+            s0 = rnd_drift_s.steps;
+            rnd_play_bars(16);
+            bad += check("DRIFT OFF: 16 bars, nothing changed", rnd_hash_of(0) == h && rnd_drift_s.steps == s0);
+            settings_rnd_drift = RND_DRIFT_SLOW;
+            rnd_drift_start();
+            h = rnd_hash(); s0 = rnd_drift_s.steps;
+            rnd_play_bars(32);
+            st_slow = rnd_drift_s.steps - s0; changed_slow = rnd_hash() != h;
+            settings_rnd_drift = RND_DRIFT_FAST;
+            rnd_drift_start();
+            h = rnd_hash(); s0 = rnd_drift_s.steps;
+            rnd_play_bars(32);
+            st_fast = rnd_drift_s.steps - s0; changed_fast = rnd_hash() != h;
+            rnd_back();
+            h = rnd_hash_of(0); s0 = rnd_drift_s.steps;
+            rnd_play_bars(16);
+            st_back = rnd_drift_s.steps - s0;
+            bad += check("DRIFT: held back to before the roll, it waits", st_back == 0 && rnd_hash_of(0) == h);
+            rnd_back();
+            printf("rnd: DRIFT in 32 bars: SLOW %u changes, FAST %u\n", st_slow, st_fast);
+            bad += check("DRIFT SLOW: a change every 4 to 8 bars (32 bars: 4 to 8)", changed_slow && st_slow >= 3u && st_slow <= 9u);
+            bad += check("DRIFT FAST: a change every bar or two (32 bars: 16 to 32)", changed_fast && st_fast >= 14u && st_fast <= 33u);
+            {                                       /* and GLITCH as it was: the CPU's rules after all of it */
+                uint32_t ok2 = settings_budget <= RND_BUDGET, lo = 0, hi = 0;
+                for (tr = 0; tr < NTRK; tr++) {
+                    if (rnd_role_of[tr] == RND_ROLE_GLITCH)
+                        ok2 &= rnd_speed((uint32_t)trk[tr].p[P_SDIV]) != RND_SLOW && rnd_tail(tr) <= 55 && trk[tr].p[P_DEC] <= 40 &&
+                               trk[tr].p[P_VOICE] != V_LEGATO;
+                    if (rnd_role_of[tr] == RND_ROLE_DRONE || rnd_role_of[tr] == RND_ROLE_MELODY) {
+                        lo += trk[tr].p[P_TRANS] <= -12; hi += trk[tr].p[P_TRANS] >= 12;
+                    }
+                }
+                bad += check("DRIFT: ..GLITCH still GLITCH (fast short glitch tracks, BUDGET, the slow two one low one high)",
+                             ok2 && lo == 1u && hi == 1u);
+            }
+            settings_rnd_drift = RND_DRIFT_OFF;
+            song.g[G_BPM] = (int16_t)bpm;
+        }
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
