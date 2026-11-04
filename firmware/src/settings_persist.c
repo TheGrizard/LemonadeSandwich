@@ -92,9 +92,9 @@ static int settings_import(persist_t *p, int n)
     settings.magic = SETTINGS_MAGIC;
     settings.palette = palette_from_stored(p->palette);
     settings.lowcut = 0;
-    /* tessera-rnd: the retired lowcut word (0..2 valid) is FALL's when 1 beside NICE's bit pattern (rnd.c), which no
+    /* tessera-rnd: the retired lowcut word (0..3 valid) is FALL's when 1 beside NICE's bit pattern (rnd.c), which no
      * record from before it has: an old LOW CUT of 1 stays nothing */
-    settings_rnd_variant = (uint8_t)(((p->lowcut & 0xFFu) == 1u || (p->lowcut & 0xFFu) == 2u) &&
+    settings_rnd_variant = (uint8_t)((p->lowcut & 0xFFu) >= 1u && (p->lowcut & 0xFFu) <= 3u &&
                                      (p->favorites.factory[15][24] & 0xC0u) ? p->lowcut & 0xFFu : 0u);   /* (rnd.c
                                                      * RND_CODE: FALL, LOOPS, ORBIT, GLITCH ..) */
     settings_rnd_drift = (uint8_t)(((p->lowcut >> 8) & 3u) <= 2u && (p->favorites.factory[15][24] & 0xC0u)
@@ -125,7 +125,7 @@ static void settings_export(persist_t *p)
 {
     p->magic = PERSIST_MAGIC;
     p->palette = palette_to_stored(settings.palette);
-    p->lowcut = favorites.factory[15][24] & 0xC0u ? (settings_rnd_variant <= 2u ? settings_rnd_variant : 0u) |
+    p->lowcut = favorites.factory[15][24] & 0xC0u ? (settings_rnd_variant <= 3u ? settings_rnd_variant : 0u) |
                                                     (uint32_t)(settings_rnd_drift <= 2u ? settings_rnd_drift : 0u) << 8
                                                   : 0u;   /* (rnd.c RND_CODE, DRIFT) */
     uint32_t rp = settings_click % 3u | (settings_click_level == 0u ? 1u : settings_click_level == 2u ? 2u : 0u) << 2 |

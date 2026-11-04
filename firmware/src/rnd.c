@@ -21,16 +21,19 @@
  * sounds: rnd_roll), RND_FALL FALL (NICE's on TRIO's triangles, the melodies falling as norns' Fall), RND_LOOPS LOOPS
  * (after Eno's Music for Airports: sparse loops of lengths apart, drifting), RND_ORBIT ORBIT (BOUNCE and CONSTELLATION
  * only, LOOPS' smooth voices), RND_GLITCH GLITCH (two microsound tracks, a drone and a slow atonal melody), RND_PULSE
- * PULSE (FM6's low percussion, TRIO's noise percussion, a triangle or PHYS drone and melody). Saved as RND_CODE:
+ * PULSE (FM6's low percussion, TRIO's noise percussion, a triangle or PHYS drone and melody), RND_WOZZA WOZZA
+ * (minimal piano and synth, slow, off the grid, tape-worn: rnd_wozza_sound). Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
- * beside them (settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
+ * beside them (0..3: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
  * (settings_rnd_drift: the same word's bits 8 and 9; rnd_drift) */
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
-enum { RND_OFF, RND_FREE, RND_AMBIENT, RND_NICE, RND_FALL, RND_LOOPS, RND_ORBIT, RND_GLITCH, RND_PULSE, RND_MODES };
+enum { RND_OFF, RND_FREE, RND_AMBIENT, RND_NICE, RND_FALL, RND_LOOPS, RND_ORBIT, RND_GLITCH, RND_PULSE, RND_WOZZA,
+       RND_MODES };
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
     {0x00u, 0}, {0x40u, 0}, {0xC0u, 0}, {0x80u, 0}, {0x80u, 1}, {0x80u, 2}, {0xC0u, 1}, {0x40u, 1}, {0x40u, 2},
+    {0x40u, 3},
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
 static uint32_t rnd_setting(void)
@@ -231,10 +234,13 @@ static void rnd_tx(uint32_t tr, uint32_t id, int32_t v) { pid_set(PID_TESS(id), 
 #define RND_HEAVY 2u
 /* the roles of AMBIENT's four tracks (RND: RND_ROLE_FREE on each; GLITCH: two RND_ROLE_GLITCH, a drone, a melody) */
 enum { RND_ROLE_FREE, RND_ROLE_DRONE, RND_ROLE_CHORDS, RND_ROLE_MELODY, RND_ROLE_GLITCH,
-       RND_ROLE_LOWPERC, RND_ROLE_NOISE };         /* (PULSE: FM6's low percussion, TRIO's noise percussion) */
+       RND_ROLE_LOWPERC, RND_ROLE_NOISE,           /* (PULSE: FM6's low percussion, TRIO's noise percussion) */
+       RND_ROLE_OSTI };                            /* (WOZZA: two notes taking turns) */
 static uint8_t rnd_role_of[NTRK];                  /* the last roll's roles (rnd_cpu, rnd_drift, the tests) */
 static uint8_t rnd_glitch;                         /* 1: this roll is GLITCH's */
 static uint8_t rnd_pulse;                          /* 1: this roll is PULSE's */
+static uint8_t rnd_wozza;                          /* 1: this roll is WOZZA's */
+static uint8_t rnd_wz_lead = NTRK;                 /* WOZZA: the first melody's track (a second one sparser, higher) */
 static uint8_t rnd_want_e = 0xFFu, rnd_want_pi = 0xFFu;   /* PULSE: the engine and preset its role wants (0xFF: rolled) */
 static int rnd_perc(uint32_t tr)                   /* GLITCH's glitch tracks, PULSE's percussion: each hit its attack */
 {
@@ -565,6 +571,21 @@ static uint32_t rnd_fx_points(uint32_t type, int send)
     }
 }
 #define RND_FX_POINTS 10u
+/* 1: rolls pick effects (rnd_sends, rnd_inserts, rnd_fx_mode, rnd_fx_wozza); 0: every roll dry (rnd_fx_dry). Off since
+ * tessera-rnd-19: with effects the FM-1 clicked now and then on NICE and the others, and ran at 70 to 80 % */
+#define RND_FX_ROLLS 0
+/* a roll without effects: the send effects and every track's three off, nothing sent */
+static void rnd_fx_dry(void)
+{
+    uint32_t tr, s;
+    for (s = 0; s < 3u; s++) pid_set(PID_GLOBAL(G_MFXTYPE + s * 4u), 0, FX_OFF);
+    for (tr = 0; tr < NTRK; tr++) {
+        for (s = 0; s < 3u; s++) rnd_tp(tr, P_FXTYPE + s * 4u, FX_OFF);
+        rnd_tp(tr, P_FXSEND, 0);
+        rnd_tp(tr, P_FXSEND2, 0);
+        rnd_tp(tr, P_FXSEND3, 0);
+    }
+}
 #define RND_INSERT_TRACKS 2u
 
 /* the send effects (SPLIT: a send to each): a space (ROOM) or an echo, now and then the other too; the third off.
@@ -1233,6 +1254,261 @@ static void rnd_roles_pulse(uint8_t *role)
     }
 }
 
+/* ------------------------------------------------------------ WOZZA MOZZA --- */
+/* WOZZA MOZZA: minimal piano and synth, low-key and worn, from five reference tracks measured on the PC (their tempo,
+ * keys, timing, timbre and lo-fi): slow (72-84 BPM), plain keys (major, the pentatonics, now and then minor, dorian or
+ * lydian), dark (little above 2 kHz), off the grid, tape-worn. The BED (RND_ROLE_DRONE): a dark pad or organ moving
+ * every bar to four, legato, now and then a slow tremolo. The OSTINATO (RND_ROLE_OSTI): two notes taking turns
+ * (SERIES, two steps), a beat or two each. The MELODY: an itty bitty line on three to five notes, repeats, short phrases
+ * and gaps (TURING short and nearly locked, AWAKE, MARKOV sparse; DROP), struck and ringing (FM6's tines, PHYS). The
+ * TEXTURE (RND_ROLE_NOISE): NOISE's hiss, rumble and crackle held low under it all; or, now and then, a second melody
+ * high up and sparser. The pitched voices wobble as worn tape (the LFO a sine at about 2.5 Hz on the pitch: the
+ * references' wow); each step late by a player's amount (TIMING HUMAN). Effects: rnd_fx_wozza */
+#define RND_WZ_WOW 75                               /* (LFO RATE: about 2.5 Hz) */
+static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
+{
+    uint8_t nice = rnd_nice;
+    uint32_t e;
+    if (role == RND_ROLE_NOISE) {
+        rnd_want_e = eng_ok(11u) ? 11u : 6u;        /* (NOISE; TRIO's noise wave without it) */
+        rnd_want_pi = 0;
+    } else if (role == RND_ROLE_MELODY) {           /* struck: FM6's tines, PHYS's bars and strings */
+        static const uint8_t fp[] = {0, 8, 38, 19, 5}, fw[] = {6, 5, 2, 2, 1};   /* TINE EP, DX TINE, KOTO WARM, KALIMBA, MARIMBA */
+        static const uint8_t pp[] = {9, 12, 8, 4, 1}, pw[] = {4, 3, 3, 2, 2};    /* VIBES, DULCIMER, HARP, KALIMBA, MARIMBA */
+        uint32_t k = (uint32_t)rnd_rr(0, 99);
+        if (k < 55u && !*fm6s && eng_ok(ENGI_FM6)) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
+        else if (k < 90u && !*phys && eng_ok(ENGI_PHYS)) rnd_want_e = ENGI_PHYS, rnd_want_pi = rnd_pick(pp, pw, NELEM(pp));
+        else if (!*fm6s && eng_ok(ENGI_FM6)) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
+        else if (!*phys && eng_ok(ENGI_PHYS)) rnd_want_e = ENGI_PHYS, rnd_want_pi = rnd_pick(pp, pw, NELEM(pp));
+        else rnd_want_e = 6u, rnd_want_pi = 10;     /* (TRIO's SOFT LEAD) */
+    } else if (role == RND_ROLE_OSTI) {             /* soft keys: TRIO's pads plucked, WHEEL's flute, FM6's tines low */
+        uint32_t k = (uint32_t)rnd_rr(0, 99);
+        if (k < 20u && !*fm6s && eng_ok(ENGI_FM6)) rnd_want_e = ENGI_FM6, rnd_want_pi = 0;
+        else if (k < 50u && eng_ok(7u)) rnd_want_e = 7u, rnd_want_pi = 3;   /* (SOFT FLUTE) */
+        else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 8 : 5;        /* (SOFT PAD, WARM PAD) */
+    } else {                                        /* the bed: a dark pad or organ */
+        static const uint8_t tp[] = {5, 7, 8, 14, 6}, tw[] = {4, 3, 3, 2, 2};    /* WARM HOLLOW SOFT PAD, FIFTH DRONE, STRING MACH */
+        static const uint8_t mp[] = {25, 27, 16}, mw[] = {3, 3, 1};              /* SOFT PAD, DEEP PAD, GLASS PAD */
+        uint32_t k = (uint32_t)rnd_rr(0, 99);
+        if (k < 20u && !*fm6s && eng_ok(ENGI_FM6)) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(mp, mw, NELEM(mp));
+        else if (k < 45u && eng_ok(7u)) rnd_want_e = 7u, rnd_want_pi = rnd_pct(60) ? 3 : 0;   /* (SOFT FLUTE, FULL ORGAN) */
+        else rnd_want_e = 6u, rnd_want_pi = rnd_pick(tp, tw, NELEM(tp));
+    }
+    rnd_nice = 1;                                   /* (the presets' kinds kept, their knobs pushed a little) */
+    rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
+    rnd_nice = nice;
+    rnd_want_e = rnd_want_pi = 0xFFu;
+    e = trk[tr].eng_req;
+    rnd_tp(tr, P_ED_PIT, 0);
+    rnd_tp(tr, P_ED_SHP, 0);
+    rnd_tp(tr, P_ED_FLT, rnd_rr(-10, 20));
+    rnd_tp(tr, P_LD_FLT, 0);
+    rnd_tp(tr, P_LD_SHP, 0);
+    rnd_tp(tr, P_LD_AMP, 0);
+    rnd_tp(tr, P_LWAVE, 0);                          /* (a sine: the wow) */
+    rnd_tp(tr, P_LSYNC, 0);
+    rnd_tp(tr, P_LTRIG, 0);
+    rnd_tp(tr, P_LFADE, 0);
+    rnd_tp(tr, P_LRATE, RND_WZ_WOW + rnd_rr(-3, 3));
+    rnd_tp(tr, P_LD_PIT, role == RND_ROLE_NOISE ? 0 : rnd_pct(80) ? 1 : 0);   /* (a fifth of a semitone: worn tape) */
+    rnd_tp(tr, P_GLIDE, 0);
+    rnd_tp(tr, P_CHRD, 0);
+    rnd_tp(tr, P_DETUNE, rnd_rr(0, 40));
+    rnd_tp(tr, P_SPRD, rnd_rr(0, 60));
+    if (role == RND_ROLE_NOISE) {                   /* hiss, rumble, crackle: held, low, dark */
+        if (e == 11u) {
+            rnd_tp(tr, P_E0, rnd_pct(80) ? 0 : 1);  /* MODE ANLG (DUST: the crackle alone) */
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(70, 127)); /* COLR: pink to brown (the rumble) */
+            rnd_tp(tr, P_E0 + 2u, rnd_rr(55, 85));  /* FREQ */
+            rnd_tp(tr, P_E0 + 3u, rnd_rr(0, 25));   /* RES */
+            rnd_tp(tr, P_E0 + 4u, 0);               /* TRK: the same whatever the note */
+            rnd_tp(tr, P_E0 + 5u, rnd_pct(65) ? rnd_rr(10, 60) : 0);   /* DENS: crackle */
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(20, 70));  /* DRFT */
+            rnd_tp(tr, P_E0 + 7u, rnd_pct(30) ? rnd_rr(5, 30) : 0);    /* CRSH */
+        } else {
+            rnd_tp(tr, P_E0, 8);                    /* (TRIO: NOIS; NOISE is retired on the FM-1's build) */
+            rnd_tp(tr, P_E0 + 5u, rnd_pct(50) ? rnd_rr(25, 45) : rnd_rr(45, 75));   /* (CUT: a rumble, or a hiss) */
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 30));
+        }
+        rnd_tp(tr, P_ATK, rnd_rr(90, 120));
+        rnd_tp(tr, P_DEC, 127);
+        rnd_tp(tr, P_SUS, 127);
+        rnd_tp(tr, P_REL, rnd_rr(90, 110));
+        rnd_tp(tr, P_VOICE, V_LEGATO);
+        rnd_tp(tr, P_LEVEL, rnd_rr(50, 66));
+        rnd_tp(tr, P_PAN, 0);
+        rnd_tp(tr, P_SPRD, rnd_rr(60, 127));
+        return;
+    }
+    if (role == RND_ROLE_DRONE) {                   /* the bed: swells, holds, never quite stops */
+        rnd_tp(tr, P_ATK, rnd_rr(70, 115));
+        rnd_tp(tr, P_DEC, rnd_rr(90, 127));
+        rnd_tp(tr, P_SUS, rnd_rr(100, 127));
+        rnd_tp(tr, P_REL, rnd_rr(90, 115));
+        rnd_tp(tr, P_VOICE, V_LEGATO);
+        rnd_tp(tr, P_GLIDE, rnd_pct(30) ? rnd_rr(20, 60) : 0);
+        rnd_tp(tr, P_LEVEL, rnd_rr(74, 88));
+        rnd_tp(tr, P_PAN, rnd_rr(-10, 10));
+        if (rnd_pct(35)) {                          /* (a slow tremolo: 1.3 to 5.5 Hz, the references') */
+            rnd_tp(tr, P_LD_PIT, 0);
+            rnd_tp(tr, P_LRATE, rnd_rr(66, 84));
+            rnd_tp(tr, P_LD_AMP, rnd_rr(25, 60));
+        }
+        if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(40, 70));   /* (TRIO's CUT: dark) */
+        if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 7u, rnd_rr(10, 24));
+        if (e == 7u) { rnd_tp(tr, P_E0 + 3u, rnd_rr(0, 30)); rnd_tp(tr, P_E0 + 5u, 0); }   /* (WHEEL: TOP low, no CLICK) */
+        return;
+    }
+    if (role == RND_ROLE_OSTI) {                    /* soft, round, a little held */
+        rnd_tp(tr, P_ATK, rnd_rr(2, 30));
+        rnd_tp(tr, P_DEC, rnd_rr(60, 100));
+        rnd_tp(tr, P_SUS, rnd_rr(30, 90));
+        rnd_tp(tr, P_REL, rnd_rr(50, 85));
+        rnd_tp(tr, P_VOICE, rnd_pct(60) ? V_MONO : V_POLY);
+        rnd_tp(tr, P_LEVEL, rnd_rr(72, 86));
+        rnd_tp(tr, P_PAN, rnd_rr(-25, 25));
+        if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(35, 65));
+        if (e == 7u) { rnd_tp(tr, P_E0 + 3u, rnd_rr(0, 20)); rnd_tp(tr, P_E0 + 5u, 0); }
+        if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 5));   /* (MLVL: mellow) */
+        return;
+    }
+    rnd_tp(tr, P_ATK, rnd_rr(0, 3));                /* the melody: struck, ringing */
+    rnd_tp(tr, P_DEC, rnd_rr(80, 115));
+    rnd_tp(tr, P_SUS, rnd_rr(0, 40));
+    rnd_tp(tr, P_REL, rnd_rr(70, 95));
+    rnd_tp(tr, P_VOICE, V_POLY);
+    rnd_tp(tr, P_LEVEL, rnd_rr(76, 92));
+    rnd_tp(tr, P_PAN, rnd_rr(-35, 35));
+    if (e == ENGI_FM6) { rnd_tp(tr, P_E0 + 2u, rnd_rr(-25, 5)); rnd_tp(tr, P_E0 + 7u, rnd_rr(0, 20)); }   /* (MLVL mellow, AEG
+                                                     * ringing) */
+    if (e == ENGI_PHYS) { rnd_tp(tr, P_E0 + 2u, rnd_rr(20, 60)); rnd_tp(tr, P_E0 + 6u, 0); }   /* (BRIT dull, no BOW) */
+    if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(45, 70));
+}
+/* an itty bitty line: a few notes, repeats, phrases and gaps, a player's timing */
+static void rnd_wozza_line(uint32_t tr, int sparse)
+{
+    static const uint8_t dv[] = {1, 2, 4, 0}, dw[] = {55, 20, 10, 15};   /* 1/8 1/16 8T 1/4 */
+    uint32_t k = (uint32_t)rnd_rr(0, 99);
+    if (k < 50u) {                                  /* (TURING: a short loop, nearly locked, on an octave) */
+        rnd_tx(tr, TX_MODE, TESS_ENG_TURING);
+        rnd_tx(tr, TX_TUR_LEN, rnd_rr(3, 7));
+        rnd_tx(tr, TX_TUR_PROB, rnd_rr(0, 12));
+        rnd_tx(tr, TX_TUR_SPAN, 1);
+    } else if (k < 80u) {                           /* (AWAKE: two loops, gaps) */
+        rnd_tx(tr, TX_MODE, TESS_ENG_AWAKE);
+        rnd_tx(tr, TX_AWK_LENA, rnd_rr(3, 6));
+        rnd_tx(tr, TX_AWK_LENB, rnd_rr(2, 5));
+        rnd_tx(tr, TX_AWK_PROB, rnd_rr(50, 85));
+    } else {                                        /* (MARKOV: sparse, near steps) */
+        rnd_tx(tr, TX_MODE, TESS_ENG_MARKOV);
+        rnd_tx(tr, TX_MKV_LEAP, rnd_rr(5, 35));
+        rnd_tx(tr, TX_MKV_DENS, rnd_rr(40, 70));
+        rnd_tx(tr, TX_MKV_SPAN, 1);
+    }
+    rnd_tp(tr, P_SDIV, rnd_pick(dv, dw, NELEM(dv)));
+    rnd_tx(tr, TX_TW_DROP, sparse ? rnd_rr(45, 70) : trk[tr].p[P_SDIV] == 2 ? rnd_rr(35, 60) : rnd_rr(5, 35));
+    rnd_tx(tr, TX_EV_EVERY, rnd_pct(70) ? rnd_rr(3, 5) : 0);   /* (now and then the line turns: 4 to 16 bars) */
+    rnd_tx(tr, TX_EV_AMOUNT, rnd_rr(10, 30));
+    rnd_tx(tr, TX_TW_HUMAN, rnd_rr(30, 70));
+    rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(25, (int32_t)TESS_HUMAN_MS));
+    rnd_tx(tr, TX_NL_MODE, 0);
+    rnd_tp(tr, P_SGATE, rnd_rr(40, 90));
+    if (rnd_pct(40)) rnd_tp(tr, P_SLEN, rnd_rr(5, 14));   /* (a loop its own length) */
+    if (trk[tr].p[P_SDIV] == 0 && rnd_pct(60)) {     /* (on the beat: a note now and then repeated, two or three
+                                                     * quick strikes: the references' repeats) */
+        rnd_tx(tr, TX_SUB_RATCH, rnd_rr(1, 2));
+        rnd_tx(tr, TX_SUB_CHANCE, rnd_rr(20, 50));
+        rnd_tx(tr, TX_SUB_SHAPE, 0);
+    }
+}
+static void rnd_wozza_generator(uint32_t tr, uint32_t role, uint32_t *chords)
+{
+    rnd_generator(tr, chords);                      /* (EVOLVE, TWEAK, TIMING and the rest as RND's, then:) */
+    if (tessera.mode[tr] == TESS_ENG_CHORD && *chords) (*chords)--;
+    rnd_tx(tr, TX_FM_FORM, 0);
+    rnd_tx(tr, TX_TW_BRANCH, 0); rnd_tx(tr, TX_TW_BR_TO, 0); rnd_tx(tr, TX_TW_LOGIC, 0); rnd_tx(tr, TX_TW_COND, 0);
+    rnd_tx(tr, TX_TW_SHIFT, 0);
+    rnd_tx(tr, TX_SUB_RATCH, 0);
+    rnd_tp(tr, P_SSWING, 0);
+    rnd_tp(tr, P_SLEN, 16);
+    if (role == RND_ROLE_DRONE || role == RND_ROLE_NOISE) {   /* the bed: two to four notes, a bar to four each,
+                                                     * held (SERIES: never a rest, as TURING's 0 bits are); the
+                                                     * texture: one note, held */
+        static const uint8_t dv[] = {7, 8, 9}, dw[] = {2, 4, 4};   /* 1/1 2BAR 4BAR */
+        rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
+        rnd_tx(tr, TX_SR_START, rnd_rr(0, 127));
+        rnd_tx(tr, TX_SR_INTV, rnd_rr(1, 3));
+        rnd_tx(tr, TX_SR_LOOP, role == RND_ROLE_NOISE ? 1 : rnd_rr(2, 4));
+        rnd_tp(tr, P_SDIV, role == RND_ROLE_NOISE ? 9 : rnd_pick(dv, dw, NELEM(dv)));
+        rnd_tp(tr, P_SGATE, 127);
+        rnd_tx(tr, TX_TW_DROP, 0);
+        rnd_tx(tr, TX_EV_EVERY, role == RND_ROLE_DRONE && rnd_pct(50) ? rnd_rr(4, 5) : 0);   /* (8 or 16 bars, or
+                                                     * never) */
+        rnd_tx(tr, TX_EV_AMOUNT, rnd_rr(10, 30));
+        rnd_tx(tr, TX_TW_HUMAN, rnd_rr(0, 20));
+        rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(0, 40));
+        rnd_tx(tr, TX_NL_MODE, 0);
+        return;
+    }
+    if (role == RND_ROLE_OSTI) {                    /* two notes taking turns, a beat or two each */
+        static const uint8_t dv[] = {0, 6, 1}, dw[] = {55, 30, 15};   /* 1/4 1/2 1/8 */
+        rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
+        rnd_tx(tr, TX_SR_START, rnd_rr(0, 127));
+        rnd_tx(tr, TX_SR_INTV, rnd_rr(2, 4));       /* (a third, a fourth, a fifth apart in the scale) */
+        rnd_tx(tr, TX_SR_LOOP, 2);
+        rnd_tp(tr, P_SDIV, rnd_pick(dv, dw, NELEM(dv)));
+        rnd_tp(tr, P_SGATE, rnd_rr(60, 110));
+        rnd_tx(tr, TX_TW_DROP, rnd_pct(50) ? rnd_rr(5, 25) : 0);
+        rnd_tx(tr, TX_EV_EVERY, 0);
+        rnd_tx(tr, TX_TW_HUMAN, rnd_rr(20, 50));
+        rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(20, (int32_t)TESS_HUMAN_MS));
+        rnd_tx(tr, TX_NL_MODE, 0);
+        return;
+    }
+    rnd_wozza_line(tr, rnd_role_of[tr] == RND_ROLE_MELODY && tr != rnd_wz_lead);
+}
+/* the registers: the bed low, in the middle now and then; the ostinato apart from it; the melody above; a second
+ * melody higher; the texture where it is. And the tempo: slow */
+static void rnd_wozza_registers(const uint8_t *role)
+{
+    int32_t bed = rnd_pct(40) ? -24 : rnd_pct(75) ? -12 : 0, osti = bed == -12 ? (rnd_pct(60) ? 0 : -24) : -12;
+    int32_t mel = rnd_pct(60) ? 12 : rnd_pct(75) ? 0 : 24;
+    uint32_t tr;
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_DRONE ? bed : role[tr] == RND_ROLE_OSTI ? osti :
+                            role[tr] == RND_ROLE_NOISE ? 0 : tr == rnd_wz_lead ? mel : mel < 24 ? mel + 12 : 24);
+        rnd_tp(tr, P_SSWING, 0);
+    }
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(72, 84));
+}
+/* the key: plain (MAJ, the pentatonics; MIN, DOR, LYD now and then) */
+static void rnd_key_wozza(void)
+{
+    static const uint8_t sc[] = {5, 1, 6, 2, 3, 9}, sw[] = {7, 5, 3, 2, 2, 1};   /* PEN MAJ MPEN MIN DOR LYD */
+    int32_t scale = (int32_t)rnd_pick(sc, sw, NELEM(sc)), root = rnd_rr(0, 11);
+    uint32_t tr;
+    rnd_tx(0, TX_KEY_LINK, 1);
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_SCALE, scale);
+        rnd_tp(tr, P_ROOT, root);
+        rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+    }
+    scale_share(&trk[0]);
+}
+/* the four: a bed, an ostinato, a melody, and the texture (a second melody in a quarter of rolls), in a random order */
+static void rnd_roles_wozza(uint8_t *role)
+{
+    uint32_t k;
+    role[0] = RND_ROLE_DRONE; role[1] = RND_ROLE_OSTI; role[2] = RND_ROLE_MELODY;
+    role[3] = rnd_pct(75) ? RND_ROLE_NOISE : RND_ROLE_MELODY;
+    for (k = NTRK - 1u; k > 0u; k--) {
+        uint32_t j = rnd_next() % (k + 1u);
+        uint8_t v = role[k]; role[k] = role[j]; role[j] = v;
+    }
+    for (k = 0, rnd_wz_lead = NTRK; k < NTRK; k++)
+        if (role[k] == RND_ROLE_MELODY && rnd_wz_lead == NTRK) rnd_wz_lead = (uint8_t)k;
+}
+
 /* ------------------------------------------------------------ the roll: what the FM-1 can play --- */
 /* BUDGET (GLO > GLOBAL, the voices' shared pool, 16 by default) during rolls: 12 leaves the FM-1 headroom (MANUAL "How
  * many voices at once"). Only ever lowered, and saved only when it changes: a BUDGET set lower stays */
@@ -1503,10 +1779,11 @@ static void rnd_loops_sound(uint32_t tr)
  * had taken the FM-1 to 70 or 80 %); FX 2 and 3 off. Cords modulate them: about half the inserts and up to two of the
  * send effects, a slow source in the gentle modes, a fast one (S&H, the gate, the envelope, fast chaos) in GLITCH and
  * PULSE. The guard (rnd_guard) trims them as RND's if the FM-1 runs hot. */
-#define RND_FX_MODE_POINTS 11u                     /* (the most: PULSE's) */
+#define RND_FX_MODE_POINTS 13u                     /* (the most: WOZZA's) */
 static uint32_t rnd_fx_mode_points(void)
 {
-    return rnd_pulse ? 11u : rnd_glitch || rnd_fall ? 10u : rnd_loops || rnd_orbit ? 9u : 8u;   /* (AMBIENT, NICE: 8) */
+    return rnd_wozza ? 13u : rnd_pulse ? 11u : rnd_glitch || rnd_fall ? 10u : rnd_loops || rnd_orbit ? 9u : 8u;   /* (AMBIENT,
+                                                     * NICE: 8; WOZZA: its own, rnd_fx_wozza) */
 }
 static int rnd_cord_add(const cord_t *c)           /* (the first free cord) */
 {
@@ -1588,6 +1865,81 @@ static void rnd_fx_mode(void)
         rnd_tp(t, P_FXSEND3, 0);
     }
 }
+/* WOZZA's effects, the light ones: a ROOM always (send 1, every track in it), an ECHO now and then (send 2, slow, low),
+ * TAPE on the bed or the ostinato (its colour wandering), a low-pass FILTER on the melody (dark: the references hold
+ * little above 2 kHz); within rnd_fx_mode_points' 13. FX 2 and 3 off */
+static void rnd_fx_wozza(const uint8_t *role)
+{
+    uint32_t tr, s, tape = NTRK, mel = NTRK, echo = (uint32_t)rnd_pct(45);
+    pid_set(PID_GLOBAL(G_FXMODE), 0, 1);
+    for (s = 0; s < 3u; s++) {
+        uint32_t base = G_MFXTYPE + s * 4u;
+        pid_set(PID_GLOBAL(base), 0, s == 0u ? FX_ROOM : s == 1u && echo ? FX_ECHO : FX_OFF);
+        pid_set(PID_GLOBAL(base + 1u), 0, s == 0u ? rnd_rr(70, 110) : rnd_rr(40, 75));
+        pid_set(PID_GLOBAL(base + 2u), 0, s == 0u ? rnd_rr(60, 115) : rnd_rr(20, 70));
+        pid_set(PID_GLOBAL(base + 3u), 0, s == 0u ? rnd_rr(40, 100) : rnd_rr(20, 60));
+    }
+    pid_set(PID_GLOBAL(G_FXRETURN), 0, rnd_rr(70, 100));
+    for (tr = 0; tr < NTRK; tr++) {
+        if (role[tr] == RND_ROLE_MELODY && mel == NTRK) mel = tr;
+        if ((role[tr] == RND_ROLE_DRONE || role[tr] == RND_ROLE_OSTI) && (tape == NTRK || rnd_pct(50))) tape = tr;
+    }
+    for (tr = 0; tr < NTRK; tr++) {
+        uint32_t type = tr == tape ? FX_TAPE : tr == mel ? FX_FILTER : FX_OFF;
+        for (s = 0; s < 3u; s++) rnd_tp(tr, P_FXTYPE + s * 4u, s == 0u ? (int32_t)type : FX_OFF);
+        if (type == FX_TAPE) {
+            rnd_tp(tr, P_FXMIX, rnd_rr(80, 127));
+            rnd_tp(tr, P_FXRATE, rnd_rr(30, 75));
+            rnd_tp(tr, P_FXCHAR, rnd_rr(50, 110));
+        } else if (type == FX_FILTER) {
+            rnd_tp(tr, P_FXMIX, 127);
+            rnd_tp(tr, P_FXRATE, rnd_rr(74, 90));   /* (1.2 to 2.8 kHz) */
+            rnd_tp(tr, P_FXCHAR, rnd_rr(0, 30));
+        }
+        rnd_tp(tr, P_FXSEND, role[tr] == RND_ROLE_NOISE ? rnd_rr(15, 45) : rnd_rr(50, 110));
+        rnd_tp(tr, P_FXSEND2, echo && role[tr] == RND_ROLE_MELODY ? rnd_rr(30, 80) : echo ? rnd_rr(0, 30) : 0);
+        rnd_tp(tr, P_FXSEND3, 0);
+    }
+}
+/* WOZZA's cords: slow wanderers on the bed's and the texture's colour, the melody's pan; now and then the melody's level
+ * dipping at random (a tape's dropouts), the tape's colour wandering */
+static void rnd_cords_wozza(const uint8_t *role)
+{
+    uint32_t i = 0, tr;
+    cord_t c;
+    for (tr = 0; tr < NTRK && i < CORD_LIVE; tr++) {
+        memset(&c, 0, sizeof c);
+        c.src_trk = c.dst_trk = (uint8_t)tr;
+        if (role[tr] == RND_ROLE_DRONE || role[tr] == RND_ROLE_NOISE) {
+            c.src = rnd_pct(60) ? CS_DRIFT : CS_TORPOR;
+            c.dst = CD_CUTOFF;
+            c.amount = (int8_t)(rnd_pct(50) ? rnd_rr(10, 30) : -rnd_rr(10, 30));
+        } else if (role[tr] == RND_ROLE_MELODY) {
+            c.src = CS_TORPOR;
+            c.dst = CD_PAN;
+            c.amount = (int8_t)rnd_rr(10, 30);
+        } else continue;
+        if (cord_set(i, &c)) i++;
+        if (role[tr] == RND_ROLE_MELODY && rnd_pct(35) && i < CORD_LIVE) {
+            memset(&c, 0, sizeof c);
+            c.src_trk = c.dst_trk = (uint8_t)tr;
+            c.src = CS_SH;
+            c.dst = CD_GAIN;
+            c.amount = (int8_t)-rnd_rr(15, 35);
+            c.uni = 1;
+            if (cord_set(i, &c)) i++;
+        }
+        if (trk[tr].p[P_FXTYPE] == FX_TAPE && i < CORD_LIVE) {
+            memset(&c, 0, sizeof c);
+            c.src_trk = c.dst_trk = (uint8_t)tr;
+            c.src = CS_DRIFT;
+            c.dst = CD_FX1_CHAR;
+            c.amount = (int8_t)(rnd_pct(50) ? rnd_rr(15, 40) : -rnd_rr(15, 40));
+            if (cord_set(i, &c)) i++;
+        }
+    }
+    for (memset(&c, 0, sizeof c); i < CORD_LIVE; i++) cord_set(i, &c);
+}
 static uint32_t rnd_gen_dest(uint32_t tr);
 /* AMBIENT's cords: two to five, slow sources only, into the sound (never its pitch) and the melodies' generators */
 static void rnd_cords_ambient(void)
@@ -1666,8 +2018,8 @@ static void rnd_cords(void)
  * sheds voices (a stutter) and past 100 % blocks are late (a digital crunch), and what a roll costs is only known once it
  * plays: so while a roll plays, a load over RND_GUARD_HOT for RND_GUARD_MS, or over RND_GUARD_PEAK at all, takes one
  * step off it (rnd_trim), then waits RND_GUARD_GAP to see. Only a roll's own sound: off once the hold swaps back. */
-#define RND_GUARD_HOT 184u                          /* 72 % */
-#define RND_GUARD_PEAK 218u                         /* 85 % */
+#define RND_GUARD_HOT 156u                          /* 61 % (tessera-rnd-19: from 72; the FM-1 clicked past 70) */
+#define RND_GUARD_PEAK 179u                         /* 70 % (from 85) */
 #define RND_GUARD_MS 300u
 #define RND_GUARD_GAP 1500u
 #define RND_GUARD_GRACE 600u                        /* (after a roll: the engines' switch and its fades) */
@@ -1892,6 +2244,7 @@ static void rnd_drift_step(void)
         if (tessera.mode[tr] == TESS_ENG_CHORD) return;   /* (the chords the others follow: kept) */
         if (rnd_glitch) rnd_glitch_generator(tr, rnd_role_of[tr], &chords);
         else if (rnd_pulse) rnd_pulse_generator(tr, rnd_role_of[tr], &chords);
+        else if (rnd_wozza) rnd_wozza_generator(tr, rnd_role_of[tr], &chords);
         else rnd_generator(tr, &chords);
         rnd_cpu(tr);
         return;
@@ -1909,6 +2262,7 @@ static void rnd_drift_step(void)
         for (k = 0; k < 4u; k++) keep[k] = t->p[kept[k]];
         undo_depth++;
         if (rnd_pulse) rnd_pulse_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
+        else if (rnd_wozza) rnd_wozza_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
         else rnd_sound(tr, &fm6s, &phys, &oracles, rnd_role_of[tr]);
         undo_depth--;
         undo_clear();
@@ -1982,7 +2336,8 @@ static void rnd_drift_start(void);
 static void rnd_roll(void)
 {
     uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0;
-    uint32_t ambient = rnd_setting() >= RND_AMBIENT && rnd_setting() != RND_GLITCH && rnd_setting() != RND_PULSE;
+    uint32_t ambient = rnd_setting() >= RND_AMBIENT && rnd_setting() != RND_GLITCH && rnd_setting() != RND_PULSE &&
+                       rnd_setting() != RND_WOZZA;
     uint8_t role[NTRK];
     momentary_restore();
     voice_soft_fade = 1;                            /* (ui_input sets it each frame too: the budget's gentle fades) */
@@ -1998,31 +2353,38 @@ static void rnd_roll(void)
     rnd_orbit = (uint8_t)(rnd_setting() == RND_ORBIT);
     rnd_glitch = (uint8_t)(rnd_setting() == RND_GLITCH);
     rnd_pulse = (uint8_t)(rnd_setting() == RND_PULSE);
+    rnd_wozza = (uint8_t)(rnd_setting() == RND_WOZZA);
+    if (rnd_wozza) rnd_nice = 1;                    /* (WOZZA: NICE's gentle drift) */
     if (rnd_loops || rnd_orbit) rnd_nice = 1;       /* (LOOPS, ORBIT: NICE's gentle voices too) */
     rnd_roles(role, ambient && !rnd_loops && !rnd_orbit);
     if (rnd_loops || rnd_orbit)                     /* (LOOPS, ORBIT: four voices alike) */
         for (tr = 0; tr < NTRK; tr++) role[tr] = RND_ROLE_MELODY;
     if (rnd_glitch) rnd_roles_glitch(role);
     if (rnd_pulse) rnd_roles_pulse(role);
+    if (rnd_wozza) rnd_roles_wozza(role);
     memcpy(rnd_role_of, role, sizeof rnd_role_of);
     undo_depth++;                                   /* (a roll is not four sound loads to undo one by one) */
     {                                               /* (the drone and the chords pick their engines first) */
         static const uint8_t order[] = {RND_ROLE_LOWPERC, RND_ROLE_DRONE, RND_ROLE_CHORDS, RND_ROLE_MELODY,
-                                        RND_ROLE_GLITCH, RND_ROLE_NOISE, RND_ROLE_FREE};   /* (PULSE: FM6 first) */
+                                        RND_ROLE_GLITCH, RND_ROLE_NOISE, RND_ROLE_OSTI, RND_ROLE_FREE};   /* (PULSE:
+                                                     * FM6 first) */
         uint32_t o;
         for (o = 0; o < NELEM(order); o++)
             for (tr = 0; tr < NTRK; tr++)
                 if (role[tr] != order[o]) continue;
                 else if (rnd_pulse) rnd_pulse_sound(tr, role[tr], &fm6s, &phys, &oracles);
+                else if (rnd_wozza) rnd_wozza_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else rnd_sound(tr, &fm6s, &phys, &oracles, role[tr]);
     }
     undo_depth--;
     undo_clear();
     if (rnd_glitch) rnd_glitch_registers(role);
     else if (rnd_pulse) rnd_pulse_registers(role);
+    else if (rnd_wozza) rnd_wozza_registers(role);
     else rnd_registers();
     if (rnd_glitch) rnd_key_glitch();
     else if (rnd_pulse) rnd_key_pulse();
+    else if (rnd_wozza) rnd_key_wozza();
     else if (rnd_loops || rnd_orbit) rnd_key_loops();
     else if (ambient) rnd_key_ambient();
     else rnd_key();
@@ -2038,6 +2400,11 @@ static void rnd_roll(void)
             rnd_cpu(tr);
         }
         rnd_pulse_links(role);
+    } else if (rnd_wozza) {
+        for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+            rnd_wozza_generator(tr, role[tr], &chords);
+            rnd_cpu(tr);
+        }
     } else if (rnd_loops || rnd_orbit) {
         if (rnd_loops) rnd_loops_generators();
         else rnd_orbit_generators();
@@ -2053,19 +2420,26 @@ static void rnd_roll(void)
     }
     rnd_tails();
     rnd_budget();
-    if (rnd_glitch || rnd_pulse) {                  /* (the cords, then an effect in every slot, theirs too) */
+    if (rnd_wozza) {                                /* (its own effects, then its cords: one on the TAPE) */
+        if (RND_FX_ROLLS) rnd_fx_wozza(role);
+        else rnd_fx_dry();
+        rnd_cords_wozza(role);
+    } else if (rnd_glitch || rnd_pulse) {           /* (the cords, then an effect in every slot, theirs too) */
         if (rnd_glitch) rnd_cords_glitch(role);
         else rnd_cords_pulse(role);
-        rnd_fx_mode();
+        if (RND_FX_ROLLS) rnd_fx_mode();
+        else rnd_fx_dry();
     } else if (ambient) {
         rnd_cords_ambient();
-        rnd_fx_mode();
+        if (RND_FX_ROLLS) rnd_fx_mode();
+        else rnd_fx_dry();
     } else {
-        rnd_inserts(rnd_sends());
+        if (RND_FX_ROLLS) rnd_inserts(rnd_sends());
+        else rnd_fx_dry();
         rnd_cords();
     }
     sync_reload = 1;
-    rnd_say(rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
+    rnd_say(rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
             ambient ? "AMB " : "RND ", rnd_seed);
     if (!song.playing && !seq_counting() && !chain_busy()) transport_req = 1;   /* (it plays at once) */
     rnd_guard_start();
@@ -2088,7 +2462,7 @@ static void rnd_back(void)
         rnd_guard_s.on = 0;                         /* (what was there before: not the guard's to change) */
         ui_message("BEFORE THE ROLL");
     } else {
-        rnd_say(rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
+        rnd_say(rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
                 rnd_setting() == RND_AMBIENT ? "AMB " : "RND ", rnd_seed);
         rnd_guard_start();
     }

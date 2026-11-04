@@ -6136,7 +6136,7 @@ static double rnd_note_rate(uint32_t secs)
 }
 /* the modes after RND: the light effects only (rnd_fx_light), send 1 an effect, send 3 off (no track sends to it),
  * the inserts (two at most) while the points last, never past the mode's (rnd_fx_mode_points, a send's bus counted), FX 2 and 3 off,
- * the two sends never alike. -> how many slots have one (0 when wrong) */
+ * the two sends never alike; RND_FX_ROLLS 0: all off. -> 1 + how many slots have one (0 when wrong) */
 static uint32_t rnd_fx_mode_ok(int clean)
 {
     uint32_t tr, s, j, pts = 0, n = 0, ins = 0;
@@ -6156,8 +6156,12 @@ static uint32_t rnd_fx_mode_ok(int clean)
         if (trk[tr].p[P_FXTYPE + 4u] != FX_OFF || trk[tr].p[P_FXTYPE + 8u] != FX_OFF) return 0;
         if (!rnd_fx_light(t) || trk[tr].p[P_FXSEND3]) return 0;
     }
+    if (!RND_FX_ROLLS) {                            /* (rolls dry: nothing anywhere, nothing sent) */
+        for (tr = 0; tr < NTRK; tr++) if (trk[tr].p[P_FXSEND] || trk[tr].p[P_FXSEND2]) return 0;
+        return n == 0u ? 1u : 0u;
+    }
     return pts <= rnd_fx_mode_points() && ins <= RND_INSERT_TRACKS && song.g[G_FXMODE] == 1 &&
-           song.g[G_MFXTYPE] != FX_OFF && song.g[G_MFX3TYPE] == FX_OFF ? n : 0u;
+           song.g[G_MFXTYPE] != FX_OFF && song.g[G_MFX3TYPE] == FX_OFF ? n + 1u : 0u;
 }
 /* what a roll set, as one number (DRIFT's tests: did anything change). gens 0: the sounds and cords only (some
  * generators move a knob of their own as they play: CONSTELLATION's AUTO its Y) */
@@ -6391,7 +6395,20 @@ static int test_rnd(void)
         bad += check("RND AMBIENT: ..right again: PULSE (RND's bit with variant 2)", rnd_setting() == RND_PULSE &&
                      (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 2u);
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..PULSE is the last (right again: stays)", rnd_setting() == RND_PULSE);
+        bad += check("RND AMBIENT: ..right again: WOZZA (RND's bit with variant 3), saved and loaded", rnd_setting() == RND_WOZZA &&
+                     (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 3u);
+        {
+            persist_t pr;
+            settings_export(&pr);
+            settings_rnd_variant = 0;
+            favorites.factory[15][24] &= (uint8_t)~0xC0u;
+            settings_import(&pr, sizeof pr);
+            bad += check("RND AMBIENT: ..WOZZA saved and loaded with the settings (variant 3)",
+                         rnd_setting() == RND_WOZZA && (pr.lowcut & 0xFFu) == 3u);
+        }
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..WOZZA is the last (right again: stays)", rnd_setting() == RND_WOZZA);
+        turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
@@ -6425,7 +6442,7 @@ static int test_rnd(void)
             {
                 uint32_t nfx = rnd_fx_mode_ok(0);
                 fx_off &= nfx >= 1u;                /* (a send at least) */
-                fx_slots += nfx;
+                fx_slots += nfx - 1u;
             }
             roles_ok &= drones >= 1u && chordt == 1u && drones + chordt + melodies == NTRK;
             regs &= rnd_registers_apart();
@@ -6876,6 +6893,77 @@ static int test_rnd(void)
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
     }
+    {                                               /* WOZZA: minimal piano and synth, slow, off the grid, worn */
+        uint32_t r, tr, k, roles_ok = 1, tempo_ok = 1, key_ok = 1, bed_ok = 1, osti_ok = 1, mel_ok = 1, tex_ok = 1;
+        uint32_t wow = 1, dry = 1, cpu = 1, human = 1, seconds = 0, quiet = 0, clipped_n = 0, fm6 = 0, phys = 0;
+        rnd_mode_put(RND_WOZZA);
+        press(B_REC);
+        bad += check("RND WOZZA: REC tapped: a roll, WOZZA and the seed said", !memcmp(ui.msg, "WOZZA ", 6));
+        for (r = 0; r < 200u; r++) {
+            uint32_t n[8] = {0}, nf = 0, np = 0;
+            int32_t bpm;
+            rnd_roll();
+            bpm = pid_get(PID_GLOBAL(G_BPM), 0);
+            tempo_ok &= bpm >= 72 && bpm <= 84;
+            k = (uint32_t)trk[0].p[P_SCALE];
+            key_ok &= (k == 5u || k == 1u || k == 6u || k == 2u || k == 3u || k == 9u) && tessera.key_link == 1u;
+            dry &= rnd_fx_mode_ok(0) >= 1u;
+            for (tr = 0; tr < NTRK; tr++) {
+                const int16_t *p = trk[tr].p;
+                uint32_t role = rnd_role_of[tr], e = trk[tr].eng_req, m = tessera.mode[tr];
+                n[role < 8u ? role : 0u]++;
+                nf += e == ENGI_FM6;
+                np += e == ENGI_PHYS;
+                key_ok &= p[P_SCALE] == (int16_t)k;
+                if (role == RND_ROLE_DRONE)
+                    bed_ok &= m == TESS_ENG_SERIES && p[P_SGATE] == 127 && p[P_VOICE] == V_LEGATO && p[P_SDIV] >= 7 &&
+                              p[P_TRANS] <= 0 && !pid_get(PID_TESS(TX_TW_DROP), tr) && p[P_ATK] >= 70;
+                else if (role == RND_ROLE_OSTI)
+                    osti_ok &= m == TESS_ENG_SERIES && pid_get(PID_TESS(TX_SR_LOOP), tr) == 2 && p[P_TRANS] <= 0 &&
+                               (p[P_SDIV] == 0 || p[P_SDIV] == 6 || p[P_SDIV] == 1);
+                else if (role == RND_ROLE_MELODY)
+                    mel_ok &= (m == TESS_ENG_TURING || m == TESS_ENG_AWAKE || m == TESS_ENG_MARKOV) && p[P_ATK] <= 3 &&
+                              (p[P_VOICE] == V_POLY || rnd_speed((uint32_t)p[P_SDIV]) == RND_FAST) && p[P_TRANS] >= 0 &&
+                              pid_get(PID_TESS(TX_TW_DROP), tr) <= 70;   /* (rnd_cpu: a fast line on one voice) */
+                else if (role == RND_ROLE_NOISE)
+                    tex_ok &= e == 6u && p[P_E0] == 8 && m == TESS_ENG_SERIES && p[P_SDIV] == 9 && p[P_LEVEL] <= 66 &&
+                              p[P_VOICE] == V_LEGATO;
+                wow &= role == RND_ROLE_NOISE ? p[P_LD_PIT] == 0 : p[P_LD_PIT] >= 0 && p[P_LD_PIT] <= 1 && p[P_LWAVE] == 0;
+                human &= role == RND_ROLE_NOISE || pid_get(PID_TESS(TX_SUB_HUMAN), tr) <= (int32_t)TESS_HUMAN_MS;
+                if (role == RND_ROLE_MELODY || role == RND_ROLE_OSTI) human &= pid_get(PID_TESS(TX_SUB_HUMAN), tr) >= 20;
+                cpu &= p[P_VOICE] != V_UNISON && !(e == ENGI_FM6 && rnd_speed((uint32_t)p[P_SDIV]) == RND_FAST);
+            }
+            roles_ok &= n[RND_ROLE_DRONE] == 1u && n[RND_ROLE_OSTI] == 1u && n[RND_ROLE_NOISE] <= 1u &&
+                        n[RND_ROLE_MELODY] + n[RND_ROLE_NOISE] == 2u && n[RND_ROLE_MELODY] >= 1u;
+            cpu &= nf <= 1u && np <= 1u && settings_budget <= RND_BUDGET;
+            fm6 += nf; phys += np;
+            if (r % 40u == 0u) {                    /* listen: 15 s (the bed swells in) */
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
+                }
+                seconds += 15u;
+                quiet += peak < 300;
+                clipped_n += peak >= 32767;
+            }
+        }
+        bad += check("RND WOZZA: 200 rolls: a bed, an ostinato, a melody, and a texture or a second melody", roles_ok);
+        bad += check("RND WOZZA: ..slow (72 to 84 BPM), a plain key (PEN MAJ MPEN MIN DOR LYD) on all four", tempo_ok && key_ok);
+        bad += check("RND WOZZA: ..the bed held (SERIES, legato, a bar to four, swelling), never above the middle", bed_ok);
+        bad += check("RND WOZZA: ..the ostinato two notes taking turns (SERIES on two steps), a beat or two each", osti_ok);
+        bad += check("RND WOZZA: ..the melody a line struck (TURING AWAKE MARKOV, gaps, ringing over), never below", mel_ok);
+        bad += check("RND WOZZA: ..the texture TRIO's noise, held and low", tex_ok);
+        bad += check("RND WOZZA: ..the wow (a sine on the pitch, a fifth of a semitone at most), a player's timing", wow && human);
+        bad += check("RND WOZZA: ..dry, the CPU rules (FM6 and PHYS once each at most, FM6 never fast)", dry && cpu);
+        bad += check("RND WOZZA: ..FM6 and PHYS both often (the struck melodies)", fm6 > 80u && phys > 60u);
+        bad += check("RND WOZZA: ..each roll heard within 15 s, none at the rail", !quiet && !clipped_n && seconds);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
     {                                               /* no clicks: a voice the budget takes fades gently (voice.c) */
         static voice_t was[NPART][NVOICE];
         uint32_t k, b, p, v, loud = 0, kills0 = voice_kills, most = 0, fading = 0, cap = 0;
@@ -6924,11 +7012,11 @@ static int test_rnd(void)
         song.cpu_q8 = 150u;                         /* (59 %: fine) */
         for (k = 0; k < 200u; k++) frame();
         bad += check("RND guard: a roll at 59 % CPU is left as it is", rnd_guard_s.step == 0u && song.g[G_MFXTYPE] == FX_REVERB);
-        song.cpu_q8 = 200u;                         /* (78 %: hot) */
+        song.cpu_q8 = 170u;                         /* (66 %: hot) */
         for (k = 0; k < 10u; k++) frame();          /* (160 ms: not yet) */
-        bad += check("RND guard: ..78 % for a moment: not yet", rnd_guard_s.step == 0u);
+        bad += check("RND guard: ..66 % for a moment: not yet", rnd_guard_s.step == 0u);
         for (k = 0; k < 20u; k++) frame();
-        bad += check("RND guard: ..78 % held: one step, the reverb a ROOM, LIGHTER said",
+        bad += check("RND guard: ..66 % held: one step, the reverb a ROOM, LIGHTER said",
                      rnd_guard_s.step == 1u && song.g[G_MFXTYPE] == FX_ROOM && !strcmp(ui.msg, "LIGHTER"));
         for (k = 0; k < 40u; k++) frame();
         bad += check("RND guard: ..then it waits to hear (no step within 1.5 s)", rnd_guard_s.step == 1u);

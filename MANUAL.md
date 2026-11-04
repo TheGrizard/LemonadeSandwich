@@ -812,7 +812,7 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 ## RND: one button, a new piece
 
 After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS**,
-**ORBIT**, **GLITCH** or **PULSE**, below) and REC becomes a roll:
+**ORBIT**, **GLITCH**, **PULSE** or **WOZZA**, below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -834,8 +834,8 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   none, one up and two up, so the voices never sit on top of each other.
 - **The key**: one ROOT and SCALE for all four (KEY LINK on), a mode often, often something stranger (an EDO, just
   intonation, a gamelan or maqam scale).
-- **Effects**: FX 1 on up to two tracks, the sends, and the send effects in SPLIT (a ROOM or an ECHO, often both).
-  Only the light effects are rolled (ECHO, FILTER, ROOM, TAPE, CHORUS), within a CPU budget.
+- **Effects**: none. Rolls are dry: every effect slot off and nothing sent (with effects the FM-1 ran near 70 %
+  CPU, where it starts to click). Add your own after a roll.
 - **MODS**: three to nine cords, slow sources (DRIFT, the SLOTHs, OCHD, S&H, the LFO) into the sound, the effects
   and the generators' own settings. The tracks' four MOD routes are cleared.
 
@@ -852,15 +852,9 @@ The registers are dealt as in RND, so the drone can be low one roll and high the
 melodies follow the chords. There is no tremolo, and only slow modulation (two to five cords, never on pitch). The
 screen shows **AMB** and the seed.
 
-**Effects in the modes after RND.** AMBIENT, NICE, FALL, LOOPS, ORBIT, GLITCH and PULSE roll the light effects only
-(ECHO, FILTER, ROOM, TAPE, CHORUS; never REVERB, FORMANT, WIDTH, PHASER or SPIT, which took the FM-1 to 70 or 80 %):
-send effect 1 always, send effect 2 on most rolls (SPLIT, each track its own sends, the two never alike), send effect 3
-off, then FX 1 on up to two tracks while the mode's effect points last (as RND's, a send's bus counted: AMBIENT and
-NICE 8, LOOPS and ORBIT 9, FALL and GLITCH 10, PULSE 11, as their engines leave room); FX 2 and 3 stay off. The gentle
-modes lean to ROOM, ECHO, CHORUS and TAPE; GLITCH and PULSE to ECHO and FILTER. About half the inserts and up to two
-send effects get a cord on their MIX, RATE or CHAR: a slow wanderer in the gentle modes, S&H, the gate, the envelope or
-fast chaos in GLITCH and PULSE. DRIFT nudges them too. If the FM-1 runs hot, the guard takes them back as RND's
-(LIGHTER). For a REVERB, set one yourself after the roll.
+**Effects in the modes after RND.** None: AMBIENT, NICE, FALL, LOOPS, ORBIT, GLITCH, PULSE and WOZZA roll dry, as RND
+does (every effect slot off, nothing sent). Rolled effects took the FM-1 to 70 or 80 % CPU, and past about 70 % it
+clicks. Set an effect yourself after a roll if you want one: the next roll turns it off again.
 
 **NICE.** With REC BUTTON on **NICE**, a roll works as AMBIENT (the same roles, generators and registers) with nicer
 sounds: each track's factory preset kept close to how it was made, TRIO on its clean waves (no
@@ -918,6 +912,23 @@ kick's FM is dirty (its feedback up). One swing for all four; TWEAK HUMAN varies
 velocity; cords make every hit its own (velocity into the decay and brightness, RANDOM into the drop, the gain and
 the cutoff). The screen shows **PULSE** and the seed.
 
+**WOZZA.** With REC BUTTON on **WOZZA**, a roll is minimal piano and synth, low-key and worn, modelled on five
+reference tracks measured on the PC (their tempo, keys, timing, timbre and lo-fi). It sets a slow tempo (72 to 84 BPM;
+held REC brings yours back) and a plain key (major pentatonic or major mostly; minor pentatonic, minor, dorian or
+lydian now and then), and deals four parts in a random order. The **bed** is a dark pad on TRIO (WARM, HOLLOW or SOFT
+PAD, FIFTH DRONE, STRING MACH) or FM6 (SOFT, DEEP or GLASS PAD): two to four notes, a bar to four bars each, held
+(SERIES, so it never drops out), low or now and then in the middle, a slow tremolo now and then. The **ostinato** is
+two notes taking turns (SERIES on a two-step loop, a third, fourth or fifth apart), a beat or two each, soft (TRIO's
+pads plucked, or FM6's tines low). The **melody** is an itty bitty line on a few notes, with repeats, short phrases and
+gaps (a short, nearly locked TURING, AWAKE or a sparse MARKOV, with DROP; on the beat, now and then a note struck two or
+three times), struck and ringing: FM6's TINE EP, DX TINE, KOTO WARM, KALIMBA or MARIMBA, or PHYS' VIBES, DULCIMER, HARP,
+KALIMBA or MARIMBA, mellow. The fourth part is the **texture** (TRIO's noise, low and dark: a rumble or a hiss, held
+under it all) or, in a quarter of the rolls, a second melody, higher and sparser. Every pitched part wobbles like worn
+tape (the LFO a sine at about 2.5 Hz, a fifth of a semitone on the pitch, as the references' wow measured), and every
+step plays a little late by a new amount (TIMING HUMAN), so the parts sit off the grid. Cords move the bed's and
+texture's colour and the melody's pan slowly, and now and then dip the melody's level at random, like a tape's
+dropouts. No effects, as every roll. The screen shows **WOZZA** and the seed.
+
 **DRIFT.** **MENU > DRIFT** (OFF, SLOW, FAST; saved) makes a roll change a little at a time while it plays, within
 its mode's rules, so it becomes another piece over the minutes without a new roll: **SLOW** one change every 4 to 8
 bars, **FAST** every bar or two; **OFF** (the default) none. A change is one of: a track's engine knob nudged (never
@@ -936,7 +947,7 @@ together stay clear of the output limiter with MASTER turned up. A roll also low
 turn it back up there if you want more voices.
 
 **LIGHTER.** What a roll costs is only known once it plays, so while it plays the FM-1 watches its own CPU load. If the
-load stays over about 72 % for a third of a second, or touches 85 %, the roll takes one step off itself and the screen
+load stays over about 61 % for a third of a second, or touches 70 % (where the FM-1 starts to click), the roll takes one step off itself and the screen
 says **LIGHTER**: first the REVERB becomes a ROOM, then the most expensive inserts go, then send effect 2, then the
 busiest POLY tracks become MONO. It waits a second and a half after each step to hear the difference. Only a roll's
 own sound is changed: holding REC to go back to before the roll stops it.
@@ -951,7 +962,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody; **PULSE**: dance music, an FM6 kick, TRIO's noise hats, a pumping bass and riff (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody; **PULSE**: dance music, an FM6 kick, TRIO's noise hats, a pumping bass and riff; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

@@ -84,7 +84,7 @@ static void settings_save(void);              /* project.c: flash copy (MELODEE_
 #define HOLD_DEF 1u
 static const uint16_t HOLD_MS[4] = {300, 400, 500, 600};
 static uint8_t settings_hold = HOLD_DEF;
-static uint8_t settings_rnd_variant;   /* rnd.c: REC BUTTON's variant (0..2) beside its bits, rnd.c RND_CODE (saved in
+static uint8_t settings_rnd_variant;   /* rnd.c: REC BUTTON's variant (0..3) beside its bits, rnd.c RND_CODE (saved in
                                         * the retired lowcut word: settings_persist.c) */
 static uint8_t settings_rnd_drift;     /* rnd.c: MENU > DRIFT (OFF SLOW FAST: rnd_drift), saved beside REC BUTTON's variant */
 
