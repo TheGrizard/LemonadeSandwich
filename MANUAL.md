@@ -812,7 +812,7 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 ## RND: one button, a new piece
 
 After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS**,
-**ORBIT**, **GLITCH**, **PULSE** or **WOZZA**, below) and REC becomes a roll:
+**ORBIT**, **GLITCH**, **PULSE**, **WOZZA** or **HALO**, below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -929,6 +929,20 @@ step plays a little late by a new amount (TIMING HUMAN), so the parts sit off th
 texture's colour and the melody's pan slowly, and now and then dip the melody's level at random, like a tape's
 dropouts. No effects, as every roll. The screen shows **WOZZA** and the seed.
 
+**HALO.** With REC BUTTON on **HALO**, a roll is warm, hazy and slow, after Arvo Pärt's *tintinnabuli* (Spiegel im
+Spiegel, Für Alina, the canons of Cantus): 60 to 72 BPM, a minor or major key (dorian, lydian or mixolydian now and
+then), four parts in a random order. The **halo** is a warm TRIO pad (WARM, HOLLOW or SOFT PAD, STRING MACH) holding
+the tonic triad (CHORD on DRONE, now and then TWO: I and IV), four bars a chord, swelling in slowly, quiet, breathing.
+The **M-voice** is a slow line, mostly by step (SERIES a degree at a time, FALL's falling leaves, or a loose TURING), on
+FALL's three triangles, warmer and hazier (detuned a little, the filter lower). The **T-voice** is bells (FM6's ZEN
+BELL, RIN, BELL, TINE EP or FURIN; PHYS' VIBES; TRIO's RING BELL) that follow the M-voice (TWEAK FOLLOW) on its clock
+onto the nearest note of the halo's triad (QNT CHRD): Pärt's tintinnabuli voice, an octave above the line or below it.
+The **canon** follows the M-voice too, half as fast and an octave down (two from a high line), held: the slow voice of
+a mensuration canon, on the triangles or FM6's SOFT PAD or SOFT SWELL. A T-voice dealt before its M-voice plays the
+line a step behind, an echo. Every voice is detuned and spread; the line's and the halo's pitch sways a hair (the LFO
+slow on the pitch), or the halo's filter breathes. Slow cords move the colours and the bells' place. No effects, as
+every roll. The screen shows **HALO** and the seed.
+
 **DRIFT.** **MENU > DRIFT** (OFF, SLOW, FAST; saved) makes a roll change a little at a time while it plays, within
 its mode's rules, so it becomes another piece over the minutes without a new roll: **SLOW** one change every 4 to 8
 bars, **FAST** every bar or two; **OFF** (the default) none. A change is one of: a track's engine knob nudged (never
@@ -962,7 +976,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody; **PULSE**: dance music, an FM6 kick, TRIO's noise hats, a pumping bass and riff; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody; **PULSE**: dance music, an FM6 kick, TRIO's noise hats, a pumping bass and riff; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

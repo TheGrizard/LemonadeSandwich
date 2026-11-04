@@ -6407,7 +6407,11 @@ static int test_rnd(void)
                          rnd_setting() == RND_WOZZA && (pr.lowcut & 0xFFu) == 3u);
         }
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..WOZZA is the last (right again: stays)", rnd_setting() == RND_WOZZA);
+        bad += check("RND AMBIENT: ..right again: HALO (NICE's bit with variant 3)", rnd_setting() == RND_HALO &&
+                     (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_variant == 3u);
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..HALO is the last (right again: stays)", rnd_setting() == RND_HALO);
+        turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
@@ -6889,6 +6893,78 @@ static int test_rnd(void)
         }
         bad += check("RND PULSE: ..48 bars of DRIFT FAST: still FM6 percussion and TRIO noise, BUDGET kept",
                      k && settings_budget <= RND_BUDGET);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* HALO: Pärt's tintinnabuli: a line, bells on its triad, a canon */
+        uint32_t r, tr, k, roles_ok = 1, tempo_ok = 1, key_ok = 1, halo_ok = 1, m_ok = 1, t_ok = 1, c_ok = 1, dry = 1;
+        uint32_t cpu = 1, on_triad = 0, notes = 0, quiet = 0, clipped_n = 0;
+        rnd_mode_put(RND_HALO);
+        press(B_REC);
+        bad += check("RND HALO: REC tapped: a roll, HALO and the seed said", !memcmp(ui.msg, "HALO ", 5));
+        for (r = 0; r < 200u; r++) {
+            uint32_t n[10] = {0}, m = NTRK, nf = 0, np = 0;
+            int32_t bpm;
+            rnd_roll();
+            bpm = pid_get(PID_GLOBAL(G_BPM), 0);
+            tempo_ok &= bpm >= 60 && bpm <= 72;
+            k = (uint32_t)trk[0].p[P_SCALE];
+            key_ok &= (k == 2u || k == 1u || k == 3u || k == 9u || k == 4u) && tessera.key_link == 1u;
+            dry &= rnd_fx_mode_ok(0) >= 1u;
+            for (tr = 0; tr < NTRK; tr++) if (rnd_role_of[tr] == RND_ROLE_MELODY) m = tr;
+            for (tr = 0; tr < NTRK; tr++) {
+                const int16_t *p = trk[tr].p;
+                uint32_t role = rnd_role_of[tr], e = trk[tr].eng_req, g = tessera.mode[tr];
+                int32_t f = pid_get(PID_TESS(TX_TW_FOLLOW), tr);
+                n[role < 10u ? role : 0u]++;
+                nf += e == ENGI_FM6; np += e == ENGI_PHYS;
+                if (role == RND_ROLE_CHORDS)
+                    halo_ok &= g == TESS_ENG_CHORD && (pid_get(PID_TESS(TX_CH_PROG), tr) == 5 || pid_get(PID_TESS(TX_CH_PROG), tr) == 4) &&
+                               pid_get(PID_TESS(TX_CH_HIT), tr) == 0 && e == 6u && p[P_ATK] >= 90 && p[P_LEVEL] <= 72;
+                else if (role == RND_ROLE_MELODY)
+                    m_ok &= (g == TESS_ENG_SERIES || g == TESS_ENG_BOUNCE || g == TESS_ENG_TURING) && e == 6u && p[P_E0] == 4 &&
+                            !f && p[P_SDIV] <= 6 && rnd_speed((uint32_t)p[P_SDIV]) != RND_FAST;
+                else if (role == RND_ROLE_TINT)
+                    t_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_QUANT] == Q_CHRD && p[P_SDIV] == trk[m].p[P_SDIV] &&
+                            p[P_ATK] <= 8 && p[P_TRANS] <= 12 && (e == ENGI_FM6 || e == ENGI_PHYS || e == 6u);
+                else if (role == RND_ROLE_CANON)
+                    c_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_VOICE] == V_LEGATO && p[P_TRANS] < trk[m].p[P_TRANS] &&
+                            p[P_TRANS] >= -12 && e != ENGI_PHYS;
+                cpu &= p[P_VOICE] != V_UNISON && rnd_speed((uint32_t)p[P_SDIV]) != RND_FAST;
+            }
+            roles_ok &= n[RND_ROLE_CHORDS] == 1u && n[RND_ROLE_MELODY] == 1u && n[RND_ROLE_TINT] == 1u && n[RND_ROLE_CANON] == 1u;
+            cpu &= nf <= 1u && np <= 1u && settings_budget <= RND_BUDGET;
+            if (r % 40u == 0u) {                    /* listen: 20 s; the bells on the halo's triad */
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, t = NTRK, last = 999;
+                for (tr = 0; tr < NTRK; tr++) if (rnd_role_of[tr] == RND_ROLE_TINT) t = tr;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 20u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
+                    for (j = 0; t < NTRK && j < NVOICE; j++) {
+                        const voice_t *v = &trk[t].v[j];
+                        uint32_t pcs = tessera_chord_pcs();
+                        if (!v->active || !v->gate || v->note == last || !pcs) continue;
+                        notes++; on_triad += (pcs >> (v->note % 12)) & 1u; last = v->note;
+                    }
+                }
+                quiet += peak < 300;
+                clipped_n += peak >= 32767;
+            }
+        }
+        bad += check("RND HALO: 200 rolls: the halo, the M-voice, the T-voice and the canon, one each", roles_ok);
+        bad += check("RND HALO: ..slow (60 to 72 BPM), MIN MAJ DOR LYD MIX on all four", tempo_ok && key_ok);
+        bad += check("RND HALO: ..the halo the tonic triad held (CHORD DRONE or TWO, HOLD), a warm pad swelling, quiet", halo_ok);
+        bad += check("RND HALO: ..the M-voice a slow line (SERIES, FALL's leaves, TURING) on FALL's triangles", m_ok);
+        bad += check("RND HALO: ..the T-voice follows it on its clock onto the triad (QNT CHRD), bells, never past +12", t_ok);
+        bad += check("RND HALO: ..the canon follows it slower, below, held", c_ok);
+        bad += check("RND HALO: ..the bells heard on the halo's triad (95 % and more of their notes)",
+                     notes > 10u && on_triad * 100u >= notes * 95u);
+        bad += check("RND HALO: ..dry, slow tracks only, FM6 and PHYS once each at most", dry && cpu);
+        bad += check("RND HALO: ..each roll heard within 20 s, none at the rail", !quiet && !clipped_n);
+        printf("rnd: HALO: the bells' notes on the triad: %u of %u\n", on_triad, notes);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
