@@ -974,11 +974,15 @@ seed.
 
 **TIDE.** With REC BUTTON on **TIDE**, a roll is slow (64 to 84 BPM, a minor, dorian, pentatonic, major, lydian or
 mixolydian key) and always the same four, on the same tracks, so you can mix and mute them by heart. **Track 1, the
-sub groove:** a synthesized sub kick (TRIO's triangles filtered nearly to a sine, the pitch falling into each hit),
-pitched to the bed's lowest note two octaves down (TWEAK FOLLOW, so it moves with the chords), its rhythm mostly across
-the bar (EUCLID on 5, 7, 9, 10, 11 or 13 steps, or 12 in threes; on 1/8, now and then 8T) and now and then four on the
-floor. **Track 2, the melody:** FALL's leaves (BOUNCE) or now and then a line by step (SERIES, as HALO's), on a soft
-TRIO wave (triangles, sine and triangle, PPT), an octave up, onto the chord's notes now and then (QNT CHRD); the LFO
+sub groove:** a synthesized sub kick, pitched to the bed's lowest note two octaves down (TWEAK FOLLOW, so it moves
+with the chords), its rhythm mostly across the bar (EUCLID on 5, 7, 9, 10, 11 or 13 steps, or 12 in threes; on 1/8,
+now and then 8T) and now and then four on the floor. It is a soft, low boom: TRIO's triangles filtered to near a sine, a breath of attack (no click), the pitch falling a
+little or not at all, a long decay. **Track 2, the melody:** FALL's leaves (BOUNCE) or now and then a line by step
+(SERIES, as HALO's), in the middle or an octave up, onto the chord's notes now and then (QNT CHRD), dark. Half the
+rolls it is soft and struck (TRIO's triangles, sine and triangle, PPT); half a filtered lead (a saw, pulse, triangle or
+sine and triangle, the filter low with a little resonance, swelling in, gliding) that is legato in places: each note
+held two steps (four for the leaves), so notes that come close tie and glide, and after a gap a note stands on its
+own (NOTE LENGTH FIXED). The LFO
 moves its filter, the LFO and the note's height move its place in the stereo, a slow wanderer its colour. **Track 3,
 the bed:** TRIO's triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK, two or four bars a chord), in the
 middle, under the melody. **Track 4, the noise:** TRIO's noise through its low-pass or band-pass (a band-pass rings a

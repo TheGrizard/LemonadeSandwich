@@ -7171,7 +7171,7 @@ static int test_rnd(void)
     }
     {                                               /* TIDE: a sub groove, FALL's leaves, a triangle bed, a noise */
         uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, kick_ok = 1, mel_ok = 1, bed_ok = 1, nz_ok = 1, dry = 1;
-        uint32_t four = 0, across = 0, bp = 0, lp = 0, bounce = 0, quiet = 0, clipped_n = 0, sub_ok = 1, cpu = 1;
+        uint32_t four = 0, across = 0, bp = 0, lp = 0, bounce = 0, quiet = 0, clipped_n = 0, sub_ok = 1, cpu = 1, leads = 0;
         rnd_mode_put(RND_TIDE);
         press(B_REC);
         bad += check("RND TIDE: REC tapped: a roll, TIDE and the seed said", !memcmp(ui.msg, "TIDE ", 5));
@@ -7189,11 +7189,16 @@ static int test_rnd(void)
             st = pid_get(PID_TESS(TX_EUC_STEPS), RND_TD_KICK);
             kick_ok &= tessera.mode[RND_TD_KICK] == TESS_ENG_EUCLID && pid_get(PID_TESS(TX_TW_FOLLOW), RND_TD_KICK) == (int32_t)RND_TD_BED + 1 &&
                        kp[P_TRANS] == -24 && kp[P_VOICE] == V_MONO && kp[P_PAN] == 0 &&
-                       trk[RND_TD_KICK].eng_req == 6u && kp[P_E0] == 4 && kp[P_ED_PIT] > 0;
+                       trk[RND_TD_KICK].eng_req == 6u && kp[P_E0] == 4 && kp[P_ED_PIT] <= 16 && kp[P_E0 + 5u] <= 26 &&
+                       kp[P_ATK] >= 3;     /* (a soft boom: near a sine, a little fall at most, no click) */
             if (st == 4 && pid_get(PID_TESS(TX_EUC_PULSES), RND_TD_KICK) == 4 && kp[P_SDIV] == 0) four++;
             else { across++; kick_ok &= st != 4 && st != 8 && st != 16 && (kp[P_SDIV] == 1 || kp[P_SDIV] == 4); }
             mel_ok &= (tessera.mode[RND_TD_MEL] == TESS_ENG_BOUNCE || tessera.mode[RND_TD_MEL] == TESS_ENG_SERIES) &&
-                      trk[RND_TD_MEL].eng_req == 6u && mp[P_TRANS] >= 0 && mp[P_LD_FLT] > 0;
+                      trk[RND_TD_MEL].eng_req == 6u && mp[P_TRANS] >= 0 && mp[P_LD_FLT] > 0 && mp[P_E0 + 5u] <= 62 &&
+                      (mp[P_VOICE] != V_LEGATO || (pid_get(PID_TESS(TX_NL_MODE), RND_TD_MEL) == 1 &&
+                       pid_get(PID_TESS(TX_NL_KEYS), RND_TD_MEL) == 1 && pid_get(PID_TESS(TX_TW_DROP), RND_TD_MEL) >= 15 &&
+                       mp[P_GLIDE] > 0));          /* (a lead: legato in places, its gaps between) */
+            leads += mp[P_VOICE] == V_LEGATO;
             bounce += tessera.mode[RND_TD_MEL] == TESS_ENG_BOUNCE;
             bed_ok &= tessera.mode[RND_TD_BED] == TESS_ENG_CHORD && trk[RND_TD_BED].eng_req == 6u && bp_[P_E0] == 4 &&
                       bp_[P_LEVEL] < mp[P_LEVEL];
@@ -7226,12 +7231,14 @@ static int test_rnd(void)
         }
         bad += check("RND TIDE: 200 rolls: the sub groove on track 1, the melody 2, the bed 3, the noise 4, every roll", fixed);
         bad += check("RND TIDE: ..slow (64 to 84 BPM), MIN DOR MPEN PEN MAJ LYD MIX", tempo_ok && key_ok);
-        bad += check("RND TIDE: ..the sub: EUCLID on the bed's note two octaves down, a falling triangle",
+        bad += check("RND TIDE: ..the sub: EUCLID on the bed's note two octaves down, a soft boom near a sine",
                      kick_ok && sub_ok);
         bad += check("RND TIDE: ..the sub across the bar mostly, four on the floor now and then",
                      four > 10u && four < 70u && across > 130u);
-        bad += check("RND TIDE: ..the melody FALL's leaves mostly (or a line by step) on TRIO, moving, wandering the stereo",
+        bad += check("RND TIDE: ..the melody FALL's leaves mostly (or a line by step) on TRIO, dark, moving, wandering the stereo",
                      mel_ok && bounce > 120u);
+        bad += check("RND TIDE: ..half the melodies a lead, legato in places (two steps a note, gaps), gliding",
+                     leads > 60u && leads < 140u);
         bad += check("RND TIDE: ..the bed TRIO's triangles holding the chords, under the melody", bed_ok);
         bad += check("RND TIDE: ..the noise TRIO's, LP or BP (both often), held, breathing, wandering the stereo",
                      nz_ok && bp > 50u && lp > 50u);
@@ -7268,7 +7275,8 @@ static int test_rnd(void)
             transport_req = 2;
             settings_rnd_drift = drift_was;
         }
-        printf("rnd: TIDE: four on the floor %u, across %u; noise BP %u, LP %u; FALL's leaves %u\n", four, across, bp, lp, bounce);
+        printf("rnd: TIDE: four on the floor %u, across %u; noise BP %u, LP %u; FALL's leaves %u; leads %u\n", four, across, bp, lp,
+               bounce, leads);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);

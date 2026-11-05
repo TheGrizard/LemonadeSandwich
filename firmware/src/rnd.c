@@ -2108,11 +2108,13 @@ static void rnd_roles_mirror(uint8_t *role)
 
 /* ------------------------------------------------------------ TIDE --- */
 /* TIDE: slow (64 to 84 BPM), always the same four, on the same tracks (to mix and mute by heart): track 1 the SUB
- * GROOVE (RND_ROLE_LOWPERC): a synthesized sub kick (TRIO's triangles, filtered nearly to a sine, the pitch falling),
- * its pitch the bed's lowest note two octaves down (FOLLOW), its rhythm across the
+ * GROOVE (RND_ROLE_LOWPERC): a synthesized sub kick, a soft low boom (TRIO's triangles filtered to near a sine, the
+ * pitch falling a little or not, a long decay), its pitch the bed's lowest note two octaves down (FOLLOW), its rhythm across the
  * bar mostly (EUCLID on 5, 7, 9, 10, 11 or 13 steps, or 12 in threes; 8T now and then) and now and then four on the
- * floor; track 2 the MELODY: FALL's leaves (BOUNCE) or now and then a line by step (SERIES, HALO's), on a soft TRIO
- * wave, onto the chord's notes now and then (QNT CHRD), an octave up; track 3 the BED (RND_ROLE_CHORDS): TRIO's
+ * floor; track 2 the MELODY: FALL's leaves (BOUNCE) or now and then a line by step (SERIES, HALO's), half the rolls
+ * a lead (a saw, pulse or triangle filtered low), legato where its notes come close (they tie and glide), apart after
+ * its gaps; half soft and struck; dark both, onto the
+ * chord's notes now and then (QNT CHRD), in the middle or an octave up; track 3 the BED (RND_ROLE_CHORDS): TRIO's
  * triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK), in the middle; track 4 the NOISE: TRIO's noise
  * through its low-pass or band-pass, held, breathing. The melody and the noise move a lot and wander the stereo (the LFO
  * on the filter and the place, slow chaos, the note's height on the place); DRIFT moves the groove (another rhythm
@@ -2121,6 +2123,21 @@ static void rnd_roles_mirror(uint8_t *role)
 #define RND_TD_MEL 1u
 #define RND_TD_BED 2u
 #define RND_TD_NOISE 3u
+static uint8_t rnd_td_lead;                        /* TIDE: 1: the melody a filtered lead, legato in places (else
+                                                     * struck leaves) */
+/* a lead's notes held two steps (FALL's leaves, landing apart: four) (NOTE LENGTH FIXED, one key): the next note
+ * within them ties on, gliding (LEGATO); after a gap or a rest, a note of its own. Legato in places, not throughout:
+ * measured, between a fifth and two thirds of its notes tied */
+static void rnd_tide_nl(uint32_t tr)
+{
+    int32_t d = trk[tr].p[P_SDIV];
+    if (!rnd_td_lead) { rnd_tx(tr, TX_NL_MODE, 0); return; }
+    rnd_tx(tr, TX_NL_MODE, 1);                      /* FIXED */
+    if (tessera.mode[tr] == TESS_ENG_BOUNCE)        /* (the leaves land apart: held four steps, so some still tie) */
+        rnd_tx(tr, TX_NL_LEN, d == 1 ? 4 : 5);      /* (1/8 -> 1/2, 1/4 -> 1/1) */
+    else rnd_tx(tr, TX_NL_LEN, d == 1 ? 3 : d == 0 ? 4 : 5);   /* (two steps: 1/8 -> 1/4, 1/4 -> 1/2, 1/2 -> 1/1) */
+    rnd_tx(tr, TX_NL_KEYS, 1);
+}
 static void rnd_tide_tri(uint32_t tr, int pure)     /* TRIO's three triangles: pure (one), or FALL's */
 {
     rnd_tp(tr, P_E0, 4);                            /* WAVE TRI3 */
@@ -2155,20 +2172,23 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
     rnd_tp(tr, P_LFADE, 0);
     rnd_tp(tr, P_GLIDE, 0);
     rnd_tp(tr, P_CHRD, 0);
-    if (role == RND_ROLE_LOWPERC) {                 /* the sub: struck, the pitch falling, short, in the middle */
+    if (role == RND_ROLE_LOWPERC) {                 /* the sub: a soft low boom, near a sine (a punchy thump on
+                                                     * every roll was too much, heard): a breath of attack, the pitch
+                                                     * falling a little or not, a long decay */
+        int boom = rnd_pct(70);
         if (e == 6u) {
             rnd_tide_tri(tr, 1);
-            rnd_tp(tr, P_E0 + 5u, rnd_rr(20, 40));  /* CUT: near a sine */
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(10, 26));  /* CUT: the triangle's overtones gone: a sine, near enough */
             rnd_tp(tr, P_E0 + 6u, 0);
-            rnd_tp(tr, P_ED_PIT, rnd_rr(20, 45));   /* (the thump: the pitch from above, falling) */
-            rnd_tp(tr, P_ED_FLT, rnd_rr(10, 30));
+            rnd_tp(tr, P_ED_PIT, boom ? rnd_rr(0, 8) : rnd_rr(8, 16));   /* (a boom: barely a fall; a soft thump) */
+            rnd_tp(tr, P_ED_FLT, 0);
         } else rnd_tp(tr, P_ED_PIT, 0);
-        rnd_tp(tr, P_ATK, 0);
-        rnd_tp(tr, P_DEC, rnd_rr(35, 60));
-        rnd_tp(tr, P_SUS, 0);
-        rnd_tp(tr, P_REL, rnd_rr(25, 45));
+        rnd_tp(tr, P_ATK, rnd_rr(3, 12));           /* (no click) */
+        rnd_tp(tr, P_DEC, boom ? rnd_rr(70, 100) : rnd_rr(55, 75));
+        rnd_tp(tr, P_SUS, boom ? rnd_rr(0, 30) : 0);
+        rnd_tp(tr, P_REL, boom ? rnd_rr(55, 85) : rnd_rr(40, 60));
         rnd_tp(tr, P_VOICE, V_MONO);
-        rnd_tp(tr, P_LEVEL, rnd_rr(100, 112));
+        rnd_tp(tr, P_LEVEL, rnd_rr(96, 108));
         rnd_tp(tr, P_PAN, 0);
         rnd_tp(tr, P_DETUNE, 0);
         rnd_tp(tr, P_SPRD, 0);
@@ -2176,24 +2196,40 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
         return;
     }
     rnd_tp(tr, P_ED_PIT, 0);
-    rnd_tp(tr, P_ED_FLT, rnd_rr(0, 20));
-    if (role == RND_ROLE_MELODY) {                  /* soft, struck, ringing; the filter and the place moving */
+    rnd_tp(tr, P_ED_FLT, rnd_rr(0, 15));
+    if (role == RND_ROLE_MELODY) {                  /* half the rolls a legato lead, filtered; half soft leaves,
+                                                     * struck; dark both (bright before, heard); the filter and the
+                                                     * place moving */
         static const uint8_t wv[] = {4, 5, 2}, ww[] = {4, 3, 1};   /* TRI3, S&T, PPT */
+        static const uint8_t lv[] = {0, 1, 4, 5}, lw[] = {4, 3, 2, 2};   /* SAW3, PLS3, TRI3, S&T */
+        rnd_td_lead = (uint8_t)rnd_pct(50);
         if (e == 6u) {
-            rnd_tp(tr, P_E0, rnd_pick(wv, ww, NELEM(wv)));
+            rnd_tp(tr, P_E0, rnd_td_lead ? rnd_pick(lv, lw, NELEM(lv)) : rnd_pick(wv, ww, NELEM(wv)));
             rnd_tp(tr, P_E0 + 1u, rnd_pct(60) ? 12 : 0);
             rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? 0 : 7);
             rnd_tp(tr, P_E0 + 3u, rnd_rr(4, 14));
             rnd_tp(tr, P_E0 + 4u, 0);
-            rnd_tp(tr, P_E0 + 5u, rnd_rr(55, 85));
-            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 30));
+            rnd_tp(tr, P_E0 + 5u, rnd_td_lead ? rnd_rr(30, 52) : rnd_rr(40, 62));   /* CUT: low */
+            rnd_tp(tr, P_E0 + 6u, rnd_td_lead ? rnd_rr(20, 55) : rnd_rr(0, 25));    /* RES: a lead's a little vocal */
         }
-        rnd_tp(tr, P_ATK, rnd_rr(0, 12));
-        rnd_tp(tr, P_DEC, rnd_rr(55, 95));
-        rnd_tp(tr, P_SUS, rnd_rr(10, 50));
-        rnd_tp(tr, P_REL, rnd_rr(70, 105));
-        rnd_tp(tr, P_VOICE, V_POLY);
-        rnd_tp(tr, P_LEVEL, rnd_rr(96, 108));       /* (the voice up front: over the bed, measured) */
+        if (rnd_td_lead) {                          /* the lead: swelling, gliding where notes tie (rnd_tide_nl), its
+                                                     * filter opening a little */
+            rnd_tp(tr, P_ATK, rnd_rr(15, 50));
+            rnd_tp(tr, P_DEC, rnd_rr(80, 110));
+            rnd_tp(tr, P_SUS, rnd_rr(80, 115));
+            rnd_tp(tr, P_REL, rnd_rr(70, 100));
+            rnd_tp(tr, P_VOICE, V_LEGATO);
+            rnd_tp(tr, P_GLIDE, rnd_rr(15, 45));
+            rnd_tp(tr, P_ED_FLT, rnd_rr(10, 30));
+        } else {
+            rnd_tp(tr, P_ATK, rnd_rr(0, 12));
+            rnd_tp(tr, P_DEC, rnd_rr(55, 95));
+            rnd_tp(tr, P_SUS, rnd_rr(10, 50));
+            rnd_tp(tr, P_REL, rnd_rr(70, 105));
+            rnd_tp(tr, P_VOICE, V_POLY);
+        }
+        rnd_tp(tr, P_LEVEL, rnd_td_lead ? rnd_rr(84, 96) : rnd_rr(96, 108));   /* (the voice up front, over the bed; a
+                                                     * lead's saw louder than the leaves, measured) */
         rnd_tp(tr, P_LRATE, rnd_rr(30, 60));        /* (0.2 to 0.8 Hz) */
         rnd_tp(tr, P_LD_FLT, rnd_rr(15, 40));
         rnd_tp(tr, P_LWAVE, rnd_pct(70) ? 0 : 1);   /* (sine or triangle) */
@@ -2292,7 +2328,7 @@ static void rnd_tide_generators(void)
     rnd_tx(tr, TX_TW_DROP, rnd_pct(40) ? rnd_rr(5, 20) : 0);
     rnd_tx(tr, TX_TW_HUMAN, rnd_rr(10, 40));
     rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(0, 20));
-    rnd_tp(tr, P_SGATE, rnd_rr(30, 60));
+    rnd_tp(tr, P_SGATE, rnd_rr(50, 90));            /* (the boom let ring) */
     tr = RND_TD_MEL;                                /* the melody: FALL's leaves, or a line by step */
     if (rnd_pct(75)) {
         rnd_tx(tr, TX_MODE, TESS_ENG_BOUNCE);
@@ -2308,12 +2344,15 @@ static void rnd_tide_generators(void)
         rnd_tp(tr, P_SDIV, rnd_pct(60) ? 0 : 6);    /* 1/4 or 1/2 */
     }
     rnd_tp(tr, P_SGATE, rnd_rr(60, 110));
-    rnd_tx(tr, TX_TW_DROP, rnd_pct(50) ? rnd_rr(5, 30) : 0);
+    rnd_tx(tr, TX_TW_DROP, !rnd_td_lead ? (rnd_pct(50) ? rnd_rr(5, 30) : 0) :   /* (a lead's gaps: where its legato
+                                                     * breaks; a line by step, every note there, more of them) */
+                           tessera.mode[tr] == TESS_ENG_BOUNCE ? rnd_rr(15, 30) : rnd_rr(45, 65));
     rnd_tx(tr, TX_TW_HUMAN, rnd_rr(10, 40));
     rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(5, 30));
     rnd_tx(tr, TX_EV_EVERY, rnd_pct(50) ? rnd_rr(4, 5) : 0);
     rnd_tx(tr, TX_EV_AMOUNT, rnd_rr(10, 25));
     if (rnd_pct(40)) rnd_tp(tr, P_QUANT, Q_CHRD);   /* (onto the chord's notes now and then) */
+    rnd_tide_nl(tr);
     tr = RND_TD_NOISE;                              /* the noise: one note, held */
     rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
     rnd_tx(tr, TX_SR_START, 0);
@@ -2329,7 +2368,7 @@ static void rnd_tide_generators(void)
 static void rnd_tide_registers(void)
 {
     rnd_tp(RND_TD_KICK, P_TRANS, -24);              /* (FOLLOW: from the bed's note: C1 to B1) */
-    rnd_tp(RND_TD_MEL, P_TRANS, rnd_pct(70) ? 12 : 0);
+    rnd_tp(RND_TD_MEL, P_TRANS, rnd_pct(rnd_td_lead ? 35 : 55) ? 12 : 0);   /* (lower than before: less bright) */
     rnd_tp(RND_TD_BED, P_TRANS, 0);
     rnd_tp(RND_TD_NOISE, P_TRANS, 0);
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(64, 84));
@@ -3160,6 +3199,7 @@ static void rnd_tide_move(void)
     }
     if (tessera.mode[tr] == TESS_ENG_BOUNCE) rnd_tp(tr, P_SDIV, trk[tr].p[P_SDIV] == 1 ? 0 : 1);
     else rnd_tp(tr, P_SDIV, trk[tr].p[P_SDIV] == 0 ? 6 : 0);
+    rnd_tide_nl(tr);                                /* (a lead's notes two steps still) */
 }
 /* a HALO movement: a quarter of the time the key to its relative or home (rnd_pivot), else half the time each: the
  * M-voice's pace a step slower or faster (1/2, 1/4, 1/8; FALL's leaves 1/4
