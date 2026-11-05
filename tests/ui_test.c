@@ -7308,6 +7308,8 @@ static int test_rnd(void)
                      ok && moved >= 4u);
         printf("rnd: DRIFT pivots: %u of %u modes moved (%u rolls tried)\n", moved, (uint32_t)NELEM(md), tried);
         transport_req = 2;
+        { int32_t o[2 * CTL]; for (b = 0; b < 8u; b++) mix_block(o, CTL); }   /* (the stop taken: the next test starts
+                                                     * it again) */
         settings_rnd_drift = drift_was;
         rnd_mode_put(RND_FREE);
     }

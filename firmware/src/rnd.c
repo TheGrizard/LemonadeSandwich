@@ -2380,6 +2380,30 @@ static void rnd_roles_tide(uint8_t *role)
     role[RND_TD_NOISE] = RND_ROLE_NOISE;
 }
 
+/* a CHORD track's chord known at once, before it first strikes (its lowest note for FOLLOW, its notes for QNT CHRD):
+ * else a track before it in the order (TIDE's sub, a HALO bell) takes the last roll's for a step, measured (a sub on
+ * B3). As tessera.c tess_chord_play keeps them */
+static void rnd_chord_prime(void)
+{
+    uint32_t tr;
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+        const track_t *t = &trk[tr];
+        uint8_t out[CHORD_MAX];
+        int32_t r, x;
+        uint16_t mask;
+        uint32_t n;
+        if (tessera.mode[tr] != TESS_ENG_CHORD) continue;
+        n = tess_chord_build(t, gen_chord_degree(&tessera.chord[tr], tessera.chord[tr].idx), out, &r, &mask);
+        if (!n) continue;
+        x = (int32_t)out[0] + 12 * tessera.chord[tr].oct + t->p[P_TRANS] + tessera.evolve[tr].shift;
+        tessera.last_note[tr] = (uint8_t)(x < 0 ? 0 : x > 127 ? 127 : x);
+        r += t->p[P_TRANS] + tessera.evolve[tr].shift;
+        mask = mask ? mask : 1u;
+        tessera.chord_pc[tr] = (uint16_t)(((uint32_t)mask << ((r % 12 + 12) % 12) |
+                                           (uint32_t)mask >> (12 - (r % 12 + 12) % 12)) & 0xFFFu);
+    }
+}
+
 /* ------------------------------------------------------------ the roll: what the FM-1 can play --- */
 /* BUDGET (GLO > GLOBAL, the voices' shared pool, 16 by default) during rolls: 12 leaves the FM-1 headroom (MANUAL "How
  * many voices at once"). Only ever lowered, and saved only when it changes: a BUDGET set lower stays */
@@ -3534,6 +3558,7 @@ static void rnd_roll(void)
         else rnd_fx_dry();
         rnd_cords();
     }
+    rnd_chord_prime();
     sync_reload = 1;
     rnd_say(rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
             ambient ? "AMB " : "RND ", rnd_seed);
