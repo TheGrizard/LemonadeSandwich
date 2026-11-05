@@ -2115,8 +2115,9 @@ static void rnd_roles_mirror(uint8_t *role)
  * a lead (a saw, pulse or triangle filtered low), legato where its notes come close (they tie and glide), apart after
  * its gaps; half soft and struck; dark both, onto the
  * chord's notes now and then (QNT CHRD), in the middle or an octave up; track 3 the BED (RND_ROLE_CHORDS): TRIO's
- * triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK), in the middle; track 4 the NOISE: TRIO's noise
- * through its low-pass or band-pass, held, breathing. The melody and the noise move a lot and wander the stereo (the LFO
+ * triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK), in the middle; track 4 the TEXTURE: TRIO's
+ * noise mostly (or a pulse with noise, a saw, a triangle) through its low-pass or band-pass, low, held, soft, its
+ * colour, place and LFO pace on slow random walks. The melody and the noise move a lot and wander the stereo (the LFO
  * on the filter and the place, slow chaos, the note's height on the place); DRIFT moves the groove (another rhythm
  * across, or four on the floor, or back), the melody's pace, and the key to its relative and home (rnd_tide_move) */
 #define RND_TD_KICK 0u
@@ -2126,8 +2127,8 @@ static void rnd_roles_mirror(uint8_t *role)
 static uint8_t rnd_td_lead;                        /* TIDE: 1: the melody a filtered lead, legato in places (else
                                                      * struck leaves) */
 /* a lead's notes held two steps (FALL's leaves, landing apart: four) (NOTE LENGTH FIXED, one key): the next note
- * within them ties on, gliding (LEGATO); after a gap or a rest, a note of its own. Legato in places, not throughout:
- * measured, between a fifth and two thirds of its notes tied */
+ * within them ties on, gliding (LEGATO); after a gap or a rest, a note of its own. Runs, then a breath: measured, a
+ * line by step about four notes in five tied (FALL's leaves a fifth or so) */
 static void rnd_tide_nl(uint32_t tr)
 {
     int32_t d = trk[tr].p[P_SDIV];
@@ -2214,7 +2215,8 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
         }
         if (rnd_td_lead) {                          /* the lead: swelling, gliding where notes tie (rnd_tide_nl), its
                                                      * filter opening a little */
-            rnd_tp(tr, P_ATK, rnd_rr(15, 50));
+            rnd_tp(tr, P_ATK, rnd_rr(45, 75));      /* (a phrase's first note swells in: a tied one keeps the swell's
+                                                     * level, LEGATO) */
             rnd_tp(tr, P_DEC, rnd_rr(80, 110));
             rnd_tp(tr, P_SUS, rnd_rr(80, 115));
             rnd_tp(tr, P_REL, rnd_rr(70, 100));
@@ -2253,22 +2255,29 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
         rnd_tp(tr, P_DETUNE, rnd_rr(30, 80));
         rnd_tp(tr, P_SPRD, rnd_rr(40, 90));
         rnd_tp(tr, P_PAN, 0);
-    } else {                                        /* the noise: low-pass or band-pass, held, breathing, wide */
+    } else {                                        /* the texture: noise mostly, or a pulse with noise, a saw, a
+                                                     * triangle; low-pass or band-pass, low; held, soft, wandering
+                                                     * slowly at random (softer and slower than before, heard) */
+        static const uint8_t wv[] = {8, 7, 0, 4, 5}, ww[] = {10, 4, 2, 2, 2};   /* NOIS, P+N, SAW3, TRI3, S&T */
         int bp = rnd_pct(50);
         if (e == 6u) {
-            rnd_tp(tr, P_E0, 8);                    /* WAVE NOIS */
+            rnd_tp(tr, P_E0, rnd_pick(wv, ww, NELEM(wv)));
+            rnd_tp(tr, P_E0 + 1u, rnd_pct(50) ? 0 : 12);   /* INT2, INT3: the tones in octaves */
+            rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? 0 : -12);
+            rnd_tp(tr, P_E0 + 3u, rnd_rr(5, 25));   /* DTN: a tone's slow beating */
             rnd_tp(tr, P_E0 + 4u, bp ? 1 : 0);      /* MODE BP or LP */
-            rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(50, 85) : rnd_rr(35, 70));   /* CUT */
-            rnd_tp(tr, P_E0 + 6u, bp ? rnd_rr(30, 75) : rnd_rr(0, 35));    /* RES: a band-pass sings a little */
+            rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(35, 62) : rnd_rr(22, 50));   /* CUT: low */
+            rnd_tp(tr, P_E0 + 6u, bp ? rnd_rr(20, 55) : rnd_rr(0, 25));    /* RES: a band-pass sings a little */
         }
-        rnd_tp(tr, P_ATK, rnd_rr(85, 115));
+        rnd_tp(tr, P_ATK, rnd_rr(90, 118));
         rnd_tp(tr, P_DEC, 127);
         rnd_tp(tr, P_SUS, 127);
         rnd_tp(tr, P_REL, rnd_rr(90, 115));
         rnd_tp(tr, P_VOICE, V_LEGATO);
-        rnd_tp(tr, P_LEVEL, rnd_rr(62, 78));
-        rnd_tp(tr, P_LRATE, rnd_rr(20, 50));        /* (waves: 0.1 to 0.6 Hz) */
-        rnd_tp(tr, P_LD_FLT, rnd_rr(20, 50));
+        rnd_tp(tr, P_LEVEL, rnd_rr(54, 68));
+        rnd_tp(tr, P_LWAVE, rnd_pct(50) ? 4 : 0);   /* (S&H: a random step now and then; or a sine) */
+        rnd_tp(tr, P_LRATE, rnd_rr(5, 28));         /* (slow: 0.05 to 0.2 Hz) */
+        rnd_tp(tr, P_LD_FLT, rnd_rr(10, 30));
         rnd_tp(tr, P_DETUNE, 0);
         rnd_tp(tr, P_SPRD, rnd_rr(90, 127));
         rnd_tp(tr, P_PAN, 0);
@@ -2329,11 +2338,13 @@ static void rnd_tide_generators(void)
     rnd_tx(tr, TX_TW_HUMAN, rnd_rr(10, 40));
     rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(0, 20));
     rnd_tp(tr, P_SGATE, rnd_rr(50, 90));            /* (the boom let ring) */
-    tr = RND_TD_MEL;                                /* the melody: FALL's leaves, or a line by step */
-    if (rnd_pct(75)) {
+    tr = RND_TD_MEL;                                /* the melody: FALL's leaves, or a line by step (a lead: runs by
+                                                     * step mostly) */
+    if (rnd_pct(rnd_td_lead ? 30 : 75)) {
         rnd_tx(tr, TX_MODE, TESS_ENG_BOUNCE);
         rnd_tx(tr, TX_BNC_BALLS, 5);
-        rnd_tx(tr, TX_BNC_SPEED, rnd_rr(4, 20));
+        rnd_tx(tr, TX_BNC_SPEED, rnd_rr(9, 24));   /* (not FALL's slowest: on 1/4 its first leaf took 20 s and
+                                                     * more, measured) */
         rnd_tx(tr, TX_BNC_ANGLE, rnd_pct(60) ? rnd_rr(35, 55) : rnd_rr(15, 75));
         rnd_tp(tr, P_SDIV, rnd_pct(60) ? 1 : 0);    /* 1/8 or 1/4 */
     } else {
@@ -2341,12 +2352,14 @@ static void rnd_tide_generators(void)
         rnd_tx(tr, TX_SR_START, rnd_rr(0, 127));
         rnd_tx(tr, TX_SR_INTV, 1);
         rnd_tx(tr, TX_SR_LOOP, rnd_pct(50) ? 0 : rnd_rr(6, 16));
-        rnd_tp(tr, P_SDIV, rnd_pct(60) ? 0 : 6);    /* 1/4 or 1/2 */
+        rnd_tp(tr, P_SDIV, rnd_td_lead ? (rnd_pct(60) ? 1 : 0) : rnd_pct(60) ? 0 : 6);   /* (a lead's runs: 1/8 or 1/4;
+                                                     * else 1/4 or 1/2) */
     }
     rnd_tp(tr, P_SGATE, rnd_rr(60, 110));
     rnd_tx(tr, TX_TW_DROP, !rnd_td_lead ? (rnd_pct(50) ? rnd_rr(5, 30) : 0) :   /* (a lead's gaps: where its legato
                                                      * breaks; a line by step, every note there, more of them) */
-                           tessera.mode[tr] == TESS_ENG_BOUNCE ? rnd_rr(15, 30) : rnd_rr(45, 65));
+                           tessera.mode[tr] == TESS_ENG_BOUNCE ? rnd_rr(15, 30) : rnd_rr(30, 45));   /* (runs of a
+                                                     * few notes tied, then a breath: two rests running) */
     rnd_tx(tr, TX_TW_HUMAN, rnd_rr(10, 40));
     rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(5, 30));
     rnd_tx(tr, TX_EV_EVERY, rnd_pct(50) ? rnd_rr(4, 5) : 0);
@@ -2391,7 +2404,7 @@ static void rnd_key_tide(void)
 static void rnd_cords_tide(void)
 {
     static const uint8_t chaos[] = {CS_OCHD1, CS_OCHD3, CS_DRIFT, CS_TORPOR};
-    cord_t c[7];
+    cord_t c[8];
     uint32_t i, n = 0;
     memset(c, 0, sizeof c);
     c[n].src_trk = c[n].dst_trk = RND_TD_MEL; c[n].src = CS_LFO; c[n].dst = CD_PAN; c[n].amount = (int8_t)rnd_rr(35, 70); n++;
@@ -2401,8 +2414,10 @@ static void rnd_cords_tide(void)
     c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(15, 35) : -rnd_rr(15, 35)); n++;
     c[n].src_trk = c[n].dst_trk = RND_TD_NOISE; c[n].src = chaos[rnd_next() % NELEM(chaos)]; c[n].dst = CD_PAN;
     c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(45, 80) : -rnd_rr(45, 80)); n++;
-    c[n].src_trk = c[n].dst_trk = RND_TD_NOISE; c[n].src = CS_INERTIA; c[n].dst = CD_CUTOFF;
-    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(15, 35) : -rnd_rr(15, 35)); n++;
+    c[n].src_trk = c[n].dst_trk = RND_TD_NOISE; c[n].src = rnd_pct(50) ? CS_INERTIA : CS_DRIFT; c[n].dst = CD_CUTOFF;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(20, 40) : -rnd_rr(20, 40)); n++;   /* (random walks: the colour) */
+    c[n].src_trk = c[n].dst_trk = RND_TD_NOISE; c[n].src = CS_APATHY; c[n].dst = CD_LFO_RATE;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(10, 25) : -rnd_rr(10, 25)); n++;   /* (the LFO's own pace wandering) */
     c[n].src_trk = c[n].dst_trk = RND_TD_BED; c[n].src = CS_DRIFT; c[n].dst = CD_CUTOFF;
     c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(10, 25) : -rnd_rr(10, 25)); n++;
     for (i = 0; i < CORD_LIVE; i++) {
@@ -3197,7 +3212,7 @@ static void rnd_tide_move(void)
         rnd_tide_groove(RND_TD_KICK, rnd_pct(20));
         return;
     }
-    if (tessera.mode[tr] == TESS_ENG_BOUNCE) rnd_tp(tr, P_SDIV, trk[tr].p[P_SDIV] == 1 ? 0 : 1);
+    if (tessera.mode[tr] == TESS_ENG_BOUNCE || rnd_td_lead) rnd_tp(tr, P_SDIV, trk[tr].p[P_SDIV] == 1 ? 0 : 1);
     else rnd_tp(tr, P_SDIV, trk[tr].p[P_SDIV] == 0 ? 6 : 0);
     rnd_tide_nl(tr);                                /* (a lead's notes two steps still) */
 }

@@ -7172,6 +7172,7 @@ static int test_rnd(void)
     {                                               /* TIDE: a sub groove, FALL's leaves, a triangle bed, a noise */
         uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, kick_ok = 1, mel_ok = 1, bed_ok = 1, nz_ok = 1, dry = 1;
         uint32_t four = 0, across = 0, bp = 0, lp = 0, bounce = 0, quiet = 0, clipped_n = 0, sub_ok = 1, cpu = 1, leads = 0;
+        uint32_t noisy = 0;
         rnd_mode_put(RND_TIDE);
         press(B_REC);
         bad += check("RND TIDE: REC tapped: a roll, TIDE and the seed said", !memcmp(ui.msg, "TIDE ", 5));
@@ -7202,8 +7203,10 @@ static int test_rnd(void)
             bounce += tessera.mode[RND_TD_MEL] == TESS_ENG_BOUNCE;
             bed_ok &= tessera.mode[RND_TD_BED] == TESS_ENG_CHORD && trk[RND_TD_BED].eng_req == 6u && bp_[P_E0] == 4 &&
                       bp_[P_LEVEL] < mp[P_LEVEL];
-            nz_ok &= trk[RND_TD_NOISE].eng_req == 6u && np[P_E0] == 8 && (np[P_E0 + 4u] == 0 || np[P_E0 + 4u] == 1) &&
-                     np[P_VOICE] == V_LEGATO && np[P_LD_FLT] >= 20;
+            nz_ok &= trk[RND_TD_NOISE].eng_req == 6u && (np[P_E0] == 8 || np[P_E0] == 7 || np[P_E0] == 0 || np[P_E0] == 4 ||
+                     np[P_E0] == 5) && (np[P_E0 + 4u] == 0 || np[P_E0 + 4u] == 1) && np[P_E0 + 5u] <= 62 &&
+                     np[P_VOICE] == V_LEGATO && np[P_LD_FLT] >= 10 && np[P_LRATE] <= 28 && np[P_LEVEL] <= 68;
+            noisy += np[P_E0] == 8;
             bp += np[P_E0 + 4u] == 1; lp += np[P_E0 + 4u] == 0;
             for (tr = 0, k = 0; tr < CORD_LIVE; tr++) {   /* (the melody and the noise wander the stereo) */
                 const cord_t *c = cord_get(tr);
@@ -7235,13 +7238,13 @@ static int test_rnd(void)
                      kick_ok && sub_ok);
         bad += check("RND TIDE: ..the sub across the bar mostly, four on the floor now and then",
                      four > 10u && four < 70u && across > 130u);
-        bad += check("RND TIDE: ..the melody FALL's leaves mostly (or a line by step) on TRIO, dark, moving, wandering the stereo",
-                     mel_ok && bounce > 120u);
+        bad += check("RND TIDE: ..the melody FALL's leaves or a line by step (a lead: runs), on TRIO, dark, moving, wandering the stereo",
+                     mel_ok && bounce > 70u && bounce < 150u);
         bad += check("RND TIDE: ..half the melodies a lead, legato in places (two steps a note, gaps), gliding",
                      leads > 60u && leads < 140u);
         bad += check("RND TIDE: ..the bed TRIO's triangles holding the chords, under the melody", bed_ok);
-        bad += check("RND TIDE: ..the noise TRIO's, LP or BP (both often), held, breathing, wandering the stereo",
-                     nz_ok && bp > 50u && lp > 50u);
+        bad += check("RND TIDE: ..the texture TRIO's noise mostly (other waves now and then), LP or BP low, soft, slow",
+                     nz_ok && bp > 50u && lp > 50u && noisy > 70u && noisy < 160u);
         bad += check("RND TIDE: ..dry, the budget kept; each roll heard within 15 s, none at the rail",
                      dry && cpu && !quiet && !clipped_n);
         {                                           /* DRIFT FAST: the groove anew, the pace, the key and home */
