@@ -6419,7 +6419,19 @@ static int test_rnd(void)
         bad += check("RND AMBIENT: ..right again: MIRROR (AMBIENT's bits with variant 3)", rnd_setting() == RND_MIRROR &&
                      (favorites.factory[15][24] & 0xC0u) == 0xC0u && settings_rnd_variant == 3u);
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..MIRROR is the last (right again: stays)", rnd_setting() == RND_MIRROR);
+        bad += check("RND AMBIENT: ..right again: TIDE (RND's bit with variant 4), saved and loaded", rnd_setting() == RND_TIDE &&
+                     (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 4u);
+        {
+            persist_t pr;
+            settings_export(&pr);
+            settings_rnd_variant = 0;
+            settings_import(&pr, sizeof pr);
+            bad += check("RND AMBIENT: ..TIDE saved and loaded with the settings (variant 4)",
+                         rnd_setting() == RND_TIDE && (pr.lowcut & 0xFFu) == 4u);
+        }
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..TIDE is the last (right again: stays)", rnd_setting() == RND_TIDE);
+        turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
@@ -7155,6 +7167,148 @@ static int test_rnd(void)
                micro, chordal, parallel, cross, on_chord, notes);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* TIDE: a sub groove, FALL's leaves, a triangle bed, a noise */
+        uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, kick_ok = 1, mel_ok = 1, bed_ok = 1, nz_ok = 1, dry = 1;
+        uint32_t four = 0, across = 0, bp = 0, lp = 0, bounce = 0, quiet = 0, clipped_n = 0, sub_ok = 1, cpu = 1;
+        rnd_mode_put(RND_TIDE);
+        press(B_REC);
+        bad += check("RND TIDE: REC tapped: a roll, TIDE and the seed said", !memcmp(ui.msg, "TIDE ", 5));
+        for (r = 0; r < 200u; r++) {
+            const int16_t *kp = trk[RND_TD_KICK].p, *mp = trk[RND_TD_MEL].p, *bp_ = trk[RND_TD_BED].p, *np = trk[RND_TD_NOISE].p;
+            int32_t bpm, st;
+            rnd_roll();
+            bpm = pid_get(PID_GLOBAL(G_BPM), 0);
+            tempo_ok &= bpm >= 64 && bpm <= 84;
+            k = (uint32_t)trk[0].p[P_SCALE];
+            key_ok &= k == 2u || k == 3u || k == 6u || k == 5u || k == 1u || k == 9u || k == 4u;
+            fixed &= rnd_role_of[0] == RND_ROLE_LOWPERC && rnd_role_of[1] == RND_ROLE_MELODY &&
+                     rnd_role_of[2] == RND_ROLE_CHORDS && rnd_role_of[3] == RND_ROLE_NOISE;
+            dry &= rnd_fx_mode_ok(0) >= 1u;
+            st = pid_get(PID_TESS(TX_EUC_STEPS), RND_TD_KICK);
+            kick_ok &= tessera.mode[RND_TD_KICK] == TESS_ENG_EUCLID && pid_get(PID_TESS(TX_TW_FOLLOW), RND_TD_KICK) == (int32_t)RND_TD_BED + 1 &&
+                       kp[P_TRANS] == -24 && kp[P_VOICE] == V_MONO && kp[P_PAN] == 0 &&
+                       trk[RND_TD_KICK].eng_req == 6u && kp[P_E0] == 4 && kp[P_ED_PIT] > 0;
+            if (st == 4 && pid_get(PID_TESS(TX_EUC_PULSES), RND_TD_KICK) == 4 && kp[P_SDIV] == 0) four++;
+            else { across++; kick_ok &= st != 4 && st != 8 && st != 16 && (kp[P_SDIV] == 1 || kp[P_SDIV] == 4); }
+            mel_ok &= (tessera.mode[RND_TD_MEL] == TESS_ENG_BOUNCE || tessera.mode[RND_TD_MEL] == TESS_ENG_SERIES) &&
+                      trk[RND_TD_MEL].eng_req == 6u && mp[P_TRANS] >= 0 && mp[P_LD_FLT] > 0;
+            bounce += tessera.mode[RND_TD_MEL] == TESS_ENG_BOUNCE;
+            bed_ok &= tessera.mode[RND_TD_BED] == TESS_ENG_CHORD && trk[RND_TD_BED].eng_req == 6u && bp_[P_E0] == 4 &&
+                      bp_[P_LEVEL] < mp[P_LEVEL];
+            nz_ok &= trk[RND_TD_NOISE].eng_req == 6u && np[P_E0] == 8 && (np[P_E0 + 4u] == 0 || np[P_E0 + 4u] == 1) &&
+                     np[P_VOICE] == V_LEGATO && np[P_LD_FLT] >= 20;
+            bp += np[P_E0 + 4u] == 1; lp += np[P_E0 + 4u] == 0;
+            for (tr = 0, k = 0; tr < CORD_LIVE; tr++) {   /* (the melody and the noise wander the stereo) */
+                const cord_t *c = cord_get(tr);
+                if (c && c->src && c->dst == CD_PAN && (c->dst_trk == RND_TD_MEL || c->dst_trk == RND_TD_NOISE)) k |= 1u << c->dst_trk;
+            }
+            mel_ok &= (k >> RND_TD_MEL) & 1u;
+            nz_ok &= (k >> RND_TD_NOISE) & 1u;
+            for (tr = 0; tr < NTRK; tr++) cpu &= trk[tr].p[P_VOICE] != V_UNISON;
+            cpu &= settings_budget <= RND_BUDGET;
+            if (r % 40u == 0u) {                    /* listen: 15 s; the sub low (its notes C0 to B2) */
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
+                    for (j = 0; j < NVOICE; j++) {
+                        const voice_t *v = &trk[RND_TD_KICK].v[j];
+                        if (v->active && v->gate) sub_ok &= v->note >= 12u && v->note < 48u;
+                    }
+                }
+                quiet += peak < 300;
+                clipped_n += peak >= 32767;
+            }
+        }
+        bad += check("RND TIDE: 200 rolls: the sub groove on track 1, the melody 2, the bed 3, the noise 4, every roll", fixed);
+        bad += check("RND TIDE: ..slow (64 to 84 BPM), MIN DOR MPEN PEN MAJ LYD MIX", tempo_ok && key_ok);
+        bad += check("RND TIDE: ..the sub: EUCLID on the bed's note two octaves down, a falling triangle",
+                     kick_ok && sub_ok);
+        bad += check("RND TIDE: ..the sub across the bar mostly, four on the floor now and then",
+                     four > 10u && four < 70u && across > 130u);
+        bad += check("RND TIDE: ..the melody FALL's leaves mostly (or a line by step) on TRIO, moving, wandering the stereo",
+                     mel_ok && bounce > 120u);
+        bad += check("RND TIDE: ..the bed TRIO's triangles holding the chords, under the melody", bed_ok);
+        bad += check("RND TIDE: ..the noise TRIO's, LP or BP (both often), held, breathing, wandering the stereo",
+                     nz_ok && bp > 50u && lp > 50u);
+        bad += check("RND TIDE: ..dry, the budget kept; each roll heard within 15 s, none at the rail",
+                     dry && cpu && !quiet && !clipped_n);
+        {                                           /* DRIFT FAST: the groove anew, the pace, the key and home */
+            uint8_t drift_was = settings_rnd_drift;
+            uint32_t b, moves0, grooves = 0, pivots = 0, away = 0, piv_ok = 1, tries;
+            int16_t home_sc, home_rt;
+            for (tries = 0; tries < 50u; tries++) {
+                rnd_roll();
+                k = (uint32_t)trk[0].p[P_SCALE];
+                if (k == 1u || k == 2u || k == 3u) break;
+            }
+            home_sc = trk[0].p[P_SCALE]; home_rt = trk[0].p[P_ROOT];
+            settings_rnd_drift = RND_DRIFT_FAST;
+            rnd_drift_start();
+            moves0 = rnd_drift_s.moves;
+            for (b = 0; b < 200u; b++) {
+                int32_t st0 = pid_get(PID_TESS(TX_EUC_STEPS), RND_TD_KICK), pu0 = pid_get(PID_TESS(TX_EUC_PULSES), RND_TD_KICK);
+                rnd_play_bars(1);
+                grooves += pid_get(PID_TESS(TX_EUC_STEPS), RND_TD_KICK) != st0 || pid_get(PID_TESS(TX_EUC_PULSES), RND_TD_KICK) != pu0;
+                if (trk[0].p[P_SCALE] != home_sc || trk[0].p[P_ROOT] != home_rt) {
+                    pivots += !away; away = 1;
+                    piv_ok &= rnd_pcs_of(trk[0].p[P_SCALE], trk[0].p[P_ROOT]) == rnd_pcs_of(home_sc, home_rt);
+                } else away = 0;
+                piv_ok &= trk[RND_TD_KICK].p[P_TRANS] == (away && rnd_piv.comp ? -12 : -24) &&
+                          pid_get(PID_TESS(TX_TW_FOLLOW), RND_TD_KICK) == (int32_t)RND_TD_BED + 1 &&
+                          tessera.mode[RND_TD_BED] == TESS_ENG_CHORD;
+            }
+            bad += check("RND TIDE: ..DRIFT FAST, 200 bars: the groove anew, the key to its relative and home, the sub in its octave",
+                         rnd_drift_s.moves - moves0 >= 15u && grooves >= 3u && pivots >= 1u && piv_ok);
+            printf("rnd: TIDE DRIFT FAST 200 bars: %u moves, %u grooves, %u pivots\n", rnd_drift_s.moves - moves0, grooves, pivots);
+            transport_req = 2;
+            settings_rnd_drift = drift_was;
+        }
+        printf("rnd: TIDE: four on the floor %u, across %u; noise BP %u, LP %u; FALL's leaves %u\n", four, across, bp, lp, bounce);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* DRIFT: the key to its relative and home, in the other modes */
+        static const uint8_t md[] = {RND_AMBIENT, RND_NICE, RND_FALL, RND_LOOPS, RND_ORBIT, RND_WOZZA};
+        uint8_t drift_was = settings_rnd_drift;
+        uint32_t i, b, r, ok = 1, moved = 0, tried = 0;
+        settings_rnd_drift = RND_DRIFT_FAST;
+        for (i = 0; i < NELEM(md); i++) {
+            uint32_t pivots = 0;
+            rnd_mode_put(md[i]);
+            for (r = 0; r < 4u && !pivots; r++) {
+                int16_t sc, rt, tr0[NTRK];
+                uint32_t away = 0, tr;
+                rnd_roll();
+                sc = trk[0].p[P_SCALE]; rt = trk[0].p[P_ROOT];
+                for (tr = 0; tr < NTRK; tr++) tr0[tr] = trk[tr].p[P_TRANS];
+                rnd_drift_start();
+                tried++;
+                for (b = 0; b < 160u; b++) {
+                    rnd_play_bars(1);
+                    if (trk[0].p[P_SCALE] != sc || trk[0].p[P_ROOT] != rt) {
+                        pivots += !away; away = 1;
+                        ok &= rnd_pcs_of(trk[0].p[P_SCALE], trk[0].p[P_ROOT]) == rnd_pcs_of(sc, rt);
+                        for (tr = 1; tr < NTRK; tr++)
+                            ok &= trk[tr].p[P_SCALE] == trk[0].p[P_SCALE] && trk[tr].p[P_ROOT] == trk[0].p[P_ROOT];
+                    } else if (away) {
+                        away = 0;
+                        for (tr = 0; tr < NTRK; tr++) ok &= trk[tr].p[P_TRANS] == tr0[tr] || pid_get(PID_TESS(TX_TW_FOLLOW), tr);
+                    }
+                }
+            }
+            moved += pivots > 0u;
+        }
+        bad += check("RND DRIFT: AMBIENT NICE FALL LOOPS ORBIT WOZZA: the key to its relative (the same notes, every track) and home",
+                     ok && moved >= 4u);
+        printf("rnd: DRIFT pivots: %u of %u modes moved (%u rolls tried)\n", moved, (uint32_t)NELEM(md), tried);
+        transport_req = 2;
+        settings_rnd_drift = drift_was;
         rnd_mode_put(RND_FREE);
     }
     {                                               /* WOZZA: minimal piano and synth, slow, off the grid, worn */

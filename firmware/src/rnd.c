@@ -24,18 +24,20 @@
  * PULSE (FM6's low percussion, TRIO's noise percussion, a triangle or PHYS drone and melody), RND_WOZZA WOZZA
  * (minimal piano and synth, slow, off the grid, tape-worn: rnd_wozza_sound), RND_HALO HALO (after Pärt's
  * tintinnabuli: a line, bells on its triad, a slow canon, a halo: rnd_halo_sound), RND_MIRROR MIRROR (HALO's mirror:
- * glassy, digital, its rules loosened: rnd_mirror_sound). Saved as RND_CODE:
+ * glassy, digital, its rules loosened: rnd_mirror_sound), RND_TIDE TIDE (a sub groove across the bar, FALL's leaves,
+ * a triangle bed, a noise: rnd_tide_sound). Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
- * beside them (0..3: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
+ * beside them (0..7: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
  * (settings_rnd_drift: the same word's bits 8 and 9; rnd_drift) */
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
 enum { RND_OFF, RND_FREE, RND_AMBIENT, RND_NICE, RND_FALL, RND_LOOPS, RND_ORBIT, RND_GLITCH, RND_PULSE, RND_WOZZA,
-       RND_HALO, RND_MIRROR, RND_MODES };
+       RND_HALO, RND_MIRROR, RND_TIDE, RND_MODES };
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
     {0x00u, 0}, {0x40u, 0}, {0xC0u, 0}, {0x80u, 0}, {0x80u, 1}, {0x80u, 2}, {0xC0u, 1}, {0x40u, 1}, {0x40u, 2},
     {0x40u, 3}, {0x80u, 3}, {0xC0u, 3},             /* (0xC0's variant 2: PLAITS, on its branch) */
+    {0x40u, 4},
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
 static uint32_t rnd_setting(void)
@@ -245,6 +247,7 @@ static uint8_t rnd_pulse;                          /* 1: this roll is PULSE's */
 static uint8_t rnd_wozza;                          /* 1: this roll is WOZZA's */
 static uint8_t rnd_halo;                           /* 1: this roll is HALO's */
 static uint8_t rnd_mirror;                         /* 1: this roll is MIRROR's */
+static uint8_t rnd_tide;                           /* 1: this roll is TIDE's */
 static uint8_t rnd_wz_lead = NTRK;                 /* WOZZA: the first melody's track (a second one sparser, higher) */
 static uint8_t rnd_want_e = 0xFFu, rnd_want_pi = 0xFFu;   /* PULSE: the engine and preset its role wants (0xFF: rolled) */
 static int rnd_perc(uint32_t tr)                   /* GLITCH's glitch tracks, PULSE's percussion: each hit its attack */
@@ -1846,7 +1849,7 @@ static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_
     rnd_tp(tr, P_LD_AMP, 0);
     rnd_tp(tr, P_LD_FLT, rnd_pct(40) ? rnd_rr(5, 25) : 0);
     rnd_tp(tr, P_LD_SHP, rnd_pct(50) ? rnd_rr(10, 40) : 0);   /* (the shape shimmering: PW, the wave) */
-    rnd_tp(tr, P_LWAVE, rnd_pct(70) ? 0 : 3);       /* (a sine; or S&H: digital steps) */
+    rnd_tp(tr, P_LWAVE, rnd_pct(70) ? 0 : 4);       /* (a sine; or S&H: digital steps) */
     rnd_tp(tr, P_LSYNC, 0);
     rnd_tp(tr, P_LTRIG, 0);
     rnd_tp(tr, P_LFADE, 0);
@@ -2101,6 +2104,280 @@ static void rnd_cords_mirror(const uint8_t *role)
 static void rnd_roles_mirror(uint8_t *role)
 {
     rnd_roles_halo(role);                           /* (the same four, in a random order) */
+}
+
+/* ------------------------------------------------------------ TIDE --- */
+/* TIDE: slow (64 to 84 BPM), always the same four, on the same tracks (to mix and mute by heart): track 1 the SUB
+ * GROOVE (RND_ROLE_LOWPERC): a synthesized sub kick (TRIO's triangles, filtered nearly to a sine, the pitch falling),
+ * its pitch the bed's lowest note two octaves down (FOLLOW), its rhythm across the
+ * bar mostly (EUCLID on 5, 7, 9, 10, 11 or 13 steps, or 12 in threes; 8T now and then) and now and then four on the
+ * floor; track 2 the MELODY: FALL's leaves (BOUNCE) or now and then a line by step (SERIES, HALO's), on a soft TRIO
+ * wave, onto the chord's notes now and then (QNT CHRD), an octave up; track 3 the BED (RND_ROLE_CHORDS): TRIO's
+ * triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK), in the middle; track 4 the NOISE: TRIO's noise
+ * through its low-pass or band-pass, held, breathing. The melody and the noise move a lot and wander the stereo (the LFO
+ * on the filter and the place, slow chaos, the note's height on the place); DRIFT moves the groove (another rhythm
+ * across, or four on the floor, or back), the melody's pace, and the key to its relative and home (rnd_tide_move) */
+#define RND_TD_KICK 0u
+#define RND_TD_MEL 1u
+#define RND_TD_BED 2u
+#define RND_TD_NOISE 3u
+static void rnd_tide_tri(uint32_t tr, int pure)     /* TRIO's three triangles: pure (one), or FALL's */
+{
+    rnd_tp(tr, P_E0, 4);                            /* WAVE TRI3 */
+    rnd_tp(tr, P_E0 + 1u, pure ? 0 : rnd_pct(60) ? 12 : 7);   /* INT2 */
+    rnd_tp(tr, P_E0 + 2u, pure ? 0 : rnd_pct(60) ? -12 : 0);  /* INT3 */
+    rnd_tp(tr, P_E0 + 3u, pure ? 0 : rnd_rr(4, 16)); /* DTN, cents */
+    rnd_tp(tr, P_E0 + 4u, 0);                       /* MODE LP */
+}
+static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
+{
+    uint8_t nice = rnd_nice;
+    uint32_t e;
+    int fmkick = 0;                                 /* (FM6's FM BASS, SOLID BASS, DROP: held notes, a sub bass more than
+                                                     * a kick, measured: TRIO's alone) */
+    rnd_want_e = fmkick ? ENGI_FM6 : 6u;
+    rnd_want_pi = fmkick ? (rnd_pct(40) ? 2 : rnd_pct(50) ? 10 : 28) :   /* (FM BASS, SOLID BASS, DROP: the low ones) */
+                  role == RND_ROLE_MELODY ? (rnd_pct(50) ? 8 : 10) : role == RND_ROLE_CHORDS ? 5 : 8;   /* (SOFT PAD,
+                                                     * SOFT LEAD; WARM PAD; the rest made below) */
+    rnd_nice = 1;
+    rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
+    rnd_nice = nice;
+    rnd_want_e = rnd_want_pi = 0xFFu;
+    e = trk[tr].eng_req;
+    rnd_tp(tr, P_ED_SHP, 0);
+    rnd_tp(tr, P_LD_PIT, 0);
+    rnd_tp(tr, P_LD_SHP, 0);
+    rnd_tp(tr, P_LD_AMP, 0);
+    rnd_tp(tr, P_LD_FLT, 0);
+    rnd_tp(tr, P_LWAVE, 0);
+    rnd_tp(tr, P_LSYNC, 0);
+    rnd_tp(tr, P_LTRIG, 0);
+    rnd_tp(tr, P_LFADE, 0);
+    rnd_tp(tr, P_GLIDE, 0);
+    rnd_tp(tr, P_CHRD, 0);
+    if (role == RND_ROLE_LOWPERC) {                 /* the sub: struck, the pitch falling, short, in the middle */
+        if (e == 6u) {
+            rnd_tide_tri(tr, 1);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(20, 40));  /* CUT: near a sine */
+            rnd_tp(tr, P_E0 + 6u, 0);
+            rnd_tp(tr, P_ED_PIT, rnd_rr(20, 45));   /* (the thump: the pitch from above, falling) */
+            rnd_tp(tr, P_ED_FLT, rnd_rr(10, 30));
+        } else rnd_tp(tr, P_ED_PIT, 0);
+        rnd_tp(tr, P_ATK, 0);
+        rnd_tp(tr, P_DEC, rnd_rr(35, 60));
+        rnd_tp(tr, P_SUS, 0);
+        rnd_tp(tr, P_REL, rnd_rr(25, 45));
+        rnd_tp(tr, P_VOICE, V_MONO);
+        rnd_tp(tr, P_LEVEL, rnd_rr(100, 112));
+        rnd_tp(tr, P_PAN, 0);
+        rnd_tp(tr, P_DETUNE, 0);
+        rnd_tp(tr, P_SPRD, 0);
+        if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 7u, rnd_rr(0, 12));
+        return;
+    }
+    rnd_tp(tr, P_ED_PIT, 0);
+    rnd_tp(tr, P_ED_FLT, rnd_rr(0, 20));
+    if (role == RND_ROLE_MELODY) {                  /* soft, struck, ringing; the filter and the place moving */
+        static const uint8_t wv[] = {4, 5, 2}, ww[] = {4, 3, 1};   /* TRI3, S&T, PPT */
+        if (e == 6u) {
+            rnd_tp(tr, P_E0, rnd_pick(wv, ww, NELEM(wv)));
+            rnd_tp(tr, P_E0 + 1u, rnd_pct(60) ? 12 : 0);
+            rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? 0 : 7);
+            rnd_tp(tr, P_E0 + 3u, rnd_rr(4, 14));
+            rnd_tp(tr, P_E0 + 4u, 0);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(55, 85));
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 30));
+        }
+        rnd_tp(tr, P_ATK, rnd_rr(0, 12));
+        rnd_tp(tr, P_DEC, rnd_rr(55, 95));
+        rnd_tp(tr, P_SUS, rnd_rr(10, 50));
+        rnd_tp(tr, P_REL, rnd_rr(70, 105));
+        rnd_tp(tr, P_VOICE, V_POLY);
+        rnd_tp(tr, P_LEVEL, rnd_rr(96, 108));       /* (the voice up front: over the bed, measured) */
+        rnd_tp(tr, P_LRATE, rnd_rr(30, 60));        /* (0.2 to 0.8 Hz) */
+        rnd_tp(tr, P_LD_FLT, rnd_rr(15, 40));
+        rnd_tp(tr, P_LWAVE, rnd_pct(70) ? 0 : 1);   /* (sine or triangle) */
+        rnd_tp(tr, P_DETUNE, rnd_rr(20, 60));
+        rnd_tp(tr, P_SPRD, rnd_rr(60, 127));
+        rnd_tp(tr, P_PAN, 0);
+    } else if (role == RND_ROLE_CHORDS) {           /* the bed: triangles, held, warm */
+        if (e == 6u) {
+            rnd_tide_tri(tr, 0);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(45, 75));
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 20));
+        }
+        rnd_tp(tr, P_ATK, rnd_rr(70, 110));
+        rnd_tp(tr, P_DEC, 127);
+        rnd_tp(tr, P_SUS, rnd_rr(105, 127));
+        rnd_tp(tr, P_REL, rnd_rr(95, 120));
+        rnd_tp(tr, P_VOICE, V_POLY);
+        rnd_tp(tr, P_LEVEL, rnd_rr(52, 64));        /* (under the melody) */
+        rnd_tp(tr, P_LRATE, rnd_rr(15, 35));
+        rnd_tp(tr, P_LD_FLT, rnd_rr(5, 15));
+        rnd_tp(tr, P_DETUNE, rnd_rr(30, 80));
+        rnd_tp(tr, P_SPRD, rnd_rr(40, 90));
+        rnd_tp(tr, P_PAN, 0);
+    } else {                                        /* the noise: low-pass or band-pass, held, breathing, wide */
+        int bp = rnd_pct(50);
+        if (e == 6u) {
+            rnd_tp(tr, P_E0, 8);                    /* WAVE NOIS */
+            rnd_tp(tr, P_E0 + 4u, bp ? 1 : 0);      /* MODE BP or LP */
+            rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(50, 85) : rnd_rr(35, 70));   /* CUT */
+            rnd_tp(tr, P_E0 + 6u, bp ? rnd_rr(30, 75) : rnd_rr(0, 35));    /* RES: a band-pass sings a little */
+        }
+        rnd_tp(tr, P_ATK, rnd_rr(85, 115));
+        rnd_tp(tr, P_DEC, 127);
+        rnd_tp(tr, P_SUS, 127);
+        rnd_tp(tr, P_REL, rnd_rr(90, 115));
+        rnd_tp(tr, P_VOICE, V_LEGATO);
+        rnd_tp(tr, P_LEVEL, rnd_rr(62, 78));
+        rnd_tp(tr, P_LRATE, rnd_rr(20, 50));        /* (waves: 0.1 to 0.6 Hz) */
+        rnd_tp(tr, P_LD_FLT, rnd_rr(20, 50));
+        rnd_tp(tr, P_DETUNE, 0);
+        rnd_tp(tr, P_SPRD, rnd_rr(90, 127));
+        rnd_tp(tr, P_PAN, 0);
+    }
+}
+/* the groove: across the bar mostly (EUCLID on odd lengths; 12 in threes; on 8T now and then), four on the floor now
+ * and then */
+static void rnd_tide_groove(uint32_t tr, int four)
+{
+    static const uint8_t ln[] = {5, 7, 9, 10, 11, 13, 12}, lw[] = {3, 4, 2, 2, 2, 1, 2};
+    int32_t st = (int32_t)rnd_pick(ln, lw, NELEM(ln));
+    rnd_tx(tr, TX_MODE, TESS_ENG_EUCLID);
+    if (four) {
+        rnd_tx(tr, TX_EUC_STEPS, 4);
+        rnd_tx(tr, TX_EUC_PULSES, 4);
+        rnd_tx(tr, TX_EUC_ROT, 0);
+        rnd_tp(tr, P_SDIV, 0);                      /* 1/4 */
+        return;
+    }
+    rnd_tx(tr, TX_EUC_STEPS, st);
+    rnd_tx(tr, TX_EUC_PULSES, st == 12 ? 4 : rnd_rr(2, st >= 9 ? 4 : 3));   /* (12 in threes: dotted quarters) */
+    rnd_tx(tr, TX_EUC_ROT, st == 12 ? 0 : rnd_rr(0, st - 1));
+    rnd_tp(tr, P_SDIV, rnd_pct(20) ? 4 : 1);        /* 8T or 1/8 */
+}
+static void rnd_tide_generators(void)
+{
+    static const uint8_t pg[] = {5, 4, 3, 6}, pgw[] = {3, 4, 1, 2};   /* DRONE TWO CIRCLE WALK */
+    uint32_t tr, chords = 1;
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+        if (tr == RND_TD_BED) continue;
+        rnd_generator(tr, &chords);
+        rnd_tx(tr, TX_FM_FORM, 0);
+        rnd_tx(tr, TX_TW_BRANCH, 0); rnd_tx(tr, TX_TW_BR_TO, 0); rnd_tx(tr, TX_TW_LOGIC, 0); rnd_tx(tr, TX_TW_COND, 0);
+        rnd_tx(tr, TX_TW_SHIFT, 0);
+        rnd_tx(tr, TX_TW_FOLLOW, 0);
+        rnd_tx(tr, TX_SUB_RATCH, 0);
+        rnd_tx(tr, TX_NL_MODE, 0);
+        rnd_tx(tr, TX_EV_EVERY, 0);
+        rnd_tp(tr, P_SSWING, 0);
+        rnd_tp(tr, P_SLEN, 16);
+    }
+    tr = RND_TD_BED;                                /* the bed: the chords, held */
+    rnd_tx(tr, TX_MODE, TESS_ENG_CHORD);
+    rnd_tx(tr, TX_CH_PROG, rnd_pick(pg, pgw, NELEM(pg)));
+    rnd_tx(tr, TX_CH_BARS, rnd_pct(60) ? 3 : 2);    /* (4 or 2 bars a chord) */
+    rnd_tx(tr, TX_CH_HIT, 0);
+    rnd_tx(tr, TX_CH_OCT, 0);
+    rnd_tx(tr, TX_CH_BREATH, rnd_rr(0, 30));
+    rnd_tx(tr, TX_TW_DROP, 0);
+    rnd_tx(tr, TX_EV_EVERY, 0);
+    rnd_tx(tr, TX_SUB_HUMAN, 0);
+    rnd_tp(tr, P_SDIV, 0);
+    rnd_tp(tr, P_SGATE, 127);
+    tr = RND_TD_KICK;                               /* the sub groove: on the bed's lowest note */
+    rnd_tide_groove(tr, rnd_pct(15));
+    rnd_tx(tr, TX_TW_FOLLOW, (int32_t)RND_TD_BED + 1);
+    rnd_tx(tr, TX_TW_DROP, rnd_pct(40) ? rnd_rr(5, 20) : 0);
+    rnd_tx(tr, TX_TW_HUMAN, rnd_rr(10, 40));
+    rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(0, 20));
+    rnd_tp(tr, P_SGATE, rnd_rr(30, 60));
+    tr = RND_TD_MEL;                                /* the melody: FALL's leaves, or a line by step */
+    if (rnd_pct(75)) {
+        rnd_tx(tr, TX_MODE, TESS_ENG_BOUNCE);
+        rnd_tx(tr, TX_BNC_BALLS, 5);
+        rnd_tx(tr, TX_BNC_SPEED, rnd_rr(4, 20));
+        rnd_tx(tr, TX_BNC_ANGLE, rnd_pct(60) ? rnd_rr(35, 55) : rnd_rr(15, 75));
+        rnd_tp(tr, P_SDIV, rnd_pct(60) ? 1 : 0);    /* 1/8 or 1/4 */
+    } else {
+        rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
+        rnd_tx(tr, TX_SR_START, rnd_rr(0, 127));
+        rnd_tx(tr, TX_SR_INTV, 1);
+        rnd_tx(tr, TX_SR_LOOP, rnd_pct(50) ? 0 : rnd_rr(6, 16));
+        rnd_tp(tr, P_SDIV, rnd_pct(60) ? 0 : 6);    /* 1/4 or 1/2 */
+    }
+    rnd_tp(tr, P_SGATE, rnd_rr(60, 110));
+    rnd_tx(tr, TX_TW_DROP, rnd_pct(50) ? rnd_rr(5, 30) : 0);
+    rnd_tx(tr, TX_TW_HUMAN, rnd_rr(10, 40));
+    rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(5, 30));
+    rnd_tx(tr, TX_EV_EVERY, rnd_pct(50) ? rnd_rr(4, 5) : 0);
+    rnd_tx(tr, TX_EV_AMOUNT, rnd_rr(10, 25));
+    if (rnd_pct(40)) rnd_tp(tr, P_QUANT, Q_CHRD);   /* (onto the chord's notes now and then) */
+    tr = RND_TD_NOISE;                              /* the noise: one note, held */
+    rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
+    rnd_tx(tr, TX_SR_START, 0);
+    rnd_tx(tr, TX_SR_INTV, 1);
+    rnd_tx(tr, TX_SR_LOOP, 1);
+    rnd_tp(tr, P_SDIV, 9);                          /* 4BAR */
+    rnd_tp(tr, P_SGATE, 127);
+    rnd_tx(tr, TX_TW_DROP, 0);
+    rnd_tx(tr, TX_SUB_HUMAN, 0);
+}
+/* the registers: the sub two octaves under the bed's lowest note (the bed in the middle), the melody an octave up, the
+ * noise where it is; the tempo: slow */
+static void rnd_tide_registers(void)
+{
+    rnd_tp(RND_TD_KICK, P_TRANS, -24);              /* (FOLLOW: from the bed's note: C1 to B1) */
+    rnd_tp(RND_TD_MEL, P_TRANS, rnd_pct(70) ? 12 : 0);
+    rnd_tp(RND_TD_BED, P_TRANS, 0);
+    rnd_tp(RND_TD_NOISE, P_TRANS, 0);
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(64, 84));
+}
+static void rnd_key_tide(void)
+{
+    static const uint8_t sc[] = {2, 3, 6, 5, 1, 9, 4}, sw[] = {4, 3, 2, 2, 1, 1, 1};   /* MIN DOR MPEN PEN MAJ LYD MIX */
+    int32_t scale = (int32_t)rnd_pick(sc, sw, NELEM(sc)), root = rnd_rr(0, 11);
+    uint32_t tr;
+    rnd_tx(0, TX_KEY_LINK, 1);
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_SCALE, scale);
+        rnd_tp(tr, P_ROOT, root);
+        rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+    }
+    scale_share(&trk[0]);
+}
+/* TIDE's cords: the melody's place on a slow LFO and on the note's height, its colour wandering; the noise's place on
+ * slow chaos, its colour on another; the bed's colour slowly */
+static void rnd_cords_tide(void)
+{
+    static const uint8_t chaos[] = {CS_OCHD1, CS_OCHD3, CS_DRIFT, CS_TORPOR};
+    cord_t c[7];
+    uint32_t i, n = 0;
+    memset(c, 0, sizeof c);
+    c[n].src_trk = c[n].dst_trk = RND_TD_MEL; c[n].src = CS_LFO; c[n].dst = CD_PAN; c[n].amount = (int8_t)rnd_rr(35, 70); n++;
+    c[n].src_trk = c[n].dst_trk = RND_TD_MEL; c[n].src = CS_NOTE; c[n].dst = CD_PAN;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(15, 35) : -rnd_rr(15, 35)); n++;
+    c[n].src_trk = c[n].dst_trk = RND_TD_MEL; c[n].src = CS_DRIFT; c[n].dst = CD_CUTOFF;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(15, 35) : -rnd_rr(15, 35)); n++;
+    c[n].src_trk = c[n].dst_trk = RND_TD_NOISE; c[n].src = chaos[rnd_next() % NELEM(chaos)]; c[n].dst = CD_PAN;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(45, 80) : -rnd_rr(45, 80)); n++;
+    c[n].src_trk = c[n].dst_trk = RND_TD_NOISE; c[n].src = CS_INERTIA; c[n].dst = CD_CUTOFF;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(15, 35) : -rnd_rr(15, 35)); n++;
+    c[n].src_trk = c[n].dst_trk = RND_TD_BED; c[n].src = CS_DRIFT; c[n].dst = CD_CUTOFF;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(10, 25) : -rnd_rr(10, 25)); n++;
+    for (i = 0; i < CORD_LIVE; i++) {
+        cord_t z;
+        memset(&z, 0, sizeof z);
+        cord_set(i, i < n ? &c[i] : &z);
+    }
+}
+static void rnd_roles_tide(uint8_t *role)
+{
+    role[RND_TD_KICK] = RND_ROLE_LOWPERC;
+    role[RND_TD_MEL] = RND_ROLE_MELODY;
+    role[RND_TD_BED] = RND_ROLE_CHORDS;
+    role[RND_TD_NOISE] = RND_ROLE_NOISE;
 }
 
 /* ------------------------------------------------------------ the roll: what the FM-1 can play --- */
@@ -2755,11 +3032,16 @@ static int rnd_pivot(void)
     int32_t ns, nr, d;
     uint32_t tr;
     if (!rnd_piv.away) {
-        if (!rnd_pivot_target(trk[0].p[P_SCALE], trk[0].p[P_ROOT], &ns, &nr)) return 0;
+        for (tr = 0; tr < NTRK; tr++)               /* (one key on every track, linked: else none) */
+            if (trk[tr].p[P_SCALE] != trk[0].p[P_SCALE] || trk[tr].p[P_ROOT] != trk[0].p[P_ROOT]) return 0;
+        if (!tessera.key_link || !rnd_pivot_target(trk[0].p[P_SCALE], trk[0].p[P_ROOT], &ns, &nr)) return 0;
         rnd_piv.scale = trk[0].p[P_SCALE];
         rnd_piv.root = trk[0].p[P_ROOT];
         d = ((nr - rnd_piv.root) % 12 + 12) % 12;
         rnd_piv.comp = (int8_t)(d > 5 ? -12 : 0);
+        for (tr = 0; tr < NTRK; tr++)               /* (a track already as low as TRANS goes: none moved, so none
+                                                     * comes back wrong) */
+            if (!pid_get(PID_TESS(TX_TW_FOLLOW), tr) && trk[tr].p[P_TRANS] + rnd_piv.comp < TP[P_TRANS].min) rnd_piv.comp = 0;
         rnd_key_set(ns, nr);
         rnd_piv.away = 1;
     } else {
@@ -2776,6 +3058,13 @@ static uint32_t rnd_drift_wait(void)               /* (the bars to wait after th
 {
     return settings_rnd_drift == RND_DRIFT_FAST ? (uint32_t)rnd_rr(0, 1) : (uint32_t)rnd_rr(3, 7);
 }
+/* the modes that move on HALO's clock (DRIFT): HALO, MIRROR and TIDE their own ways (rnd_halo_move, rnd_mirror_move,
+ * rnd_tide_move); AMBIENT, NICE, FALL, LOOPS, ORBIT and WOZZA the key to its relative and home (rnd_pivot), about a
+ * third of the time */
+static int rnd_moves(void)
+{
+    return rnd_halo || rnd_mirror || rnd_tide || rnd_wozza || (rnd_setting() >= RND_AMBIENT && rnd_setting() <= RND_ORBIT);
+}
 /* HALO's movements, apart from the nudges: SLOW about every 16 to 32 bars (a minute or two at its tempo), FAST every
  * 4 to 8 */
 static uint32_t rnd_halo_wait(void)
@@ -2786,7 +3075,7 @@ static void rnd_drift_start(void)
 {
     rnd_drift_s.bar = bar_n;
     rnd_drift_s.left = rnd_drift_wait();
-    rnd_hl_wait = rnd_halo || rnd_mirror ? rnd_halo_wait() : 0u;   /* (only HALO draws: the other modes' rolls as they were) */
+    rnd_hl_wait = rnd_halo || rnd_mirror || (rnd_moves() && settings_rnd_drift) ? rnd_halo_wait() : 0u;   /* (only HALO draws: the other modes' rolls as they were) */
 }
 /* a MIRROR movement (DRIFT, on HALO's clock), a fifth each: the key to its relative or home (rnd_pivot; none off
  * twelve notes, nor in WHOLE or DIMHW),  the line's pace a step (1/2 1/4 1/8, 1/16 when light;
@@ -2829,6 +3118,24 @@ static void rnd_mirror_move(void)
     } else {
         rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] > 0 ? -12 : 12);
     }
+}
+/* a TIDE movement: a quarter of the time the key to its relative or home (the sub kept in its octave: it follows the
+ * bed, which the pivot may take an octave down), else the groove anew (across the bar, or four on the floor a fifth of
+ * the time) or the melody's pace a step (1/8 or 1/4; a line by step 1/4 or 1/2) */
+static void rnd_tide_move(void)
+{
+    uint32_t k = rnd_next() % 100u, tr = RND_TD_MEL;
+    rnd_drift_s.moves++;
+    if (k < 25u && rnd_pivot()) {
+        rnd_tp(RND_TD_KICK, P_TRANS, -24 - (rnd_piv.away ? rnd_piv.comp : 0));
+        return;
+    }
+    if (k < 70u) {
+        rnd_tide_groove(RND_TD_KICK, rnd_pct(20));
+        return;
+    }
+    if (tessera.mode[tr] == TESS_ENG_BOUNCE) rnd_tp(tr, P_SDIV, trk[tr].p[P_SDIV] == 1 ? 0 : 1);
+    else rnd_tp(tr, P_SDIV, trk[tr].p[P_SDIV] == 0 ? 6 : 0);
 }
 /* a HALO movement: a quarter of the time the key to its relative or home (rnd_pivot), else half the time each: the
  * M-voice's pace a step slower or faster (1/2, 1/4, 1/8; FALL's leaves 1/4
@@ -2914,7 +3221,9 @@ static void rnd_drift_step(void)
             uint32_t e = (uint32_t)rnd_next() % 8u;
             const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + e), tr);
             if (!d || d->fmt == F_ENUM || d->max <= d->min) continue;
-            if ((rnd_fall || rnd_halo) && t->eng_req == 6u && (e == 1u || e == 2u)) continue;   /* (FALL, HALO: TRIO's
+            if ((rnd_fall || rnd_halo || rnd_tide) && t->eng_req == 6u && (e == 1u || e == 2u)) continue;
+            if (rnd_tide && t->eng_req == 6u && (e == 0u || e == 4u)) continue;   /* (TIDE: the waves, the noise's LP or
+                                                     * BP, kept) */   /* (FALL, HALO: TRIO's
                                                      * intervals kept) */
             rnd_tp(tr, P_E0 + e, rnd_nudge(t->p[P_E0 + e], d->min, d->max, small, big));
             return;
@@ -2943,7 +3252,8 @@ static void rnd_drift_step(void)
         const param_desc_t *d;
         if (tessera.mode[tr] == TESS_ENG_OFF) return;
         id = rnd_drift_gen_id(tr);
-        if ((rnd_halo || rnd_mirror) && (tessera.mode[tr] == TESS_ENG_CHORD || (id == TX_SR_INTV && rnd_halo))) return;   /* (HALO: the triad held,
+        if ((rnd_halo || rnd_mirror || rnd_tide) && (tessera.mode[tr] == TESS_ENG_CHORD || (id == TX_SR_INTV && !rnd_mirror)))
+            return;   /* (HALO: the triad held,
                                                      * the line by step) */
         d = pid_desc(PID_TESS(id), tr);
         if (!d || d->max <= d->min) return;
@@ -2981,9 +3291,11 @@ static void rnd_drift_step(void)
         if (rnd_glitch) rnd_glitch_generator(tr, rnd_role_of[tr], &chords);
         else if (rnd_pulse) rnd_pulse_generator(tr, rnd_role_of[tr], &chords);
         else if (rnd_wozza) rnd_wozza_generator(tr, rnd_role_of[tr], &chords);
-        else if (rnd_halo || rnd_mirror) {          /* (HALO, MIRROR: the line anew, the two that follow it with it) */
+        else if (rnd_halo || rnd_mirror || rnd_tide) {   /* (HALO, MIRROR: the line anew, the two that follow it
+                                                     * with it; TIDE: its four) */
             if (rnd_halo) rnd_halo_generators(rnd_role_of);
-            else rnd_mirror_generators(rnd_role_of);
+            else if (rnd_mirror) rnd_mirror_generators(rnd_role_of);
+            else rnd_tide_generators();
             for (k = 0; k < TESSERA_TRACKS; k++) rnd_cpu(k);
             return;
         } else rnd_generator(tr, &chords);
@@ -3006,6 +3318,7 @@ static void rnd_drift_step(void)
         else if (rnd_wozza) rnd_wozza_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
         else if (rnd_halo) rnd_halo_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
         else if (rnd_mirror) rnd_mirror_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
+        else if (rnd_tide) rnd_tide_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
         else rnd_sound(tr, &fm6s, &phys, &oracles, rnd_role_of[tr]);
         undo_depth--;
         undo_clear();
@@ -3026,12 +3339,14 @@ static void rnd_drift(void)
     }
     if (bar_n == rnd_drift_s.bar) return;
     rnd_drift_s.bar = bar_n;
-    if (rnd_halo || rnd_mirror) {                   /* (HALO, MIRROR: their movements on their own, slower clock) */
+    if (rnd_moves()) {                              /* (the movements on their own, slower clock) */
         if (rnd_hl_wait) rnd_hl_wait--;
         else {
             rnd_hl_wait = rnd_halo_wait();
             if (rnd_halo) rnd_halo_move();
-            else rnd_mirror_move();
+            else if (rnd_mirror) rnd_mirror_move();
+            else if (rnd_tide) rnd_tide_move();
+            else if (rnd_pct(35) && rnd_pivot()) rnd_drift_s.moves++;
         }
     }
     if (rnd_drift_s.left) {
@@ -3088,7 +3403,8 @@ static void rnd_roll(void)
 {
     uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0;
     uint32_t ambient = rnd_setting() >= RND_AMBIENT && rnd_setting() != RND_GLITCH && rnd_setting() != RND_PULSE &&
-                       rnd_setting() != RND_WOZZA && rnd_setting() != RND_HALO && rnd_setting() != RND_MIRROR;
+                       rnd_setting() != RND_WOZZA && rnd_setting() != RND_HALO && rnd_setting() != RND_MIRROR &&
+                       rnd_setting() != RND_TIDE;
     uint8_t role[NTRK];
     momentary_restore();
     voice_soft_fade = 1;                            /* (ui_input sets it each frame too: the budget's gentle fades) */
@@ -3109,7 +3425,9 @@ static void rnd_roll(void)
     rnd_piv.away = 0;                               /* (the roll's key is home) */
     rnd_piv.comp = 0;
     rnd_mirror = (uint8_t)(rnd_setting() == RND_MIRROR);
-    if (rnd_wozza || rnd_halo || rnd_mirror) rnd_nice = 1;   /* (WOZZA, HALO, MIRROR: NICE's gentle drift) */
+    rnd_tide = (uint8_t)(rnd_setting() == RND_TIDE);
+    if (rnd_wozza || rnd_halo || rnd_mirror || rnd_tide) rnd_nice = 1;   /* (WOZZA HALO MIRROR TIDE: NICE's gentle
+                                                     * drift) */
     if (rnd_loops || rnd_orbit) rnd_nice = 1;       /* (LOOPS, ORBIT: NICE's gentle voices too) */
     rnd_roles(role, ambient && !rnd_loops && !rnd_orbit);
     if (rnd_loops || rnd_orbit)                     /* (LOOPS, ORBIT: four voices alike) */
@@ -3119,6 +3437,7 @@ static void rnd_roll(void)
     if (rnd_wozza) rnd_roles_wozza(role);
     if (rnd_halo) rnd_roles_halo(role);
     if (rnd_mirror) rnd_roles_mirror(role);
+    if (rnd_tide) rnd_roles_tide(role);
     memcpy(rnd_role_of, role, sizeof rnd_role_of);
     undo_depth++;                                   /* (a roll is not four sound loads to undo one by one) */
     {                                               /* (the drone and the chords pick their engines first) */
@@ -3134,6 +3453,7 @@ static void rnd_roll(void)
                 else if (rnd_wozza) rnd_wozza_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else if (rnd_halo) rnd_halo_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else if (rnd_mirror) rnd_mirror_sound(tr, role[tr], &fm6s, &phys, &oracles);
+                else if (rnd_tide) rnd_tide_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else rnd_sound(tr, &fm6s, &phys, &oracles, role[tr]);
     }
     undo_depth--;
@@ -3143,12 +3463,14 @@ static void rnd_roll(void)
     else if (rnd_wozza) rnd_wozza_registers(role);
     else if (rnd_halo) rnd_halo_registers(role);
     else if (rnd_mirror) rnd_mirror_registers(role);
+    else if (rnd_tide) rnd_tide_registers();
     else rnd_registers();
     if (rnd_glitch) rnd_key_glitch();
     else if (rnd_pulse) rnd_key_pulse();
     else if (rnd_wozza) rnd_key_wozza();
     else if (rnd_halo) rnd_key_halo();
     else if (rnd_mirror) rnd_key_mirror();
+    else if (rnd_tide) rnd_key_tide();
     else if (rnd_loops || rnd_orbit) rnd_key_loops();
     else if (ambient) rnd_key_ambient();
     else rnd_key();
@@ -3169,9 +3491,10 @@ static void rnd_roll(void)
             rnd_wozza_generator(tr, role[tr], &chords);
             rnd_cpu(tr);
         }
-    } else if (rnd_halo || rnd_mirror) {
+    } else if (rnd_halo || rnd_mirror || rnd_tide) {
         if (rnd_halo) rnd_halo_generators(role);
-        else rnd_mirror_generators(role);
+        else if (rnd_mirror) rnd_mirror_generators(role);
+        else rnd_tide_generators();
         for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
     } else if (rnd_loops || rnd_orbit) {
         if (rnd_loops) rnd_loops_generators();
@@ -3188,10 +3511,11 @@ static void rnd_roll(void)
     }
     rnd_tails();
     rnd_budget();
-    if (rnd_halo || rnd_mirror) {
+    if (rnd_halo || rnd_mirror || rnd_tide) {
         rnd_fx_dry();
         if (rnd_halo) rnd_cords_halo(role);
-        else rnd_cords_mirror(role);
+        else if (rnd_mirror) rnd_cords_mirror(role);
+        else rnd_cords_tide();
     } else if (rnd_wozza) {                         /* (its own effects, then its cords: one on the TAPE) */
         if (RND_FX_ROLLS) rnd_fx_wozza(role);
         else rnd_fx_dry();
@@ -3211,7 +3535,7 @@ static void rnd_roll(void)
         rnd_cords();
     }
     sync_reload = 1;
-    rnd_say(rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
+    rnd_say(rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
             ambient ? "AMB " : "RND ", rnd_seed);
     if (!song.playing && !seq_counting() && !chain_busy()) transport_req = 1;   /* (it plays at once) */
     rnd_guard_start();
@@ -3234,7 +3558,7 @@ static void rnd_back(void)
         rnd_guard_s.on = 0;                         /* (what was there before: not the guard's to change) */
         ui_message("BEFORE THE ROLL");
     } else {
-        rnd_say(rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
+        rnd_say(rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
                 rnd_setting() == RND_AMBIENT ? "AMB " : "RND ", rnd_seed);
         rnd_guard_start();
     }
