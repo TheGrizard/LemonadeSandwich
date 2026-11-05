@@ -6179,6 +6179,12 @@ static uint32_t rnd_hash_of(int gens)
 }
 static uint32_t rnd_hash(void) { return rnd_hash_of(1); }
 /* bars played with the UI's DRIFT tick every block (the frames do it on the FM-1) */
+/* a key's pitch classes (bit 0 C): its scale's mask turned to its root */
+static uint32_t rnd_pcs_of(int32_t scale, int32_t root)
+{
+    uint32_t m = SCALE_MASK[scale % 16], r = (uint32_t)(root % 12);
+    return ((m << r) | (m >> (12u - r))) & 0xFFFu;
+}
 static void rnd_play_bars(uint32_t bars)
 {
     int32_t o[2 * CTL];
@@ -6971,13 +6977,21 @@ static int test_rnd(void)
         printf("rnd: HALO: the bells' notes on the triad: %u of %u\n", on_triad, notes);
         {                                           /* DRIFT: HALO's movements, the rest held */
             uint8_t drift_was = settings_rnd_drift;
-            uint32_t b, m = NTRK, t = NTRK, c = NTRK, paces = 0, flips = 0, held = 1, kept = 1, moved_off = 0;
-            int16_t div0, tt0;
-            rnd_roll();
+            uint32_t b, m = NTRK, t = NTRK, c = NTRK, hl = NTRK, paces = 0, flips = 0, held = 1, kept = 1, moved_off = 0;
+            uint32_t pivots = 0, away = 0, piv_ok = 1, home_pcs, tries;
+            int16_t div0, tt0, home_sc, home_rt, home_mt;
+            for (tries = 0; tries < 50u; tries++) {   /* (a key with a relative: MAJ MIN DOR LYD MIX) */
+                rnd_roll();
+                k = (uint32_t)trk[0].p[P_SCALE];
+                if (k == 1u || k == 2u || k == 3u || k == 9u || k == 4u) break;
+            }
             for (tr = 0; tr < NTRK; tr++)
                 if (rnd_role_of[tr] == RND_ROLE_MELODY) m = tr;
                 else if (rnd_role_of[tr] == RND_ROLE_TINT) t = tr;
                 else if (rnd_role_of[tr] == RND_ROLE_CANON) c = tr;
+                else hl = tr;
+            home_sc = trk[0].p[P_SCALE]; home_rt = trk[0].p[P_ROOT]; home_mt = trk[m].p[P_TRANS];
+            home_pcs = rnd_pcs_of(home_sc, home_rt);
             settings_rnd_drift = RND_DRIFT_OFF;
             div0 = trk[m].p[P_SDIV]; tt0 = trk[t].p[P_TRANS];
             rnd_play_bars(40);
@@ -6994,7 +7008,18 @@ static int test_rnd(void)
                         trk[c].p[P_SDIV] == (d == 1 ? 0 : d == 0 ? 6 : 7) &&
                         (tessera.mode[m] != TESS_ENG_BOUNCE || d != 6);
                 x = trk[t].p[P_TRANS];
-                held &= mt > 0 ? (x == 0 || x == -12) : (x == 12 || x == -12);
+                held &= (x == 0 || x == 12 || x == -12) && trk[m].p[P_TRANS] + x <= 24;
+                (void)mt;
+                {                                   /* the pivot: the relative's notes the home key's; home: as rolled */
+                    uint32_t pcs = rnd_pcs_of(trk[0].p[P_SCALE], trk[0].p[P_ROOT]);
+                    if (trk[0].p[P_SCALE] != home_sc || trk[0].p[P_ROOT] != home_rt) {
+                        pivots += !away; away = 1;
+                        piv_ok &= pcs == home_pcs && pid_get(PID_TESS(TX_CH_PROG), hl) >= 4;
+                    } else {
+                        away = 0;
+                        piv_ok &= trk[m].p[P_TRANS] == home_mt;
+                    }
+                }
                 for (tr = 0; tr < NTRK; tr++) {
                     if (rnd_role_of[tr] == RND_ROLE_CHORDS)
                         kept &= tessera.mode[tr] == TESS_ENG_CHORD && (pid_get(PID_TESS(TX_CH_PROG), tr) == 5 ||
@@ -7010,7 +7035,9 @@ static int test_rnd(void)
             bad += check("RND HALO: ..the bells always on the line's clock, the canon at half, the bells beside or an octave off",
                          held);
             bad += check("RND HALO: ..the triad held (DRONE or TWO), the line by step, the two still following it", kept);
-            printf("rnd: HALO DRIFT FAST 200 bars: %u pace changes, %u bell moves\n", paces, flips);
+            bad += check("RND HALO: ..DRIFT FAST: the key to its relative and back (the same notes; home: the line as rolled)",
+                         pivots >= 1u && piv_ok);
+            printf("rnd: HALO DRIFT FAST 200 bars: %u pace changes, %u bell moves, %u pivots\n", paces, flips, pivots);
             transport_req = 2;
             settings_rnd_drift = drift_was;
         }

@@ -2718,6 +2718,60 @@ static void rnd_guard(void)
 enum { RND_DRIFT_OFF, RND_DRIFT_SLOW, RND_DRIFT_FAST, RND_DRIFTS };
 static struct { uint32_t bar, left, steps, moves; } rnd_drift_s;   /* (moves: HALO's movements made) */
 static uint32_t rnd_hl_wait;                       /* HALO: bars to its next movement (rnd_halo_move) */
+/* the pivot (DRIFT, HALO and MIRROR): the key away to its relative (major's minor, minor's major: the same notes, the
+ * centre moved), and back home the next time. home: the rolled key; comp: the TRANS the tracks with their own line
+ * took, so a root moved up past a fourth sounds a little below instead (a sixth up: a third down) */
+static struct { uint8_t away; int8_t comp; int16_t scale, root; } rnd_piv;
+/* the key on the same notes, its centre the relative: MAJ <-> MIN, PEN <-> MPEN; DOR PHRY (minor) -> their notes'
+ * major, LYD MIX (major) -> their notes' minor. -> 0: none (WHOLE, DIMHW, off twelve notes) */
+static int rnd_pivot_target(int32_t scale, int32_t root, int32_t *ns, int32_t *nr)
+{
+    int32_t parent;
+    switch (scale) {
+    case 1: *ns = 2; *nr = root + 9; break;         /* MAJ -> its relative MIN */
+    case 2: *ns = 1; *nr = root + 3; break;         /* MIN -> MAJ */
+    case 5: *ns = 6; *nr = root + 9; break;         /* PEN -> MPEN */
+    case 6: *ns = 5; *nr = root + 3; break;         /* MPEN -> PEN */
+    case 3: case 8: parent = root - (scale == 3 ? 2 : 4); *ns = 1; *nr = parent; break;   /* DOR, PHRY -> their MAJ */
+    case 9: case 4: parent = root - (scale == 9 ? 5 : 7); *ns = 2; *nr = parent + 9; break;   /* LYD, MIX -> their MIN */
+    default: return 0;
+    }
+    *nr = (*nr % 12 + 12) % 12;
+    return 1;
+}
+static void rnd_key_set(int32_t scale, int32_t root)
+{
+    uint32_t tr;
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_SCALE, scale);
+        rnd_tp(tr, P_ROOT, root);
+    }                                               /* (not scale_share: it would give every track track 1's QNT, and
+                                                     * the bells their QNT CHRD) */
+}
+/* away to the relative, or home: 1 if the key moved. The tracks with a line of their own (no FOLLOW: a follower sounds
+ * its leader's note, transposed already) move by comp */
+static int rnd_pivot(void)
+{
+    int32_t ns, nr, d;
+    uint32_t tr;
+    if (!rnd_piv.away) {
+        if (!rnd_pivot_target(trk[0].p[P_SCALE], trk[0].p[P_ROOT], &ns, &nr)) return 0;
+        rnd_piv.scale = trk[0].p[P_SCALE];
+        rnd_piv.root = trk[0].p[P_ROOT];
+        d = ((nr - rnd_piv.root) % 12 + 12) % 12;
+        rnd_piv.comp = (int8_t)(d > 5 ? -12 : 0);
+        rnd_key_set(ns, nr);
+        rnd_piv.away = 1;
+    } else {
+        rnd_key_set(rnd_piv.scale, rnd_piv.root);
+        rnd_piv.comp = (int8_t)-rnd_piv.comp;
+        rnd_piv.away = 0;
+    }
+    for (tr = 0; tr < NTRK; tr++)
+        if (!pid_get(PID_TESS(TX_TW_FOLLOW), tr) && rnd_piv.comp) rnd_tp(tr, P_TRANS, trk[tr].p[P_TRANS] + rnd_piv.comp);
+    if (!rnd_piv.away) rnd_piv.comp = 0;
+    return 1;
+}
 static uint32_t rnd_drift_wait(void)               /* (the bars to wait after the next one) */
 {
     return settings_rnd_drift == RND_DRIFT_FAST ? (uint32_t)rnd_rr(0, 1) : (uint32_t)rnd_rr(3, 7);
@@ -2734,13 +2788,14 @@ static void rnd_drift_start(void)
     rnd_drift_s.left = rnd_drift_wait();
     rnd_hl_wait = rnd_halo || rnd_mirror ? rnd_halo_wait() : 0u;   /* (only HALO draws: the other modes' rolls as they were) */
 }
-/* a MIRROR movement (DRIFT, on HALO's clock), a quarter each: the line's pace a step (1/2 1/4 1/8, 1/16 when light;
+/* a MIRROR movement (DRIFT, on HALO's clock), a fifth each: the key to its relative or home (rnd_pivot; none off
+ * twelve notes, nor in WHOLE or DIMHW),  the line's pace a step (1/2 1/4 1/8, 1/16 when light;
  * the mirror then on its clock, the canon at half), the canon across the line or not, the mirror onto the chord or in
  * parallel (off twelve notes: another parallel), or the mirror to the line's other side */
 static void rnd_mirror_move(void)
 {
     static const uint8_t pace[] = {6, 0, 1, 2};     /* 1/2 1/4 1/8 1/16: slow to fast */
-    uint32_t tr, m = NTRK, t = NTRK, c = NTRK, i, hi, kind = rnd_next() % 4u;
+    uint32_t tr, m = NTRK, t = NTRK, c = NTRK, i, hi, kind = rnd_next() % 5u;
     int32_t md;
     for (tr = 0; tr < NTRK; tr++)
         if (rnd_role_of[tr] == RND_ROLE_MELODY) m = tr;
@@ -2749,6 +2804,7 @@ static void rnd_mirror_move(void)
     if (m == NTRK || t == NTRK || c == NTRK) return;
     rnd_drift_s.moves++;
     md = trk[m].p[P_SDIV];
+    if (kind == 4u && rnd_pivot()) return;          /* (the key to its relative, or home; none: the mirror's side) */
     if (kind == 0u) {                               /* the pace */
         hi = rnd_mr_heavy(m) || rnd_mr_heavy(t) ? 3u : 4u;   /* (FM6 PHYS ORACLE: never fast; the canon half as fast) */
         for (i = 0; i < 4u && pace[i] != (uint8_t)md; i++) {}
@@ -2774,7 +2830,8 @@ static void rnd_mirror_move(void)
         rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] > 0 ? -12 : 12);
     }
 }
-/* a HALO movement, half the time each: the M-voice's pace a step slower or faster (1/2, 1/4, 1/8; FALL's leaves 1/4
+/* a HALO movement: a quarter of the time the key to its relative or home (rnd_pivot), else half the time each: the
+ * M-voice's pace a step slower or faster (1/2, 1/4, 1/8; FALL's leaves 1/4
  * or 1/8), the T-voice on its clock still, the canon at half; or the bells to the line's other side (an octave above
  * it or below; a high line: beside it or below), Pärt's voices changing places as Für Alina's do. The bells (FOLLOW)
  * sound the line's own note, so their TRANS is from the line's */
@@ -2788,6 +2845,7 @@ static void rnd_halo_move(void)
         else if (rnd_role_of[tr] == RND_ROLE_CANON) c = tr;
     if (m == NTRK || t == NTRK) return;
     rnd_drift_s.moves++;
+    if (rnd_pct(25) && rnd_pivot()) return;         /* (the key to its relative, or home) */
     if (rnd_pct(50)) {                              /* the pace */
         for (i = 0; i < 2u && pace[i] != (uint8_t)trk[m].p[P_SDIV]; i++) {}
         lo = tessera.mode[m] == TESS_ENG_BOUNCE ? 1u : 0u;   /* (the leaves never on 1/2) */
@@ -3048,6 +3106,8 @@ static void rnd_roll(void)
     rnd_pulse = (uint8_t)(rnd_setting() == RND_PULSE);
     rnd_wozza = (uint8_t)(rnd_setting() == RND_WOZZA);
     rnd_halo = (uint8_t)(rnd_setting() == RND_HALO);
+    rnd_piv.away = 0;                               /* (the roll's key is home) */
+    rnd_piv.comp = 0;
     rnd_mirror = (uint8_t)(rnd_setting() == RND_MIRROR);
     if (rnd_wozza || rnd_halo || rnd_mirror) rnd_nice = 1;   /* (WOZZA, HALO, MIRROR: NICE's gentle drift) */
     if (rnd_loops || rnd_orbit) rnd_nice = 1;       /* (LOOPS, ORBIT: NICE's gentle voices too) */

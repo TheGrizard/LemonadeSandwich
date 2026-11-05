@@ -945,9 +945,12 @@ slow on the pitch), or the halo's filter breathes. Slow cords move the colours a
 every roll. The screen shows **HALO** and the seed.
 
 With **DRIFT** on, HALO also moves on its own slower clock, about every 16 to 32 bars on SLOW (a minute or two) and
-every 4 to 8 on FAST: each time, either the line's pace eases a step slower or faster (1/2, 1/4, 1/8; FALL's leaves
-1/4 or 1/8), the bells keeping its clock and the canon half of it, or the bells change sides (above the line or below
-it; beside a high line or below), as Pärt's voices change places in Für Alina. DRIFT's nudges come between, but never
+every 4 to 8 on FAST: each time, a quarter of the time the key moves to its relative (a major key to its relative
+minor, a minor key to its relative major, on the same notes; dorian and phrygian to their notes' major, lydian and
+mixolydian to their notes' minor) or back home, the halo's chord and the bells with it, the line a little lower rather
+than a sixth higher; otherwise either the line's pace eases a step slower or faster (1/2, 1/4, 1/8; FALL's leaves 1/4
+or 1/8), the bells keeping its clock and the canon half of it, or the bells change sides (above the line or below it;
+beside a high line or below), as Pärt's voices change places in Für Alina. DRIFT's nudges come between, but never
 to TRIO's intervals, the halo's chords or the line's single steps. With DRIFT OFF, HALO stays as it was rolled.
 
 **MIRROR.** With REC BUTTON on **MIRROR**, a roll is HALO's mirror (Pärt's *Spiegel im Spiegel*, the mirror in the
@@ -965,7 +968,8 @@ RING) following the line: onto the halo's chord (QNT CHRD, the tintinnabuli voic
 shapes shimmer instead (the LFO on SHAPE, now and then in S&H steps), S&H cords step the line's shape, an LFO moves the
 mirror's place. With **DRIFT** on, MIRROR moves on HALO's clock: the line's pace a step (the mirror on its clock, the
 canon at half), the canon across the line or back, the mirror onto the chord or into parallel (another parallel, off
-twelve notes), or the mirror to the line's other side. No effects, as every roll. The screen shows **MIRROR** and the
+twelve notes), the mirror to the line's other side, or the key to its relative and back as HALO's (in twelve notes;
+not in whole tone or diminished). No effects, as every roll. The screen shows **MIRROR** and the
 seed.
 
 **DRIFT.** **MENU > DRIFT** (OFF, SLOW, FAST; saved) makes a roll change a little at a time while it plays, within
