@@ -936,12 +936,19 @@ the tonic triad (CHORD on DRONE, now and then TWO: I and IV), four bars a chord,
 The **M-voice** is a slow line, mostly by step (SERIES a degree at a time, FALL's falling leaves, or a loose TURING), on
 FALL's three triangles, warmer and hazier (detuned a little, the filter lower). The **T-voice** is bells (FM6's ZEN
 BELL, RIN, BELL, TINE EP or FURIN; PHYS' VIBES; TRIO's RING BELL) that follow the M-voice (TWEAK FOLLOW) on its clock
-onto the nearest note of the halo's triad (QNT CHRD): Pärt's tintinnabuli voice, an octave above the line or below it.
-The **canon** follows the M-voice too, half as fast and an octave down (two from a high line), held: the slow voice of
-a mensuration canon, on the triangles or FM6's SOFT PAD or SOFT SWELL. A T-voice dealt before its M-voice plays the
+onto the nearest note of the halo's triad (QNT CHRD): Pärt's tintinnabuli voice, an octave above the line or below it
+(beside a high line, or below it). The **canon** follows the M-voice too, half as fast, held, an octave down (a high
+line's mostly in its own octave): the slow voice of a mensuration canon, on the triangles or FM6's SOFT PAD or SOFT
+SWELL. A T-voice dealt before its M-voice plays the
 line a step behind, an echo. Every voice is detuned and spread; the line's and the halo's pitch sways a hair (the LFO
 slow on the pitch), or the halo's filter breathes. Slow cords move the colours and the bells' place. No effects, as
 every roll. The screen shows **HALO** and the seed.
+
+With **DRIFT** on, HALO also moves on its own slower clock, about every 16 to 32 bars on SLOW (a minute or two) and
+every 4 to 8 on FAST: each time, either the line's pace eases a step slower or faster (1/2, 1/4, 1/8; FALL's leaves
+1/4 or 1/8), the bells keeping its clock and the canon half of it, or the bells change sides (above the line or below
+it; beside a high line or below), as Pärt's voices change places in Für Alina. DRIFT's nudges come between, but never
+to TRIO's intervals, the halo's chords or the line's single steps. With DRIFT OFF, HALO stays as it was rolled.
 
 **DRIFT.** **MENU > DRIFT** (OFF, SLOW, FAST; saved) makes a roll change a little at a time while it plays, within
 its mode's rules, so it becomes another piece over the minutes without a new roll: **SLOW** one change every 4 to 8

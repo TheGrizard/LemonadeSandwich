@@ -6965,6 +6965,51 @@ static int test_rnd(void)
         bad += check("RND HALO: ..dry, slow tracks only, FM6 and PHYS once each at most", dry && cpu);
         bad += check("RND HALO: ..each roll heard within 20 s, none at the rail", !quiet && !clipped_n);
         printf("rnd: HALO: the bells' notes on the triad: %u of %u\n", on_triad, notes);
+        {                                           /* DRIFT: HALO's movements, the rest held */
+            uint8_t drift_was = settings_rnd_drift;
+            uint32_t b, m = NTRK, t = NTRK, c = NTRK, paces = 0, flips = 0, held = 1, kept = 1, moved_off = 0;
+            int16_t div0, tt0;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++)
+                if (rnd_role_of[tr] == RND_ROLE_MELODY) m = tr;
+                else if (rnd_role_of[tr] == RND_ROLE_TINT) t = tr;
+                else if (rnd_role_of[tr] == RND_ROLE_CANON) c = tr;
+            settings_rnd_drift = RND_DRIFT_OFF;
+            div0 = trk[m].p[P_SDIV]; tt0 = trk[t].p[P_TRANS];
+            rnd_play_bars(40);
+            moved_off = trk[m].p[P_SDIV] != div0 || trk[t].p[P_TRANS] != tt0;
+            settings_rnd_drift = RND_DRIFT_FAST;
+            rnd_drift_start();
+            for (b = 0; b < 200u; b++) {
+                int16_t d = trk[m].p[P_SDIV], x = trk[t].p[P_TRANS], mt = trk[m].p[P_TRANS];
+                rnd_play_bars(1);
+                paces += trk[m].p[P_SDIV] != d;
+                flips += trk[t].p[P_TRANS] != x;
+                d = trk[m].p[P_SDIV];
+                held &= (d == 6 || d == 0 || d == 1) && trk[t].p[P_SDIV] == d &&
+                        trk[c].p[P_SDIV] == (d == 1 ? 0 : d == 0 ? 6 : 7) &&
+                        (tessera.mode[m] != TESS_ENG_BOUNCE || d != 6);
+                x = trk[t].p[P_TRANS];
+                held &= mt > 0 ? (x == 0 || x == -12) : (x == 12 || x == -12);
+                for (tr = 0; tr < NTRK; tr++) {
+                    if (rnd_role_of[tr] == RND_ROLE_CHORDS)
+                        kept &= tessera.mode[tr] == TESS_ENG_CHORD && (pid_get(PID_TESS(TX_CH_PROG), tr) == 5 ||
+                                                                       pid_get(PID_TESS(TX_CH_PROG), tr) == 4);
+                    if (tr == m && tessera.mode[tr] == TESS_ENG_SERIES) kept &= pid_get(PID_TESS(TX_SR_INTV), tr) == 1;
+                    if (tr == t) kept &= pid_get(PID_TESS(TX_TW_FOLLOW), tr) == (int32_t)m + 1 && trk[tr].p[P_QUANT] == Q_CHRD;
+                    if (tr == c) kept &= pid_get(PID_TESS(TX_TW_FOLLOW), tr) == (int32_t)m + 1;
+                }
+            }
+            bad += check("RND HALO: ..DRIFT OFF: 40 bars, the pace and the bells where they were", !moved_off);
+            bad += check("RND HALO: ..DRIFT FAST, 200 bars: the line's pace moved, the bells changed sides",
+                         paces >= 3u && flips >= 3u);
+            bad += check("RND HALO: ..the bells always on the line's clock, the canon at half, the bells beside or an octave off",
+                         held);
+            bad += check("RND HALO: ..the triad held (DRONE or TWO), the line by step, the two still following it", kept);
+            printf("rnd: HALO DRIFT FAST 200 bars: %u pace changes, %u bell moves\n", paces, flips);
+            transport_req = 2;
+            settings_rnd_drift = drift_was;
+        }
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);

@@ -1534,9 +1534,10 @@ static void rnd_roles_wozza(uint8_t *role)
  * 72 BPM). The HALO itself (RND_ROLE_CHORDS): a pad holding the tonic triad (CHORD: DRONE, now and then TWO), breathing
  * slowly. The M-VOICE (RND_ROLE_MELODY): a slow line, mostly by step (SERIES, its steps one degree; FALL's leaves; a
  * loose TURING), on FALL's three triangles, warmer and hazier. The T-VOICE (RND_ROLE_TINT): bells
- * that follow the M-voice (FOLLOW) onto the nearest note of the triad (QNT CHRD): Pärt's tintinnabuli voice, above it or
- * below. The CANON (RND_ROLE_CANON): the M-voice again, half as fast, an octave or two down (FOLLOW on a slower clock: a
- * mensuration canon's slow voice), on the triangles or FM6's soft pads. Every voice detuned and spread; the line's and the halo's pitch drifting a hair
+ * that follow the M-voice (FOLLOW) onto the nearest note of the triad (QNT CHRD): Pärt's tintinnabuli voice, an octave
+ * above it or below (beside it, a high line's). The CANON (RND_ROLE_CANON): the M-voice again, half as fast, an octave
+ * down (a high line's mostly in its own octave) (FOLLOW on a slower clock: a mensuration canon's slow voice). A
+ * follower's TRANS is from the line's own note (FOLLOW takes it transposed), on the triangles or FM6's soft pads. Every voice detuned and spread; the line's and the halo's pitch drifting a hair
  * (the LFO slow on the pitch: haze). Dry, as every roll */
 static uint8_t rnd_hl_m = NTRK;                     /* HALO: the M-voice's track (the others follow it) */
 static void rnd_halo_tri(uint32_t tr)               /* FALL's three triangles, warmer, hazier */
@@ -2396,15 +2397,56 @@ static void rnd_guard(void)
  * watching), and GLITCH's slow two swap their registers (the drone up, the melody down, or back). NICE, FALL, LOOPS and
  * ORBIT nudge by less. settings_rnd_drift: panel.c, saved with REC BUTTON's */
 enum { RND_DRIFT_OFF, RND_DRIFT_SLOW, RND_DRIFT_FAST, RND_DRIFTS };
-static struct { uint32_t bar, left, steps; } rnd_drift_s;
+static struct { uint32_t bar, left, steps, moves; } rnd_drift_s;   /* (moves: HALO's movements made) */
+static uint32_t rnd_hl_wait;                       /* HALO: bars to its next movement (rnd_halo_move) */
 static uint32_t rnd_drift_wait(void)               /* (the bars to wait after the next one) */
 {
     return settings_rnd_drift == RND_DRIFT_FAST ? (uint32_t)rnd_rr(0, 1) : (uint32_t)rnd_rr(3, 7);
+}
+/* HALO's movements, apart from the nudges: SLOW about every 16 to 32 bars (a minute or two at its tempo), FAST every
+ * 4 to 8 */
+static uint32_t rnd_halo_wait(void)
+{
+    return settings_rnd_drift == RND_DRIFT_FAST ? (uint32_t)rnd_rr(4, 8) : (uint32_t)rnd_rr(16, 32);
 }
 static void rnd_drift_start(void)
 {
     rnd_drift_s.bar = bar_n;
     rnd_drift_s.left = rnd_drift_wait();
+    rnd_hl_wait = rnd_halo ? rnd_halo_wait() : 0u;   /* (only HALO draws: the other modes' rolls as they were) */
+}
+/* a HALO movement, half the time each: the M-voice's pace a step slower or faster (1/2, 1/4, 1/8; FALL's leaves 1/4
+ * or 1/8), the T-voice on its clock still, the canon at half; or the bells to the line's other side (an octave above
+ * it or below; a high line: beside it or below), Pärt's voices changing places as Für Alina's do. The bells (FOLLOW)
+ * sound the line's own note, so their TRANS is from the line's */
+static void rnd_halo_move(void)
+{
+    static const uint8_t pace[] = {6, 0, 1};        /* 1/2 1/4 1/8: slow to fast */
+    uint32_t tr, m = NTRK, t = NTRK, c = NTRK, i, lo, mdiv;
+    for (tr = 0; tr < NTRK; tr++)
+        if (rnd_role_of[tr] == RND_ROLE_MELODY) m = tr;
+        else if (rnd_role_of[tr] == RND_ROLE_TINT) t = tr;
+        else if (rnd_role_of[tr] == RND_ROLE_CANON) c = tr;
+    if (m == NTRK || t == NTRK) return;
+    rnd_drift_s.moves++;
+    if (rnd_pct(50)) {                              /* the pace */
+        for (i = 0; i < 2u && pace[i] != (uint8_t)trk[m].p[P_SDIV]; i++) {}
+        lo = tessera.mode[m] == TESS_ENG_BOUNCE ? 1u : 0u;   /* (the leaves never on 1/2) */
+        if (i < lo) i = lo;
+        else if (i == lo) i++;
+        else if (i == 2u) i--;
+        else i = rnd_pct(50) ? i + 1u : i - 1u;
+        mdiv = pace[i];
+        rnd_tp(m, P_SDIV, (int32_t)mdiv);
+        rnd_tp(t, P_SDIV, (int32_t)mdiv);
+        rnd_tp(t, P_VOICE, mdiv == 1u ? V_MONO : V_POLY);   /* (on 1/8: one bell at a time) */
+        if (c < NTRK) rnd_tp(c, P_SDIV, mdiv == 1u ? 0 : mdiv == 0u ? 6 : 7);
+        return;
+    }
+    if (trk[m].p[P_TRANS] > 0)                      /* the bells: a high line's beside it or below */
+        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] < 0 ? 0 : -12);
+    else
+        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] > 0 ? -12 : 12);
 }
 static int32_t rnd_nudge(int32_t v, int32_t lo, int32_t hi, int32_t small, int32_t big)
 {
@@ -2455,7 +2497,8 @@ static void rnd_drift_step(void)
             uint32_t e = (uint32_t)rnd_next() % 8u;
             const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + e), tr);
             if (!d || d->fmt == F_ENUM || d->max <= d->min) continue;
-            if (rnd_fall && t->eng_req == 6u && (e == 1u || e == 2u)) continue;   /* (FALL: TRIO's intervals kept) */
+            if ((rnd_fall || rnd_halo) && t->eng_req == 6u && (e == 1u || e == 2u)) continue;   /* (FALL, HALO: TRIO's
+                                                     * intervals kept) */
             rnd_tp(tr, P_E0 + e, rnd_nudge(t->p[P_E0 + e], d->min, d->max, small, big));
             return;
         }
@@ -2483,6 +2526,8 @@ static void rnd_drift_step(void)
         const param_desc_t *d;
         if (tessera.mode[tr] == TESS_ENG_OFF) return;
         id = rnd_drift_gen_id(tr);
+        if (rnd_halo && (tessera.mode[tr] == TESS_ENG_CHORD || id == TX_SR_INTV)) return;   /* (HALO: the triad held,
+                                                     * the line by step) */
         d = pid_desc(PID_TESS(id), tr);
         if (!d || d->max <= d->min) return;
         if (d->max - d->min <= 40) rnd_tx(tr, id, rnd_nudge(pid_get(PID_TESS(id), tr), d->min, d->max, 1, 2));
@@ -2562,6 +2607,13 @@ static void rnd_drift(void)
     }
     if (bar_n == rnd_drift_s.bar) return;
     rnd_drift_s.bar = bar_n;
+    if (rnd_halo) {                                 /* (HALO: its movements on their own, slower clock) */
+        if (rnd_hl_wait) rnd_hl_wait--;
+        else {
+            rnd_hl_wait = rnd_halo_wait();
+            rnd_halo_move();
+        }
+    }
     if (rnd_drift_s.left) {
         rnd_drift_s.left--;
         return;
