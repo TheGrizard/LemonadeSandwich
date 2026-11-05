@@ -812,7 +812,7 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 ## RND: one button, a new piece
 
 After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS**,
-**ORBIT**, **GLITCH**, **PULSE**, **WOZZA**, **HALO**, **MIRROR** or **TIDE**, below) and REC becomes a roll:
+**ORBIT**, **GLITCH**, **PULSE**, **WOZZA**, **HALO**, **MIRROR**, **TIDE** or **CRATE**, below) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -992,6 +992,21 @@ random walks (the LFO very slow, a sine or S&H steps). With **DRIFT** on, TIDE m
 (across the bar, or four on the floor now and then), the melody's pace a step, or the key to its relative and home (the
 sub kept in its octave). No effects, as every roll. The screen shows **TIDE** and the seed.
 
+**CRATE.** With REC BUTTON on **CRATE**, a roll is a little record to dig for and sample: an old jazz or soul-jazz
+combo with no drums and no dust (add those on your sampler), 72 to 96 BPM, in a major, minor, dorian or mixolydian
+key, the eighths swung. It is a song more than a generator: a form of sections, **AABA**, **ABAC** or **ABCB** (A the
+verse, B the chorus, C the bridge), 4 or 8 bars each, all written at the roll, so every section comes back exactly the
+same each time and loops and chops cleanly. Press REC and it plays from the top of A. Always the same four, on the same
+tracks. **Track 1, the keys:** seventh chords (now and then plain triads), four a section from a book of jazz turns
+(ii V I vi, I vi ii V, iii vi ii V, IV iii ii V and others), held, comped on the beat or stabbed, on FM6's electric
+pianos, clavinet, organ, drawbars or strings, or PHYS' vibes. **Track 2, the bass:** low, onto the chord's notes,
+walking quarters or a short line of its own, on PHYS' plucked string, FM6's bass or TRIO. **Track 3, the head:** the
+tune, a fixed two-bar phrase for each section on eighths or quarters, on vibes, a harp, a flute, the electric piano or
+TRIO's flute or muted horn (with a little vibrato). **Track 4, the counter:** a quieter second voice to one side,
+onto the chord's notes. The timing is a player's (a few milliseconds late now and then), on the grid otherwise: send
+MIDI clock to your sampler, or set its tempo to the BPM on the screen. DRIFT leaves CRATE alone: roll again for
+another record. No effects, as every roll. The screen shows **CRATE** and the seed.
+
 **The key's relative, in the other modes.** With **DRIFT** on, AMBIENT, NICE, FALL, LOOPS, ORBIT and WOZZA also move
 the key, on HALO's clock about a third of the time: to its relative on the same notes (major to minor, minor to
 major; dorian and phrygian to their notes' major, lydian and mixolydian to their notes' minor), and home the next time.
@@ -1032,7 +1047,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody; **PULSE**: dance music, an FM6 kick, TRIO's noise hats, a pumping bass and riff; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4 (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody; **PULSE**: dance music, an FM6 kick, TRIO's noise hats, a pumping bass and riff; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **CRATE**: an old jazz record to sample, no drums: keys, bass, a tune and a counter in sections that come back exactly (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

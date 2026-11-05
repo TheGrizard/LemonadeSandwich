@@ -6430,7 +6430,11 @@ static int test_rnd(void)
                          rnd_setting() == RND_TIDE && (pr.lowcut & 0xFFu) == 4u);
         }
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..TIDE is the last (right again: stays)", rnd_setting() == RND_TIDE);
+        bad += check("RND AMBIENT: ..right again: CRATE (NICE's bit with variant 4)", rnd_setting() == RND_CRATE &&
+                     (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_variant == 4u);
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..CRATE is the last (right again: stays)", rnd_setting() == RND_CRATE);
+        turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
@@ -7165,6 +7169,112 @@ static int test_rnd(void)
         }
         printf("rnd: MIRROR: off twelve notes %u of 200; mirror chordal %u, parallel %u; canon across %u; chord notes %u of %u\n",
                micro, chordal, parallel, cross, on_chord, notes);
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* CRATE: a little jazz record of sections, without drums */
+        uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, form_ok = 1, keys_ok = 1, bass_ok = 1, head_ok = 1, dry = 1;
+        uint32_t forms[8] = {0}, walks = 1, quiet = 0, clipped_n = 0, again = 1, apart = 1, tried = 0, eights = 0;
+        rnd_mode_put(RND_CRATE);
+        press(B_REC);
+        bad += check("RND CRATE: REC tapped: a roll, CRATE and the seed said", !memcmp(ui.msg, "CRATE ", 6));
+        for (r = 0; r < 200u; r++) {
+            int32_t bpm, f, ev;
+            rnd_roll();
+            bpm = pid_get(PID_GLOBAL(G_BPM), 0);
+            tempo_ok &= bpm >= 72 && bpm <= 96;
+            k = (uint32_t)trk[0].p[P_SCALE];
+            key_ok &= k == 1u || k == 2u || k == 3u || k == 4u;
+            fixed &= rnd_role_of[0] == RND_ROLE_CHORDS && rnd_role_of[1] == RND_ROLE_BASS &&
+                     rnd_role_of[2] == RND_ROLE_MELODY && rnd_role_of[3] == RND_ROLE_COUNTER;
+            dry &= rnd_fx_mode_ok(0) >= 1u;
+            for (k = 0; k < CORD_LIVE; k++) { const cord_t *c = cord_get(k); dry &= !c || !c->src; }
+            f = pid_get(PID_TESS(TX_FM_FORM), 0); ev = pid_get(PID_TESS(TX_EV_EVERY), 0);
+            forms[f & 7]++;
+            eights += ev == 4;
+            for (tr = 0; tr < NTRK; tr++)
+                form_ok &= pid_get(PID_TESS(TX_FM_FORM), tr) == f && (f == 4 || f == 2 || f == 3) &&
+                           pid_get(PID_TESS(TX_EV_EVERY), tr) == ev && (ev == 3 || ev == 4) &&
+                           !pid_get(PID_TESS(TX_FM_CONTRAST), tr) && !pid_get(PID_TESS(TX_FM_DEVELOP), tr) &&
+                           !pid_get(PID_TESS(TX_TW_DROP), tr) && tessera.evolve[tr].visited == 7u;
+            keys_ok &= tessera.mode[RND_CR_KEYS] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_PROG), RND_CR_KEYS) == 6 &&
+                       (trk[RND_CR_KEYS].p[P_CHRD] == 2 || trk[RND_CR_KEYS].p[P_CHRD] == 1);
+            for (k = 0; k < 3u; k++) {              /* (each section's four chords from the book) */
+                gen_chord_t g;
+                const tessera_sec_t *sc = &tessera.sec[RND_CR_KEYS][k];
+                const gen_sec_t gs = {sc->reg, sc->p0, sc->p1};
+                gen_chord_load(&g, &gs);
+                walks &= g.prog == GEN_CH_WALK && g.rot == 0;
+            }
+            bass_ok &= trk[RND_CR_BASS].p[P_QUANT] == Q_CHRD && trk[RND_CR_BASS].p[P_TRANS] <= -12 &&
+                       (tessera.mode[RND_CR_BASS] == TESS_ENG_SERIES || (tessera.mode[RND_CR_BASS] == TESS_ENG_TURING &&
+                        !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_BASS)));
+            head_ok &= tessera.mode[RND_CR_HEAD] == TESS_ENG_TURING && !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_HEAD) &&
+                       tessera.mode[RND_CR_COUNTER] == TESS_ENG_TURING && !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_COUNTER) &&
+                       trk[RND_CR_COUNTER].p[P_QUANT] == Q_CHRD;
+            if (r % 40u == 0u) {                    /* listen: 12 s */
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 12u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
+                }
+                quiet += peak < 300;
+                clipped_n += peak >= 32767;
+            }
+            if (r % 50u == 25u && tried < 3u) {     /* a record: A the same each time it comes round (the generators'
+                                                     * state at each bar line: the head's and the counter's registers,
+                                                     * the bass, the chord) */
+                int32_t o[2 * CTL];
+                uint32_t st[48] = {0}, bars = 0, last, i, bpb, f, ret;
+                transport_req = song.playing ? 3 : 1;
+                mix_block(o, CTL);
+                last = bar_n;
+                bpb = tessera_every_bars((uint32_t)pid_get(PID_TESS(TX_EV_EVERY), 0));
+                f = (uint32_t)pid_get(PID_TESS(TX_FM_FORM), 0);
+                while (bars < 48u) {
+                    if (bars) mix_block(o, CTL);
+                    if (!bars || bar_n != last) {           /* (the first bar the restart's own, no bar line seen) */
+                        uint32_t w;
+                        last = bar_n;
+                        for (w = 0; w < FS / 10u / CTL; w++) mix_block(o, CTL);   /* (100 ms on: the bar's first
+                                                     * step taken however late the player's timing put it, up to 60 ms;
+                                                     * the next not yet) */
+                        st[bars] = (uint32_t)tessera.turing[RND_CR_HEAD].reg ^ (uint32_t)tessera.turing[RND_CR_COUNTER].reg << 3 ^
+                                   (uint32_t)tessera.series[RND_CR_BASS].start << 7 ^ (uint32_t)tessera.turing[RND_CR_BASS].reg << 11 ^
+                                   (uint32_t)tessera.chord[RND_CR_KEYS].idx << 20 ^ (uint32_t)tessera.evolve[RND_CR_HEAD].sec << 24;
+                        bars++;
+                    }
+                }
+                ret = f == 4u ? bpb : f == 2u ? 2u * bpb : 4u * bpb;   /* (A again: AABA's second, ABAC's third, ABCB's
+                                                     * next time round) */
+                for (i = 0; i < bpb && ret + i < 48u; i++) again &= st[i] == st[ret + i];
+                apart &= st[(f == 4u ? 2u : 1u) * bpb] != st[0];   /* (B: AABA's third, the others' second) */
+                tried++;
+            }
+        }
+        bad += check("RND CRATE: 200 rolls: the keys on track 1, the bass 2, the head 3, the counter 4, every roll", fixed);
+        bad += check("RND CRATE: ..72 to 96 BPM, MAJ MIN DOR MIX", tempo_ok && key_ok);
+        bad += check("RND CRATE: ..a form (AABA ABAC ABCB) on every track alike, 4 or 8 bars a section, written at the roll",
+                     form_ok && forms[4] > 40u && forms[2] > 30u && forms[3] > 30u && eights > 80u && eights < 160u);
+        bad += check("RND CRATE: ..the keys diatonic sevenths, four chords a section from the book (WALK)", keys_ok && walks);
+        bad += check("RND CRATE: ..the bass onto the chord's notes, low, walking or locked", bass_ok);
+        bad += check("RND CRATE: ..the head and the counter locked, no gaps at random", head_ok);
+        bad += check("RND CRATE: ..A the same each time it comes round, B not A", again && apart && tried == 3u);
+        bad += check("RND CRATE: ..no effects, no cords; each heard within 12 s, none at the rail", dry && !quiet && !clipped_n);
+        printf("rnd: CRATE: AABA %u, ABAC %u, ABCB %u; 8-bar sections %u of 200\n", forms[4], forms[2], forms[3], eights);
+        {                                           /* DRIFT: none (a record, played as pressed) */
+            uint8_t was = settings_rnd_drift;
+            uint32_t h, s0;
+            settings_rnd_drift = RND_DRIFT_FAST;
+            rnd_roll();
+            h = rnd_hash_of(0); s0 = rnd_drift_s.steps;   /* (the generators' knobs its sections' own, as they come) */
+            rnd_play_bars(24);
+            bad += check("RND CRATE: ..DRIFT FAST on: the record as it was rolled", rnd_hash_of(0) == h && rnd_drift_s.steps == s0);
+            settings_rnd_drift = was;
+        }
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
