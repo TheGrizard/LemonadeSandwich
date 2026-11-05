@@ -7175,7 +7175,7 @@ static int test_rnd(void)
     }
     {                                               /* CRATE: a little jazz record of sections, without drums */
         uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, form_ok = 1, keys_ok = 1, bass_ok = 1, head_ok = 1, dry = 1;
-        uint32_t forms[8] = {0}, walks = 1, quiet = 0, clipped_n = 0, again = 1, apart = 1, tried = 0, eights = 0;
+        uint32_t forms[8] = {0}, walks = 1, quiet = 0, clipped_n = 0, again = 1, apart = 1, tried = 0, eights = 0, strings = 0, funky = 0;
         rnd_mode_put(RND_CRATE);
         press(B_REC);
         bad += check("RND CRATE: REC tapped: a roll, CRATE and the seed said", !memcmp(ui.msg, "CRATE ", 6));
@@ -7183,7 +7183,7 @@ static int test_rnd(void)
             int32_t bpm, f, ev;
             rnd_roll();
             bpm = pid_get(PID_GLOBAL(G_BPM), 0);
-            tempo_ok &= bpm >= 72 && bpm <= 96;
+            tempo_ok &= bpm >= 80 && bpm <= 100;
             k = (uint32_t)trk[0].p[P_SCALE];
             key_ok &= k == 1u || k == 2u || k == 3u || k == 4u;
             fixed &= rnd_role_of[0] == RND_ROLE_CHORDS && rnd_role_of[1] == RND_ROLE_BASS &&
@@ -7211,8 +7211,12 @@ static int test_rnd(void)
                        (tessera.mode[RND_CR_BASS] == TESS_ENG_SERIES || (tessera.mode[RND_CR_BASS] == TESS_ENG_TURING &&
                         !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_BASS)));
             head_ok &= tessera.mode[RND_CR_HEAD] == TESS_ENG_TURING && !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_HEAD) &&
-                       tessera.mode[RND_CR_COUNTER] == TESS_ENG_TURING && !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_COUNTER) &&
-                       trk[RND_CR_COUNTER].p[P_QUANT] == Q_CHRD;
+                       trk[RND_CR_COUNTER].p[P_QUANT] == Q_CHRD &&
+                       ((tessera.mode[RND_CR_COUNTER] == TESS_ENG_TURING && !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_COUNTER)) ||
+                        (tessera.mode[RND_CR_COUNTER] == TESS_ENG_SERIES && trk[RND_CR_COUNTER].p[P_SDIV] >= 6 &&
+                         trk[RND_CR_COUNTER].p[P_ATK] >= 30 && trk[RND_CR_COUNTER].p[P_VOICE] == V_POLY));
+            strings += tessera.mode[RND_CR_COUNTER] == TESS_ENG_SERIES;
+            funky += trk[RND_CR_BASS].p[P_SDIV] == 2;
             if (r % 40u == 0u) {                    /* listen: 12 s */
                 int32_t o[2 * CTL], peak = 0;
                 uint32_t b, j;
@@ -7256,15 +7260,18 @@ static int test_rnd(void)
             }
         }
         bad += check("RND CRATE: 200 rolls: the keys on track 1, the bass 2, the head 3, the counter 4, every roll", fixed);
-        bad += check("RND CRATE: ..72 to 96 BPM, MAJ MIN DOR MIX", tempo_ok && key_ok);
+        bad += check("RND CRATE: ..80 to 100 BPM, MAJ MIN DOR MIX", tempo_ok && key_ok);
         bad += check("RND CRATE: ..a form (AABA ABAC ABCB) on every track alike, 4 or 8 bars a section, written at the roll",
                      form_ok && forms[4] > 40u && forms[2] > 30u && forms[3] > 30u && eights > 80u && eights < 160u);
         bad += check("RND CRATE: ..the keys diatonic sevenths, four chords a section from the book (WALK)", keys_ok && walks);
-        bad += check("RND CRATE: ..the bass onto the chord's notes, low, walking or locked", bass_ok);
-        bad += check("RND CRATE: ..the head and the counter locked, no gaps at random", head_ok);
+        bad += check("RND CRATE: ..the bass onto the chord's notes, low, locked", bass_ok);
+        bad += check("RND CRATE: ..the head locked; track 4 strings mostly (slow, swelling, by step), else a counter locked",
+                     head_ok && strings > 120u && strings < 180u);
+        bad += check("RND CRATE: ..the bass on sixteenths about half the rolls (funk), else eighths (soul)", funky > 75u && funky < 145u);
         bad += check("RND CRATE: ..A the same each time it comes round, B not A", again && apart && tried == 3u);
         bad += check("RND CRATE: ..no effects, no cords; each heard within 12 s, none at the rail", dry && !quiet && !clipped_n);
-        printf("rnd: CRATE: AABA %u, ABAC %u, ABCB %u; 8-bar sections %u of 200\n", forms[4], forms[2], forms[3], eights);
+        printf("rnd: CRATE: AABA %u, ABAC %u, ABCB %u; 8-bar sections %u of 200; strings %u, funk bass %u\n", forms[4], forms[2],
+               forms[3], eights, strings, funky);
         {                                           /* DRIFT: none (a record, played as pressed) */
             uint8_t was = settings_rnd_drift;
             uint32_t h, s0;
@@ -7510,6 +7517,8 @@ static int test_rnd(void)
         uint32_t k, b, p, v, loud = 0, kills0 = voice_kills, most = 0, fading = 0, cap = 0;
         int32_t o[2 * CTL];
         rnd_mode_put(RND_NICE);
+        rnd_state = 0x1234ABCDu;                    /* (rolls of its own: the tests before it left another state, and
+                                                     * some draws take no voice at all, measured) */
         for (k = 0; k < 6u; k++) {
             rnd_roll();
             if (!song.playing) transport_req = 1;
