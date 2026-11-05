@@ -23,7 +23,8 @@
  * only, LOOPS' smooth voices), RND_GLITCH GLITCH (two microsound tracks, a drone and a slow atonal melody), RND_PULSE
  * PULSE (FM6's low percussion, TRIO's noise percussion, a triangle or PHYS drone and melody), RND_WOZZA WOZZA
  * (minimal piano and synth, slow, off the grid, tape-worn: rnd_wozza_sound), RND_HALO HALO (after Pärt's
- * tintinnabuli: a line, bells on its triad, a slow canon, a halo: rnd_halo_sound). Saved as RND_CODE:
+ * tintinnabuli: a line, bells on its triad, a slow canon, a halo: rnd_halo_sound), RND_MIRROR MIRROR (HALO's mirror:
+ * glassy, digital, its rules loosened: rnd_mirror_sound). Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
  * beside them (0..3: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
@@ -31,10 +32,10 @@
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
 enum { RND_OFF, RND_FREE, RND_AMBIENT, RND_NICE, RND_FALL, RND_LOOPS, RND_ORBIT, RND_GLITCH, RND_PULSE, RND_WOZZA,
-       RND_HALO, RND_MODES };
+       RND_HALO, RND_MIRROR, RND_MODES };
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
     {0x00u, 0}, {0x40u, 0}, {0xC0u, 0}, {0x80u, 0}, {0x80u, 1}, {0x80u, 2}, {0xC0u, 1}, {0x40u, 1}, {0x40u, 2},
-    {0x40u, 3}, {0x80u, 3},
+    {0x40u, 3}, {0x80u, 3}, {0xC0u, 3},             /* (0xC0's variant 2: PLAITS, on its branch) */
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
 static uint32_t rnd_setting(void)
@@ -243,6 +244,7 @@ static uint8_t rnd_glitch;                         /* 1: this roll is GLITCH's *
 static uint8_t rnd_pulse;                          /* 1: this roll is PULSE's */
 static uint8_t rnd_wozza;                          /* 1: this roll is WOZZA's */
 static uint8_t rnd_halo;                           /* 1: this roll is HALO's */
+static uint8_t rnd_mirror;                         /* 1: this roll is MIRROR's */
 static uint8_t rnd_wz_lead = NTRK;                 /* WOZZA: the first melody's track (a second one sparser, higher) */
 static uint8_t rnd_want_e = 0xFFu, rnd_want_pi = 0xFFu;   /* PULSE: the engine and preset its role wants (0xFF: rolled) */
 static int rnd_perc(uint32_t tr)                   /* GLITCH's glitch tracks, PULSE's percussion: each hit its attack */
@@ -1784,6 +1786,323 @@ static void rnd_roles_halo(uint8_t *role)
     }
 }
 
+/* ------------------------------------------------------------ MIRROR --- */
+/* MIRROR: HALO's mirror (Pärt's Spiegel im Spiegel: the mirror in the mirror): its four parts, glassy and digital,
+ * the rules loosened. 70 to 100 BPM; a key in twelve notes (LYD WHOLE PEN MAJ DOR DIMHW) or, two rolls in five, off
+ * them (SLENDRO, PELOG, 19 and 22 EDO, HARM16, JI-MAJ, Bohlen-Pierce). The HALO (RND_ROLE_CHORDS): glass, held or
+ * pulsing: in twelve notes a CHORD track (DRONE, TWO, CIRCLE, WALK, 50S; HOLD, BEAT or OFFBEAT), off them a cluster
+ * (SERIES on two or three notes, held). The LINE (RND_ROLE_MELODY): a digital line (SID's keys and plucks, FM6's
+ * mallets, TRIO's sharper waves), by step or not (SERIES, TURING, BOUNCE, MARKOV, AWAKE), 1/16 to 1/4. The MIRROR
+ * (RND_ROLE_TINT): glass bells following the line (FOLLOW) onto the halo's chord (QNT CHRD: the tintinnabuli voice) or
+ * in parallel, a few degrees off (SHIFT: off twelve notes always), on the line's clock or twice as fast, now and then
+ * stuttering (ratchets). The CANON (RND_ROLE_CANON): the line again, low, half as fast or across it in triplets. Bright
+ * and wide, no wow; S&H and LFO cords on the shapes and the bells' place. DRIFT moves it as HALO's (rnd_mirror_move) */
+static int rnd_mr_micro(void)                       /* (off twelve notes: no chords to snap to) */
+{
+    return trk[0].p[P_SCALE] >= 16;
+}
+static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
+{
+    uint8_t nice = rnd_nice;
+    int ph = !*phys && eng_ok(ENGI_PHYS), fm = !*fm6s && eng_ok(ENGI_FM6), orc = !*oracles && eng_ok(ENGI_ORACLE);
+    int sid = eng_ok(3u);
+    uint32_t e, k = (uint32_t)rnd_rr(0, 99);
+    if (role == RND_ROLE_CHORDS) {                  /* glass */
+        static const uint8_t sp[] = {16, 19, 18, 17}, sw[] = {3, 3, 2, 2};   /* PWM PAD, 8580 PAD, DREAM CHIP, SID STRINGS */
+        if (sid && k < 65u) rnd_want_e = 3u, rnd_want_pi = rnd_pick(sp, sw, NELEM(sp));   /* (FM6's and ORACLE's pads:
+                                                     * a chord of them near HALO's whole cost again, measured) */
+        else rnd_want_e = 6u, rnd_want_pi = 8;      /* SOFT PAD, its wave made digital below (CHIP CHOIR: a hiss;
+                                                     * SWEEP PAD: all but silent, measured) */
+    } else if (role == RND_ROLE_MELODY) {           /* digital */
+        static const uint8_t sp[] = {22, 24, 25, 26, 20, 15}, sw[] = {3, 3, 2, 2, 2, 1};   /* C64 KEYS, ARP PLUCK, COIN
+                                                     * PLUCK, BELL RING, TRI ORGAN, 8580 LEAD */
+        static const uint8_t fp[] = {8, 29, 21, 12}, fw[] = {3, 3, 2, 2};   /* DX TINE, MALLET, STEEL DRUM, DX MARIMBA */
+        if (sid && k < 50u) rnd_want_e = 3u, rnd_want_pi = rnd_pick(sp, sw, NELEM(sp));
+        else if (fm && k < 75u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
+        else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 1 : 3;   /* ARP LEAD, RING BELL */
+    } else if (role == RND_ROLE_TINT) {             /* glass bells */
+        static const uint8_t fp[] = {11, 23, 33, 31, 1}, fw[] = {3, 2, 2, 2, 2};   /* BELLS, TUBULAR, FURIN, RIN, BELL */
+        if (fm && k < 45u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
+        else if (ph && k < 70u) rnd_want_e = ENGI_PHYS, rnd_want_pi = 9;   /* VIBES (BELL TREE: a hiss, measured) */
+        else if (orc && k < 82u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 10;   /* POLY BELLS */
+        else if (sid) rnd_want_e = 3u, rnd_want_pi = 26;   /* BELL RING */
+        else rnd_want_e = 6u, rnd_want_pi = 3;      /* RING BELL (no SID in the build) */
+    } else {                                        /* the canon: digital, low */
+        static const uint8_t sp[] = {20, 19, 4}, sw[] = {3, 2, 2};   /* TRI ORGAN, 8580 PAD, SUB PULSE */
+        if (sid && k < 40u) rnd_want_e = 3u, rnd_want_pi = rnd_pick(sp, sw, NELEM(sp));
+        else if (orc && k < 65u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(50) ? 14 : 19;   /* DRONE, SWEEP PAD */
+        else rnd_want_e = 6u, rnd_want_pi = 8;      /* SOFT PAD, digital below (FM6's DEEP PAD, TRIO's FIFTH DRONE
+                                                     * and SWEEP PAD: all but silent on the canon's notes, measured) */
+    }
+    rnd_nice = 1;                                   /* (the presets' kinds kept, their knobs pushed a little: pushed
+                                                     * further, SID's, FM6's and TRIO's turned to a hiss, measured) */
+    rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
+    rnd_nice = nice;
+    rnd_want_e = rnd_want_pi = 0xFFu;
+    e = trk[tr].eng_req;
+    rnd_tp(tr, P_ED_PIT, 0);
+    rnd_tp(tr, P_ED_SHP, rnd_pct(30) ? rnd_rr(-30, 30) : 0);
+    rnd_tp(tr, P_LD_PIT, 0);                        /* (no wow: glass) */
+    rnd_tp(tr, P_LD_AMP, 0);
+    rnd_tp(tr, P_LD_FLT, rnd_pct(40) ? rnd_rr(5, 25) : 0);
+    rnd_tp(tr, P_LD_SHP, rnd_pct(50) ? rnd_rr(10, 40) : 0);   /* (the shape shimmering: PW, the wave) */
+    rnd_tp(tr, P_LWAVE, rnd_pct(70) ? 0 : 3);       /* (a sine; or S&H: digital steps) */
+    rnd_tp(tr, P_LSYNC, 0);
+    rnd_tp(tr, P_LTRIG, 0);
+    rnd_tp(tr, P_LFADE, 0);
+    rnd_tp(tr, P_LRATE, rnd_rr(55, 90));
+    rnd_tp(tr, P_GLIDE, role == RND_ROLE_MELODY && rnd_pct(20) ? rnd_rr(5, 30) : 0);
+    rnd_tp(tr, P_CHRD, 0);
+    rnd_tp(tr, P_DETUNE, rnd_rr(0, 30));
+    rnd_tp(tr, P_SPRD, rnd_rr(80, 127));
+    if (e == 6u && role != RND_ROLE_TINT) {         /* (TRIO: SST, PPT, PLS3, the sharper waves; the filter not wide
+                                                     * open) */
+        static const uint8_t wv[] = {3, 2, 1}, ww[] = {1, 1, 1};
+        rnd_tp(tr, P_E0, rnd_pick(wv, ww, NELEM(wv)));
+        rnd_tp(tr, P_E0 + 5u, rnd_rr(60, 85));
+        rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 40));
+    }
+    if (role == RND_ROLE_CHORDS) {
+        rnd_tp(tr, P_ATK, rnd_rr(40, 80));          /* (slower: a chord gone before it swells, measured) */
+        rnd_tp(tr, P_DEC, rnd_rr(100, 127));
+        rnd_tp(tr, P_SUS, rnd_rr(100, 127));
+        rnd_tp(tr, P_REL, rnd_rr(90, 120));
+        rnd_tp(tr, P_VOICE, V_POLY);
+        rnd_tp(tr, P_LEVEL, rnd_rr(56, 70));
+        rnd_tp(tr, P_PAN, 0);
+    } else if (role == RND_ROLE_MELODY) {
+        static const uint8_t vv[] = {V_MONO, V_LEGATO, V_POLY}, vw[] = {4, 2, 3};
+        rnd_tp(tr, P_ATK, rnd_rr(0, 10));
+        rnd_tp(tr, P_DEC, rnd_rr(60, 100));
+        rnd_tp(tr, P_SUS, rnd_rr(20, 80));
+        rnd_tp(tr, P_REL, rnd_rr(50, 90));
+        rnd_tp(tr, P_VOICE, rnd_pick(vv, vw, NELEM(vv)));
+        rnd_tp(tr, P_LEVEL, rnd_rr(76, 90));
+        rnd_tp(tr, P_PAN, rnd_rr(-25, 25));
+        if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, rnd_rr(-25, 0));   /* (MLVL: the tines' clang kept in) */
+    } else if (role == RND_ROLE_TINT) {
+        rnd_tp(tr, P_ATK, rnd_rr(0, 3));
+        rnd_tp(tr, P_DEC, rnd_rr(70, 110));
+        rnd_tp(tr, P_SUS, rnd_rr(0, 20));
+        rnd_tp(tr, P_REL, rnd_rr(60, 95));
+        rnd_tp(tr, P_VOICE, V_POLY);
+        rnd_tp(tr, P_LEVEL, rnd_rr(64, 80));
+        rnd_tp(tr, P_PAN, rnd_pct(50) ? rnd_rr(30, 60) : -rnd_rr(30, 60));
+        if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 7u, rnd_rr(0, 14));
+        if (e == ENGI_PHYS) { rnd_tp(tr, P_E0 + 6u, 0); rnd_tp(tr, P_LEVEL, rnd_rr(84, 98)); }
+    } else {
+        rnd_tp(tr, P_ATK, rnd_rr(30, 90));
+        rnd_tp(tr, P_DEC, rnd_rr(100, 127));
+        rnd_tp(tr, P_SUS, rnd_rr(90, 127));
+        rnd_tp(tr, P_REL, rnd_rr(80, 115));
+        rnd_tp(tr, P_VOICE, V_LEGATO);
+        rnd_tp(tr, P_LEVEL, rnd_rr(68, 82));
+        rnd_tp(tr, P_PAN, rnd_rr(-15, 15));
+        if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 7u, rnd_rr(10, 24));
+    }
+    if (e == 3u && trk[tr].p[P_E0 + 1u] == 3) rnd_tp(tr, P_E0 + 1u, 2);   /* (SID's NOISE wave pushed in: PULSE) */
+    if (e == 3u || e == ENGI_ORACLE)                /* (SID, ORACLE: quieter than the others, measured: up) */
+        rnd_tp(tr, P_LEVEL, (int32_t)trk[tr].p[P_LEVEL] + (e == 3u ? 22 : 12) > 118 ? 118 :
+                            (int32_t)trk[tr].p[P_LEVEL] + (e == 3u ? 22 : 12));
+}
+/* the canon's division from the line's: half as fast, or across it (3:2 in triplets); "cross" 0 or 1 */
+static int32_t rnd_mr_canon_div(int32_t d, int cross)
+{
+    switch (d) {
+    case 2: return cross ? 4 : 1;                   /* 1/16: 1/8, or 8T (4:3 against it) */
+    case 1: return cross ? 4 : 0;                   /* 1/8: 1/4, or 8T (3:2) */
+    case 4: return cross ? 1 : 0;                   /* 8T: 1/4, or 1/8 (2:3) */
+    case 0: return cross ? 4 : 6;                   /* 1/4: 1/2, or 8T (3:1 over it) */
+    default: return 7;                              /* 1/2: 1/1 */
+    }
+}
+static int rnd_mr_heavy(uint32_t tr)                /* (FM6, PHYS, ORACLE: never on a fast clock, rnd_cpu) */
+{
+    uint32_t e = trk[tr].eng_req;
+    return e == ENGI_FM6 || e == ENGI_PHYS || e == ENGI_ORACLE;
+}
+/* the mirror's way of following the line: onto the halo's chord, or in parallel SHIFT degrees off it */
+static void rnd_mr_tint_mode(uint32_t tr, int chord)
+{
+    static const uint8_t sh[] = {26, 28, 22, 21, 27, 29}, shw[] = {4, 3, 3, 2, 2, 1};   /* (+24: +2 +4 -2 -3 +3 +5) */
+    if (chord && !rnd_mr_micro()) {
+        rnd_tp(tr, P_QUANT, Q_CHRD);
+        rnd_tx(tr, TX_TW_SHIFT, 0);
+    } else {
+        rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+        rnd_tx(tr, TX_TW_SHIFT, (int32_t)rnd_pick(sh, shw, NELEM(sh)) - 24);
+    }
+}
+static void rnd_mirror_generators(const uint8_t *role)
+{
+    static const uint8_t dv[] = {1, 0, 4, 2}, dw[] = {40, 30, 15, 15};   /* 1/8 1/4 8T 1/16 */
+    uint32_t tr, chords = 1, k;
+    int32_t mdiv = 0;
+    for (tr = 0, rnd_hl_m = NTRK; tr < NTRK; tr++) if (role[tr] == RND_ROLE_MELODY) rnd_hl_m = (uint8_t)tr;
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {       /* (the clean slate, as HALO's) */
+        if (role[tr] == RND_ROLE_CHORDS && !rnd_mr_micro()) continue;
+        rnd_generator(tr, &chords);
+        rnd_tx(tr, TX_FM_FORM, 0);
+        rnd_tx(tr, TX_TW_BRANCH, 0); rnd_tx(tr, TX_TW_BR_TO, 0); rnd_tx(tr, TX_TW_LOGIC, 0); rnd_tx(tr, TX_TW_COND, 0);
+        rnd_tx(tr, TX_TW_SHIFT, 0);
+        rnd_tx(tr, TX_TW_FOLLOW, 0);
+        rnd_tx(tr, TX_SUB_RATCH, 0);
+        rnd_tx(tr, TX_NL_MODE, 0);
+        rnd_tp(tr, P_SSWING, 0);
+        rnd_tp(tr, P_SLEN, 16);
+    }
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+        if (role[tr] != RND_ROLE_CHORDS) continue;
+        if (!rnd_mr_micro()) {                      /* the halo: chords, held or pulsing */
+            static const uint8_t pg[] = {5, 4, 3, 6, 1}, pgw[] = {3, 3, 1, 1, 1};   /* DRONE TWO CIRCLE WALK 50S */
+            static const uint8_t ht[] = {0, 1, 3}, htw[] = {6, 3, 1};               /* HOLD BEAT OFFBEAT */
+            rnd_tx(tr, TX_MODE, TESS_ENG_CHORD);
+            rnd_tx(tr, TX_CH_PROG, rnd_pick(pg, pgw, NELEM(pg)));
+            rnd_tx(tr, TX_CH_BARS, rnd_rr(1, 3));
+            rnd_tx(tr, TX_CH_HIT, rnd_pick(ht, htw, NELEM(ht)));
+            rnd_tx(tr, TX_CH_OCT, 0);
+            rnd_tx(tr, TX_CH_BREATH, rnd_rr(0, 40));
+            rnd_tp(tr, P_SDIV, 0);
+            if (pid_get(PID_TESS(TX_CH_HIT), tr)) { /* (pulsing: struck, short, as glass) */
+                rnd_tp(tr, P_SGATE, rnd_rr(30, 80));
+                rnd_tp(tr, P_ATK, rnd_rr(0, 20));
+                rnd_tp(tr, P_REL, rnd_rr(50, 80));
+            } else rnd_tp(tr, P_SGATE, 127);
+        } else {                                    /* off twelve notes: a cluster, held, its notes taking turns */
+            rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
+            rnd_tx(tr, TX_SR_START, rnd_rr(0, 127));
+            rnd_tx(tr, TX_SR_INTV, rnd_rr(1, 3));
+            rnd_tx(tr, TX_SR_LOOP, rnd_rr(2, 3));
+            rnd_tp(tr, P_SDIV, rnd_pct(50) ? 7 : 8);   /* 1/1, 2BAR */
+            rnd_tp(tr, P_SGATE, 127);
+        }
+        rnd_tx(tr, TX_TW_DROP, 0);
+        rnd_tx(tr, TX_EV_EVERY, 0);
+        rnd_tx(tr, TX_SUB_HUMAN, 0);
+    }
+    if (rnd_hl_m < NTRK) {                          /* the line */
+        tr = rnd_hl_m;
+        k = (uint32_t)rnd_rr(0, 99);
+        if (k < 35u) {
+            rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
+            rnd_tx(tr, TX_SR_START, rnd_rr(0, 127));
+            rnd_tx(tr, TX_SR_INTV, rnd_rr(1, 2));
+            rnd_tx(tr, TX_SR_LOOP, rnd_pct(50) ? 0 : rnd_rr(5, 16));
+        } else if (k < 60u) {
+            rnd_tx(tr, TX_MODE, TESS_ENG_TURING);
+            rnd_tx(tr, TX_TUR_LEN, rnd_rr(5, 12));
+            rnd_tx(tr, TX_TUR_PROB, rnd_rr(5, 30));
+            rnd_tx(tr, TX_TUR_SPAN, rnd_rr(1, 2));
+        } else if (k < 75u) {
+            rnd_tx(tr, TX_MODE, TESS_ENG_BOUNCE);
+            rnd_tx(tr, TX_BNC_BALLS, rnd_rr(3, 7));
+            rnd_tx(tr, TX_BNC_SPEED, rnd_rr(10, 40));
+            rnd_tx(tr, TX_BNC_ANGLE, rnd_rr(20, 70));
+        } else if (k < 90u) {
+            rnd_tx(tr, TX_MODE, TESS_ENG_MARKOV);
+            rnd_tx(tr, TX_MKV_LEAP, rnd_rr(20, 70));
+            rnd_tx(tr, TX_MKV_DENS, rnd_rr(50, 90));
+            rnd_tx(tr, TX_MKV_SPAN, rnd_rr(1, 2));
+        } else {
+            rnd_tx(tr, TX_MODE, TESS_ENG_AWAKE);
+            rnd_tx(tr, TX_AWK_LENA, rnd_rr(3, 8));
+            rnd_tx(tr, TX_AWK_LENB, rnd_rr(3, 7));
+            rnd_tx(tr, TX_AWK_PROB, rnd_rr(50, 90));
+        }
+        mdiv = (int32_t)rnd_pick(dv, dw, NELEM(dv));
+        for (k = 0; k < NTRK; k++)                  /* (FM6 PHYS ORACLE never fast, rnd_cpu: the line, or the mirror
+                                                     * on its clock, one of them: 1/8) */
+            if ((k == tr || role[k] == RND_ROLE_TINT) && rnd_mr_heavy(k) && (mdiv == 2 || mdiv == 4)) mdiv = 1;
+        rnd_tp(tr, P_SDIV, mdiv);
+        rnd_tp(tr, P_SGATE, rnd_rr(30, 100));
+        rnd_tx(tr, TX_TW_DROP, rnd_rr(0, 35));
+        rnd_tx(tr, TX_EV_EVERY, rnd_pct(50) ? rnd_rr(3, 5) : 0);
+        rnd_tx(tr, TX_EV_AMOUNT, rnd_rr(15, 40));
+        rnd_tx(tr, TX_TW_HUMAN, rnd_rr(0, 30));
+        rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(0, 10));    /* (tight: digital) */
+    }
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+        if (role[tr] != RND_ROLE_TINT && role[tr] != RND_ROLE_CANON) continue;
+        rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);       /* (one note a step: the pitch is the line's) */
+        rnd_tx(tr, TX_SR_START, 0);
+        rnd_tx(tr, TX_SR_INTV, 1);
+        rnd_tx(tr, TX_SR_LOOP, 1);
+        rnd_tx(tr, TX_TW_FOLLOW, rnd_hl_m < NTRK ? (int32_t)rnd_hl_m + 1 : 0);
+        rnd_tx(tr, TX_EV_EVERY, 0);
+        rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(0, 10));
+        if (role[tr] == RND_ROLE_TINT) {            /* on the line's clock, or twice as fast (light engines) */
+            int32_t d = mdiv;
+            if (rnd_pct(25) && !rnd_mr_heavy(tr) && (mdiv == 1 || mdiv == 0)) d = mdiv == 1 ? 2 : 1;
+            rnd_tp(tr, P_SDIV, d);
+            rnd_tp(tr, P_SGATE, rnd_rr(30, 90));
+            rnd_tp(tr, P_VOICE, d == 2 || d == 4 ? V_MONO : V_POLY);
+            rnd_tx(tr, TX_TW_DROP, rnd_rr(0, 40));
+            rnd_tx(tr, TX_TW_HUMAN, rnd_rr(0, 30));
+            if ((d == 0 || d == 6) && rnd_pct(30)) {   /* (on a slow clock: now and then a stutter) */
+                rnd_tx(tr, TX_SUB_RATCH, rnd_rr(1, 2));
+                rnd_tx(tr, TX_SUB_CHANCE, rnd_rr(20, 50));
+                rnd_tx(tr, TX_SUB_SHAPE, 0);
+            }
+            rnd_mr_tint_mode(tr, rnd_pct(65));
+        } else {                                    /* half as fast, or across in triplets */
+            int32_t d = rnd_mr_canon_div(mdiv, rnd_pct(35));
+            if (rnd_mr_heavy(tr) && (d == 2 || d == 4)) d = rnd_mr_canon_div(mdiv, 0);
+            rnd_tp(tr, P_SDIV, d);
+            rnd_tp(tr, P_SGATE, 127);
+            rnd_tx(tr, TX_TW_DROP, 0);
+            rnd_tx(tr, TX_TW_HUMAN, rnd_rr(0, 20));
+        }
+    }
+}
+/* the registers: as HALO's (a follower's TRANS from the line's note): the halo in the middle or below, the line in the
+ * middle or above, the mirror an octave over it or under (beside a high line), the canon an octave under; the tempo */
+static void rnd_mirror_registers(const uint8_t *role)
+{
+    int32_t halo = rnd_pct(50) ? 0 : -12, m = rnd_pct(50) ? 0 : 12, t = m ? (rnd_pct(50) ? 0 : -12) : rnd_pct(60) ? 12 : -12;
+    uint32_t tr;
+    for (tr = 0; tr < NTRK; tr++)
+        rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_CHORDS ? halo : role[tr] == RND_ROLE_MELODY ? m :
+                            role[tr] == RND_ROLE_TINT ? t : -12);
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(70, 100));
+}
+/* the key: twelve notes (LYD WHOLE PEN MAJ DOR DIMHW), or off them (SLENDRO PELOG 19EDO HARM16 JI-MAJ 22EDO BP-ET) */
+static void rnd_key_mirror(void)
+{
+    static const uint8_t sc[] = {9, 13, 5, 1, 3, 14}, sw[] = {4, 2, 2, 2, 1, 1};
+    static const uint8_t mc[] = {60, 61, 26, 46, 40, 29, 62}, mw[] = {3, 3, 2, 2, 2, 1, 1};
+    int32_t scale = rnd_pct(60) ? (int32_t)rnd_pick(sc, sw, NELEM(sc)) : (int32_t)rnd_pick(mc, mw, NELEM(mc));
+    int32_t root = rnd_rr(0, 11);
+    uint32_t tr;
+    rnd_tx(0, TX_KEY_LINK, 1);
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_SCALE, scale);
+        rnd_tp(tr, P_ROOT, root);
+        rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+    }
+    scale_share(&trk[0]);
+}
+/* MIRROR's cords: S&H on the line's shape (digital steps), an LFO on the bells' place, slow ones on the halo and the
+ * canon's colour */
+static void rnd_cords_mirror(const uint8_t *role)
+{
+    uint32_t i = 0, tr;
+    cord_t c;
+    for (tr = 0; tr < NTRK && i < CORD_LIVE; tr++) {
+        memset(&c, 0, sizeof c);
+        c.src_trk = c.dst_trk = (uint8_t)tr;
+        if (role[tr] == RND_ROLE_MELODY) c.src = CS_SH, c.dst = CD_SHAPE;
+        else if (role[tr] == RND_ROLE_TINT) c.src = CS_LFO, c.dst = CD_PAN;
+        else c.src = rnd_pct(50) ? CS_DRIFT : CS_INERTIA, c.dst = CD_CUTOFF;
+        c.amount = (int8_t)(rnd_pct(50) ? rnd_rr(10, 35) : -rnd_rr(10, 35));
+        if (cord_set(i, &c)) i++;
+    }
+    for (memset(&c, 0, sizeof c); i < CORD_LIVE; i++) cord_set(i, &c);
+}
+static void rnd_roles_mirror(uint8_t *role)
+{
+    rnd_roles_halo(role);                           /* (the same four, in a random order) */
+}
+
 /* ------------------------------------------------------------ the roll: what the FM-1 can play --- */
 /* BUDGET (GLO > GLOBAL, the voices' shared pool, 16 by default) during rolls: 12 leaves the FM-1 headroom (MANUAL "How
  * many voices at once"). Only ever lowered, and saved only when it changes: a BUDGET set lower stays */
@@ -2413,7 +2732,47 @@ static void rnd_drift_start(void)
 {
     rnd_drift_s.bar = bar_n;
     rnd_drift_s.left = rnd_drift_wait();
-    rnd_hl_wait = rnd_halo ? rnd_halo_wait() : 0u;   /* (only HALO draws: the other modes' rolls as they were) */
+    rnd_hl_wait = rnd_halo || rnd_mirror ? rnd_halo_wait() : 0u;   /* (only HALO draws: the other modes' rolls as they were) */
+}
+/* a MIRROR movement (DRIFT, on HALO's clock), a quarter each: the line's pace a step (1/2 1/4 1/8, 1/16 when light;
+ * the mirror then on its clock, the canon at half), the canon across the line or not, the mirror onto the chord or in
+ * parallel (off twelve notes: another parallel), or the mirror to the line's other side */
+static void rnd_mirror_move(void)
+{
+    static const uint8_t pace[] = {6, 0, 1, 2};     /* 1/2 1/4 1/8 1/16: slow to fast */
+    uint32_t tr, m = NTRK, t = NTRK, c = NTRK, i, hi, kind = rnd_next() % 4u;
+    int32_t md;
+    for (tr = 0; tr < NTRK; tr++)
+        if (rnd_role_of[tr] == RND_ROLE_MELODY) m = tr;
+        else if (rnd_role_of[tr] == RND_ROLE_TINT) t = tr;
+        else if (rnd_role_of[tr] == RND_ROLE_CANON) c = tr;
+    if (m == NTRK || t == NTRK || c == NTRK) return;
+    rnd_drift_s.moves++;
+    md = trk[m].p[P_SDIV];
+    if (kind == 0u) {                               /* the pace */
+        hi = rnd_mr_heavy(m) || rnd_mr_heavy(t) ? 3u : 4u;   /* (FM6 PHYS ORACLE: never fast; the canon half as fast) */
+        for (i = 0; i < 4u && pace[i] != (uint8_t)md; i++) {}
+        if (i >= 4u) i = 2u;                        /* (8T: as 1/8) */
+        if (i == 0u) i = 1u;
+        else if (i > hi - 1u) i = hi - 1u;
+        else if (i == hi - 1u) i--;
+        else i = rnd_pct(50) ? i + 1u : i - 1u;
+        md = pace[i];
+        rnd_tp(m, P_SDIV, md);
+        rnd_tp(t, P_SDIV, md);
+        rnd_tp(t, P_VOICE, md == 2 ? V_MONO : V_POLY);
+        rnd_tp(c, P_SDIV, rnd_mr_canon_div(md, 0));
+    } else if (kind == 1u) {                        /* the canon: across the line, or back to half */
+        int32_t d = trk[c].p[P_SDIV] == rnd_mr_canon_div(md, 0) ? rnd_mr_canon_div(md, 1) : rnd_mr_canon_div(md, 0);
+        if (rnd_mr_heavy(c) && (d == 2 || d == 4)) d = rnd_mr_canon_div(md, 0);
+        rnd_tp(c, P_SDIV, d);
+    } else if (kind == 2u) {                        /* the mirror: onto the chord, or in parallel */
+        rnd_mr_tint_mode(t, trk[t].p[P_QUANT] != Q_CHRD);
+    } else if (trk[m].p[P_TRANS] > 0) {             /* the mirror's side */
+        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] < 0 ? 0 : -12);
+    } else {
+        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] > 0 ? -12 : 12);
+    }
 }
 /* a HALO movement, half the time each: the M-voice's pace a step slower or faster (1/2, 1/4, 1/8; FALL's leaves 1/4
  * or 1/8), the T-voice on its clock still, the canon at half; or the bells to the line's other side (an octave above
@@ -2526,7 +2885,7 @@ static void rnd_drift_step(void)
         const param_desc_t *d;
         if (tessera.mode[tr] == TESS_ENG_OFF) return;
         id = rnd_drift_gen_id(tr);
-        if (rnd_halo && (tessera.mode[tr] == TESS_ENG_CHORD || id == TX_SR_INTV)) return;   /* (HALO: the triad held,
+        if ((rnd_halo || rnd_mirror) && (tessera.mode[tr] == TESS_ENG_CHORD || (id == TX_SR_INTV && rnd_halo))) return;   /* (HALO: the triad held,
                                                      * the line by step) */
         d = pid_desc(PID_TESS(id), tr);
         if (!d || d->max <= d->min) return;
@@ -2564,8 +2923,9 @@ static void rnd_drift_step(void)
         if (rnd_glitch) rnd_glitch_generator(tr, rnd_role_of[tr], &chords);
         else if (rnd_pulse) rnd_pulse_generator(tr, rnd_role_of[tr], &chords);
         else if (rnd_wozza) rnd_wozza_generator(tr, rnd_role_of[tr], &chords);
-        else if (rnd_halo) {                        /* (HALO: the line anew, the two that follow it with it) */
-            rnd_halo_generators(rnd_role_of);
+        else if (rnd_halo || rnd_mirror) {          /* (HALO, MIRROR: the line anew, the two that follow it with it) */
+            if (rnd_halo) rnd_halo_generators(rnd_role_of);
+            else rnd_mirror_generators(rnd_role_of);
             for (k = 0; k < TESSERA_TRACKS; k++) rnd_cpu(k);
             return;
         } else rnd_generator(tr, &chords);
@@ -2587,6 +2947,7 @@ static void rnd_drift_step(void)
         if (rnd_pulse) rnd_pulse_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
         else if (rnd_wozza) rnd_wozza_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
         else if (rnd_halo) rnd_halo_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
+        else if (rnd_mirror) rnd_mirror_sound(tr, rnd_role_of[tr], &fm6s, &phys, &oracles);
         else rnd_sound(tr, &fm6s, &phys, &oracles, rnd_role_of[tr]);
         undo_depth--;
         undo_clear();
@@ -2607,11 +2968,12 @@ static void rnd_drift(void)
     }
     if (bar_n == rnd_drift_s.bar) return;
     rnd_drift_s.bar = bar_n;
-    if (rnd_halo) {                                 /* (HALO: its movements on their own, slower clock) */
+    if (rnd_halo || rnd_mirror) {                   /* (HALO, MIRROR: their movements on their own, slower clock) */
         if (rnd_hl_wait) rnd_hl_wait--;
         else {
             rnd_hl_wait = rnd_halo_wait();
-            rnd_halo_move();
+            if (rnd_halo) rnd_halo_move();
+            else rnd_mirror_move();
         }
     }
     if (rnd_drift_s.left) {
@@ -2668,7 +3030,7 @@ static void rnd_roll(void)
 {
     uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0;
     uint32_t ambient = rnd_setting() >= RND_AMBIENT && rnd_setting() != RND_GLITCH && rnd_setting() != RND_PULSE &&
-                       rnd_setting() != RND_WOZZA && rnd_setting() != RND_HALO;
+                       rnd_setting() != RND_WOZZA && rnd_setting() != RND_HALO && rnd_setting() != RND_MIRROR;
     uint8_t role[NTRK];
     momentary_restore();
     voice_soft_fade = 1;                            /* (ui_input sets it each frame too: the budget's gentle fades) */
@@ -2686,7 +3048,8 @@ static void rnd_roll(void)
     rnd_pulse = (uint8_t)(rnd_setting() == RND_PULSE);
     rnd_wozza = (uint8_t)(rnd_setting() == RND_WOZZA);
     rnd_halo = (uint8_t)(rnd_setting() == RND_HALO);
-    if (rnd_wozza || rnd_halo) rnd_nice = 1;        /* (WOZZA, HALO: NICE's gentle drift) */
+    rnd_mirror = (uint8_t)(rnd_setting() == RND_MIRROR);
+    if (rnd_wozza || rnd_halo || rnd_mirror) rnd_nice = 1;   /* (WOZZA, HALO, MIRROR: NICE's gentle drift) */
     if (rnd_loops || rnd_orbit) rnd_nice = 1;       /* (LOOPS, ORBIT: NICE's gentle voices too) */
     rnd_roles(role, ambient && !rnd_loops && !rnd_orbit);
     if (rnd_loops || rnd_orbit)                     /* (LOOPS, ORBIT: four voices alike) */
@@ -2695,6 +3058,7 @@ static void rnd_roll(void)
     if (rnd_pulse) rnd_roles_pulse(role);
     if (rnd_wozza) rnd_roles_wozza(role);
     if (rnd_halo) rnd_roles_halo(role);
+    if (rnd_mirror) rnd_roles_mirror(role);
     memcpy(rnd_role_of, role, sizeof rnd_role_of);
     undo_depth++;                                   /* (a roll is not four sound loads to undo one by one) */
     {                                               /* (the drone and the chords pick their engines first) */
@@ -2709,6 +3073,7 @@ static void rnd_roll(void)
                 else if (rnd_pulse) rnd_pulse_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else if (rnd_wozza) rnd_wozza_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else if (rnd_halo) rnd_halo_sound(tr, role[tr], &fm6s, &phys, &oracles);
+                else if (rnd_mirror) rnd_mirror_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else rnd_sound(tr, &fm6s, &phys, &oracles, role[tr]);
     }
     undo_depth--;
@@ -2717,11 +3082,13 @@ static void rnd_roll(void)
     else if (rnd_pulse) rnd_pulse_registers(role);
     else if (rnd_wozza) rnd_wozza_registers(role);
     else if (rnd_halo) rnd_halo_registers(role);
+    else if (rnd_mirror) rnd_mirror_registers(role);
     else rnd_registers();
     if (rnd_glitch) rnd_key_glitch();
     else if (rnd_pulse) rnd_key_pulse();
     else if (rnd_wozza) rnd_key_wozza();
     else if (rnd_halo) rnd_key_halo();
+    else if (rnd_mirror) rnd_key_mirror();
     else if (rnd_loops || rnd_orbit) rnd_key_loops();
     else if (ambient) rnd_key_ambient();
     else rnd_key();
@@ -2742,8 +3109,9 @@ static void rnd_roll(void)
             rnd_wozza_generator(tr, role[tr], &chords);
             rnd_cpu(tr);
         }
-    } else if (rnd_halo) {
-        rnd_halo_generators(role);
+    } else if (rnd_halo || rnd_mirror) {
+        if (rnd_halo) rnd_halo_generators(role);
+        else rnd_mirror_generators(role);
         for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
     } else if (rnd_loops || rnd_orbit) {
         if (rnd_loops) rnd_loops_generators();
@@ -2760,9 +3128,10 @@ static void rnd_roll(void)
     }
     rnd_tails();
     rnd_budget();
-    if (rnd_halo) {
+    if (rnd_halo || rnd_mirror) {
         rnd_fx_dry();
-        rnd_cords_halo(role);
+        if (rnd_halo) rnd_cords_halo(role);
+        else rnd_cords_mirror(role);
     } else if (rnd_wozza) {                         /* (its own effects, then its cords: one on the TAPE) */
         if (RND_FX_ROLLS) rnd_fx_wozza(role);
         else rnd_fx_dry();
@@ -2782,7 +3151,7 @@ static void rnd_roll(void)
         rnd_cords();
     }
     sync_reload = 1;
-    rnd_say(rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
+    rnd_say(rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
             ambient ? "AMB " : "RND ", rnd_seed);
     if (!song.playing && !seq_counting() && !chain_busy()) transport_req = 1;   /* (it plays at once) */
     rnd_guard_start();
@@ -2805,7 +3174,7 @@ static void rnd_back(void)
         rnd_guard_s.on = 0;                         /* (what was there before: not the guard's to change) */
         ui_message("BEFORE THE ROLL");
     } else {
-        rnd_say(rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
+        rnd_say(rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " : rnd_pulse ? "PULSE " : rnd_glitch ? "GLITCH " : rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " : rnd_nice ? "NICE " :
                 rnd_setting() == RND_AMBIENT ? "AMB " : "RND ", rnd_seed);
         rnd_guard_start();
     }

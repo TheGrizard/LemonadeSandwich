@@ -6410,7 +6410,11 @@ static int test_rnd(void)
         bad += check("RND AMBIENT: ..right again: HALO (NICE's bit with variant 3)", rnd_setting() == RND_HALO &&
                      (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_variant == 3u);
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..HALO is the last (right again: stays)", rnd_setting() == RND_HALO);
+        bad += check("RND AMBIENT: ..right again: MIRROR (AMBIENT's bits with variant 3)", rnd_setting() == RND_MIRROR &&
+                     (favorites.factory[15][24] & 0xC0u) == 0xC0u && settings_rnd_variant == 3u);
+        turn(EN_K2, 1);
+        bad += check("RND AMBIENT: ..MIRROR is the last (right again: stays)", rnd_setting() == RND_MIRROR);
+        turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
         turn(EN_K2, -1);
@@ -7010,6 +7014,118 @@ static int test_rnd(void)
             transport_req = 2;
             settings_rnd_drift = drift_was;
         }
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* MIRROR: HALO's mirror, glassy and digital, its rules loosened */
+        uint32_t r, tr, k, roles_ok = 1, tempo_ok = 1, halo_ok = 1, m_ok = 1, t_ok = 1, c_ok = 1, dry = 1, cpu = 1;
+        uint32_t micro = 0, chordal = 0, parallel = 0, cross = 0, on_chord = 0, notes = 0, quiet = 0, clipped_n = 0;
+        uint32_t sid = 0, paces = 0, moves_ok = 1;
+        rnd_mode_put(RND_MIRROR);
+        press(B_REC);
+        bad += check("RND MIRROR: REC tapped: a roll, MIRROR and the seed said", !memcmp(ui.msg, "MIRROR ", 7));
+        for (r = 0; r < 200u; r++) {
+            uint32_t n[10] = {0}, m = NTRK, heavy = 0;
+            int32_t bpm, sc;
+            rnd_roll();
+            bpm = pid_get(PID_GLOBAL(G_BPM), 0);
+            sc = trk[0].p[P_SCALE];
+            tempo_ok &= bpm >= 70 && bpm <= 100;
+            micro += sc >= 16;
+            dry &= rnd_fx_mode_ok(0) >= 1u;
+            for (tr = 0; tr < NTRK; tr++) if (rnd_role_of[tr] == RND_ROLE_MELODY) m = tr;
+            for (tr = 0; tr < NTRK; tr++) {
+                const int16_t *p = trk[tr].p;
+                uint32_t role = rnd_role_of[tr], e = trk[tr].eng_req, g = tessera.mode[tr];
+                int32_t f = pid_get(PID_TESS(TX_TW_FOLLOW), tr);
+                n[role < 10u ? role : 0u]++;
+                sid += e == 3u;
+                if (rnd_mr_heavy(tr)) { heavy++; cpu &= rnd_speed((uint32_t)p[P_SDIV]) != RND_FAST; }
+                if (role == RND_ROLE_CHORDS)
+                    halo_ok &= (sc < 16 ? g == TESS_ENG_CHORD : g == TESS_ENG_SERIES && p[P_SGATE] == 127) &&
+                               e != ENGI_FM6 && e != ENGI_ORACLE && p[P_LEVEL] <= 118;
+                else if (role == RND_ROLE_MELODY)
+                    m_ok &= !f && g != TESS_ENG_CHORD && p[P_LD_PIT] == 0;
+                else if (role == RND_ROLE_TINT) {
+                    int32_t sh = pid_get(PID_TESS(TX_TW_SHIFT), tr);
+                    t_ok &= m < NTRK && f == (int32_t)m + 1 && (p[P_SDIV] == trk[m].p[P_SDIV] ||
+                            (p[P_SDIV] == 2 && trk[m].p[P_SDIV] == 1) || (p[P_SDIV] == 1 && trk[m].p[P_SDIV] == 0)) &&
+                            (p[P_QUANT] == Q_CHRD ? sc < 16 && sh == 0 : sh != 0);
+                    chordal += p[P_QUANT] == Q_CHRD;
+                    parallel += p[P_QUANT] != Q_CHRD;
+                } else if (role == RND_ROLE_CANON) {
+                    t_ok &= 1;
+                    c_ok &= m < NTRK && f == (int32_t)m + 1 && (p[P_VOICE] == V_LEGATO || p[P_VOICE] == V_MONO) &&
+                            p[P_TRANS] == -12 &&   /* (across, on 8T: rnd_cpu's one voice now and then) */
+                            (p[P_SDIV] == rnd_mr_canon_div(trk[m].p[P_SDIV], 0) || p[P_SDIV] == rnd_mr_canon_div(trk[m].p[P_SDIV], 1));
+                    cross += p[P_SDIV] != rnd_mr_canon_div(trk[m].p[P_SDIV], 0);
+                }
+                cpu &= p[P_VOICE] != V_UNISON;
+            }
+            roles_ok &= n[RND_ROLE_CHORDS] == 1u && n[RND_ROLE_MELODY] == 1u && n[RND_ROLE_TINT] == 1u && n[RND_ROLE_CANON] == 1u;
+            cpu &= settings_budget <= RND_BUDGET && heavy <= 3u;
+            if (r % 40u == 0u) {                    /* listen: 15 s; a chordal mirror on the chord */
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t b, j, t = NTRK, last = 999;
+                for (tr = 0; tr < NTRK; tr++) if (rnd_role_of[tr] == RND_ROLE_TINT && trk[tr].p[P_QUANT] == Q_CHRD) t = tr;
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 15u * FS / CTL; b++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
+                    for (j = 0; t < NTRK && j < NVOICE; j++) {
+                        const voice_t *v = &trk[t].v[j];
+                        uint32_t pcs = tessera_chord_pcs();
+                        if (!v->active || !v->gate || v->note == last || !pcs) continue;
+                        notes++; on_chord += (pcs >> (v->note % 12)) & 1u; last = v->note;
+                    }
+                }
+                quiet += peak < 200;
+                clipped_n += peak >= 32767;
+            }
+        }
+        bad += check("RND MIRROR: 200 rolls: the halo, the line, the mirror and the canon, one each", roles_ok);
+        bad += check("RND MIRROR: ..70 to 100 BPM; off twelve notes now and then (a third of rolls or so)",
+                     tempo_ok && micro > 40u && micro < 120u);
+        bad += check("RND MIRROR: ..the halo chords in twelve notes, a held cluster off them; never FM6's or ORACLE's", halo_ok);
+        bad += check("RND MIRROR: ..the line its own (no FOLLOW, no wow)", m_ok);
+        bad += check("RND MIRROR: ..the mirror follows it on its clock or twice as fast, onto the chord or in parallel",
+                     t_ok && chordal > 30u && parallel > 30u);
+        bad += check("RND MIRROR: ..the canon follows it an octave down, half as fast or across in triplets",
+                     c_ok && cross > 20u);
+        bad += check("RND MIRROR: ..SID often; dry; FM6 PHYS ORACLE never fast", sid > 150u && dry && cpu);
+        bad += check("RND MIRROR: ..a chordal mirror's notes on the chord (95 % and more)", !notes || on_chord * 100u >= notes * 95u);
+        bad += check("RND MIRROR: ..each roll heard within 15 s, none at the rail", !quiet && !clipped_n);
+        {                                           /* DRIFT FAST: its movements */
+            uint8_t drift_was = settings_rnd_drift;
+            uint32_t b, mm = NTRK, t = NTRK, c = NTRK, moves0;
+            rnd_roll();
+            for (tr = 0; tr < NTRK; tr++)
+                if (rnd_role_of[tr] == RND_ROLE_MELODY) mm = tr;
+                else if (rnd_role_of[tr] == RND_ROLE_TINT) t = tr;
+                else if (rnd_role_of[tr] == RND_ROLE_CANON) c = tr;
+            settings_rnd_drift = RND_DRIFT_FAST;
+            rnd_drift_start();
+            moves0 = rnd_drift_s.moves;
+            for (b = 0; b < 200u; b++) {
+                int16_t d = trk[mm].p[P_SDIV];
+                rnd_play_bars(1);
+                paces += trk[mm].p[P_SDIV] != d;
+                d = trk[mm].p[P_SDIV];
+                moves_ok &= pid_get(PID_TESS(TX_TW_FOLLOW), t) == (int32_t)mm + 1 && pid_get(PID_TESS(TX_TW_FOLLOW), c) == (int32_t)mm + 1 &&
+                            (trk[c].p[P_SDIV] == rnd_mr_canon_div(d, 0) || trk[c].p[P_SDIV] == rnd_mr_canon_div(d, 1)) &&
+                            !(rnd_mr_heavy(mm) && rnd_speed((uint32_t)d) == RND_FAST) &&
+                            !(rnd_mr_heavy(c) && rnd_speed((uint32_t)trk[c].p[P_SDIV]) == RND_FAST) &&
+                            (trk[t].p[P_QUANT] != Q_CHRD || !rnd_mr_micro());
+            }
+            bad += check("RND MIRROR: ..DRIFT FAST, 200 bars: it moved (pace, canon, mirror), the rules kept",
+                         rnd_drift_s.moves - moves0 >= 15u && paces >= 2u && moves_ok);
+            printf("rnd: MIRROR DRIFT FAST 200 bars: %u moves, %u pace changes\n", rnd_drift_s.moves - moves0, paces);
+            transport_req = 2;
+            settings_rnd_drift = drift_was;
+        }
+        printf("rnd: MIRROR: off twelve notes %u of 200; mirror chordal %u, parallel %u; canon across %u; chord notes %u of %u\n",
+               micro, chordal, parallel, cross, on_chord, notes);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
