@@ -2445,17 +2445,18 @@ static void rnd_orbit_generators(void)
     }
 }
 
-/* LOOPS' voices, after Music for Airports: a felt piano (PHYS' hammered string as WOZZA's, rnd_wozza_piano; FM6's
- * tines without PHYS), two warm pads (HALO's triangles, rnd_halo_tri) and a glass (FALL's triangles, struck, high),
+/* LOOPS' voices, after Music for Airports: PHYS on its MODAL or SYMP model (VIBES MARIMBA KALIMBA; HARP, DRONE
+ * STRING, SYMPATHY: soft, ringing; FM6's tines without PHYS), two warm pads (HALO's triangles, rnd_halo_tri) and a glass (FALL's triangles, struck, high),
  * panned apart; their envelopes long and soft (rnd_loops_sound), their registers set (rnd_loops_registers). (The stranger
  * waves and the PHYS mix before: random and harsh, heard) */
 static uint8_t rnd_lp_phys, rnd_lp_glass;           /* the piano's track, the glass' (rnd_roll) */
 static void rnd_loops_voice(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
+    static const uint8_t pp[] = {9, 1, 4, 8, 7, 16}, pw[] = {3, 2, 2, 3, 2, 2};
     uint8_t nice = rnd_nice;
     int piano = tr == rnd_lp_phys, ph = piano && !*phys && eng_ok(ENGI_PHYS), fm = piano && !ph && !*fm6s && eng_ok(ENGI_FM6);
     rnd_want_e = ph ? ENGI_PHYS : fm ? ENGI_FM6 : 6u;
-    rnd_want_pi = ph ? 12u : fm ? 0u : 5u;          /* (the hammered string; TINE EP; TRIO's WARM PAD, made below) */
+    rnd_want_pi = ph ? rnd_pick(pp, pw, NELEM(pp)) : fm ? 0u : 5u;   /* (TINE EP; TRIO's WARM PAD, made below) */
     rnd_nice = 1;
     rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
     rnd_nice = nice;
@@ -2468,8 +2469,11 @@ static void rnd_loops_voice(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_
     rnd_tp(tr, P_LD_PIT, rnd_pct(50) ? 1 : 0);     /* (a vibrato, if any, the least there is, slow: +-2 at NICE's rate
                                                      * was a wobble of 40 cents, heard: far too much) */
     rnd_tp(tr, P_LRATE, rnd_rr(2, 12));
-    if (trk[tr].eng_req == ENGI_PHYS) rnd_wozza_piano(tr);
-    else if (trk[tr].eng_req == ENGI_FM6) {
+    if (trk[tr].eng_req == ENGI_PHYS) {
+        if (trk[tr].p[P_E0] != PM_MODAL && trk[tr].p[P_E0] != PM_SYMP) rnd_tp(tr, P_E0, PM_MODAL);   /* (asked) */
+        rnd_tp(tr, P_E0 + 2u, trk[tr].p[P_E0] == PM_MODAL ? rnd_rr(18, 38) : rnd_rr(25, 50));   /* BRIT: soft (the bars
+                                                     * brighter at a BRIT, measured) */
+    } else if (trk[tr].eng_req == ENGI_FM6) {
         uint32_t k;
         for (k = 0; k < 6u; k++)
             if (k != 2u && k != 4u) rnd_tp(tr, P_E0 + k, 0);   /* (the preset's algorithm, feedback, ratios: CRATE's rule) */
