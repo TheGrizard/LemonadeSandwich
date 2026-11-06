@@ -26,8 +26,8 @@ from gen_mono_webfont import mo_font                    # noqa: E402  (the devic
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets/brand"
 BG, INK = (0, 0, 0), (255, 208, 32)
-JIT = ((0, 1), (1, -1), (-1, 0), (1, 0), (0, 0), (-1, 1), (0, -1), (1, 1), (-1, -1))   # splash.c SPL_JIT
-LIT = 2                                                 # the solid tessera: top right (splash.c SPL_GOLD)
+JIT = ((0, 1), (1, -1), (-1, 0), (1, 0), (0, 0), (-1, 1), (0, -1), (1, 1), (-1, -1))   # (Tessera's splash: the tiles' jitter)
+LIT = 2                                                 # the solid tessera: top right (Tessera's splash)
 TAGLINE = "GENERATIVE FIRMWARE FOR THE M-VAVE FM-1"
 GLYPHS = mo_font()
 

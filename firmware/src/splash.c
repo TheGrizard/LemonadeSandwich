@@ -1,62 +1,57 @@
 /* SPDX-License-Identifier: GPL-3.0-only */
-/* The boot screen: Tessera's mark, a 3 x 3 mosaic of lapis tiles with one gold tessera, over the name (tessera-rnd:
- * LEMONADE SANDWICH, on two lines: SPL_NAME) and a line.
- * While the firmware starts, the mosaic's bed shows (the nine places in the grout's colour); when it is ready,
- * splash_lay() sets the tiles from the middle outwards, one every SPL_STEP_MS, the gold one last with a press,
- * in the wait the boot already makes before the first frame, then holds the finished mark a moment (SPL_HOLD_MS;
- * a button or key pressed ends it sooner). The mark's colours are fixed (it is the logo),
- * the rest the palette's; the Mono look: outlined tiles in the ink, the gold one solid. Drawn with lcd_fill and draw_text_box only. */
+/* The boot screen (tessera-rnd: LEMONADE SANDWICH): a slice of lemon sandwiched between two slices of bread, in
+ * colour (splash_art.h: tools/gen_splash_art.py), over the name, on two lines (SPL_NAME), and a line.
+ * While the firmware starts, the picture's shadow shows (in the grout's colour, T_LINE); when it is ready,
+ * splash_lay() puts the lemon in, then the bread drops onto it and settles, in the wait the boot already makes
+ * before the first frame, then holds the picture a moment (SPL_HOLD_MS; a button or key pressed ends it sooner).
+ * The picture's colours are fixed (it is the logo), the rest the palette's. Drawn with lcd_fill and draw_text_box
+ * only. */
 
-#define SPL_U 22                                /* a tile, px */
-#define SPL_G 4                                 /* the grout between two */
+#include "splash_art.h"
 #define SPL_CX 120
-#define SPL_CY 66                               /* the mosaic's centre (tessera-rnd: up 12, room for two lines) */
+#define SPL_CY 66                               /* the picture's centre */
+#define SPL_AX (SPL_CX - SPL_ART_W)             /* its top left, px (cells of 2) */
+#define SPL_AY (SPL_CY - SPL_ART_H)
 static const char *const SPL_NAME[2] = {"LEMONADE", "SANDWICH"};   /* (AF_L: Mono's font pixels of 4, 8 letters at most) */
 #define SPL_NAME_Y 108                          /* the name's first box (AF_L; the next SPL_NAME_DY under it) */
 #define SPL_NAME_DY 34
 #define SPL_LINE_Y 184                          /* the line under it (AF_S) */
 #define SPL_STEP_MS 60u
-#define SPL_HOLD_MS 800u                        /* the finished mark held (a press ends it sooner) */
-#define SPL_GOLD 2u                             /* the gold tessera: top right */
+#define SPL_HOLD_MS 800u                        /* the finished picture held (a press ends it sooner) */
 #ifndef SPL_FRAME_HOOK
 #define SPL_FRAME_HOOK(f) ((void)0)             /* (tests: each frame of the outro) */
 #endif
-#if !MELODEE_LOOK
-static const uint16_t SPL_LAPIS[9] = {RGB(44, 64, 120), RGB(58, 84, 150), 0, RGB(66, 96, 170), RGB(50, 74, 136),
-                                      RGB(40, 60, 112), RGB(62, 90, 160), RGB(46, 68, 126), RGB(54, 80, 146)};
-#define SPL_GOLD_C RGB(236, 184, 72)
-#else
-#define SPL_GOLD_C T_TEXT                       /* (Mono: the ink) */
-#endif
-/* a hand-set look without rotation: each tile a pixel off the grid */
-static const int8_t SPL_JIT[9][2] = {{0, 1}, {1, -1}, {-1, 0}, {1, 0}, {0, 0}, {-1, 1}, {0, -1}, {1, 1}, {-1, -1}};
-static const uint8_t SPL_ORDER[9] = {4, 1, 3, 5, 7, 0, 6, 8, 2};   /* from the middle outwards, the gold one last */
+/* the crust, the crumb; the lemon's rind, pith and flesh (splash_art.h's colours 1 to 5) */
+static const uint16_t SPL_PAL[6] = {0, RGB(170, 104, 44), RGB(246, 224, 172), RGB(236, 186, 24), RGB(252, 246, 206),
+                                    RGB(252, 214, 64)};
 
-static void spl_tile(uint32_t i, int32_t grow, uint16_t c)
+/* the picture dy px down: how 0 its shadow (T_LINE), 1 the lemon alone, 2 all of it, the background too (whatever
+ * was in its box before, gone) */
+static void spl_art(uint32_t how, int32_t dy)
 {
-    int32_t x = SPL_CX - SPL_U / 2 + ((int32_t)(i % 3u) - 1) * (SPL_U + SPL_G) + SPL_JIT[i][0] - grow;
-    int32_t y = SPL_CY - SPL_U / 2 + ((int32_t)(i / 3u) - 1) * (SPL_U + SPL_G) + SPL_JIT[i][1] - grow;
-    lcd_fill((uint32_t)x, (uint32_t)y, (uint32_t)(SPL_U + 2 * grow), (uint32_t)(SPL_U + 2 * grow), c);
-#if MELODEE_LOOK                                /* Mono (the site's logo): the tiles outlined in the ink, 2 px, the
-                                                 * gold one solid */
-    if (i != SPL_GOLD && c != T_BG)
-        lcd_fill((uint32_t)(x + 2), (uint32_t)(y + 2), (uint32_t)(SPL_U + 2 * grow - 4), (uint32_t)(SPL_U + 2 * grow - 4),
-                 T_BG);
-#endif
+    const uint8_t *r = SPL_ART;
+    uint32_t x, y, n, c;
+    for (y = 0; y < SPL_ART_H; y++)
+        for (x = 0; x < SPL_ART_W; x += n, r++) {
+            c = *r >> 5;
+            n = (*r & 31u) + 1u;
+            if (how == 2u || (c && (how == 0u || c >= 3u)))
+                lcd_fill(SPL_AX + 2u * x, (uint32_t)(SPL_AY + dy) + 2u * y, 2u * n, 2u,
+                         !how ? T_LINE : c ? SPL_PAL[c] : T_BG);
+        }
 }
 
 #if MELODEE_LOOK
 static const char *spl_line;                    /* splash()'s line (the outro sweeps it too) */
 #endif
-static void splash(const char *line)          /* the boot screen: the mosaic's bed, the name, then a line */
+static void splash(const char *line)          /* the boot screen: the picture's shadow, the name, then a line */
 {
     uint32_t i;
 #if MELODEE_LOOK
     spl_line = line;
 #endif
     lcd_fill(0, 0, 240, 240, T_BG);
-    for (i = 0; i < 9u; i++)
-        spl_tile(i, 0, T_LINE);
+    spl_art(0, 0);
     for (i = 0; i < 2u; i++)
         draw_text_box(0, SPL_NAME_Y + i * SPL_NAME_DY, 240, &AF_L, SPL_NAME[i], T_TEXT, 1);
     draw_text_box(0, SPL_LINE_Y, 240, &AF_S, line, T_MID, 1);
@@ -98,12 +93,13 @@ static int spl_hold(uint32_t ms)
 static uint16_t spl_ink(int32_t x, int32_t y)   /* the mark's colour at x, y (0: none) */
 {
     uint32_t i, n;
-    int32_t t;
-    for (i = 0; i < 9u; i++) {
-        int32_t tx = x - (SPL_CX - SPL_U / 2 + ((int32_t)(i % 3u) - 1) * (SPL_U + SPL_G) + SPL_JIT[i][0]);
-        int32_t ty = y - (SPL_CY - SPL_U / 2 + ((int32_t)(i / 3u) - 1) * (SPL_U + SPL_G) + SPL_JIT[i][1]);
-        if (tx >= 0 && ty >= 0 && tx < SPL_U && ty < SPL_U)
-            return i == SPL_GOLD || tx < 2 || ty < 2 || tx >= SPL_U - 2 || ty >= SPL_U - 2 ? T_TEXT : 0;
+    int32_t t = x - SPL_AX, u = y - SPL_AY;
+    if (t >= 0 && u >= 0 && t < 2 * SPL_ART_W && u < 2 * SPL_ART_H) {   /* the picture: its row's runs, to the cell */
+        const uint8_t *r = SPL_ART;
+        for (i = 0; i < (uint32_t)u / 2u * SPL_ART_W + (uint32_t)t / 2u; r++)   /* (rows fill: SPL_ART_W cells each) */
+            if ((i += (*r & 31u) + 1u) > (uint32_t)u / 2u * SPL_ART_W + (uint32_t)t / 2u)
+                break;
+        return SPL_PAL[*r >> 5];
     }
     for (i = 0; i < 2u; i++) {                  /* the name (AF_L: font pixels of 4, each line centred in its box) */
         int32_t y0 = SPL_NAME_Y + (int32_t)i * SPL_NAME_DY + 4;
@@ -169,26 +165,27 @@ static void spl_outro(void)
 }
 #endif
 
-/* the tiles set, then at least `ms` gone in all (the boot's own wait); anim 0: the wait alone */
+/* the picture made, then at least `ms` gone in all (the boot's own wait); anim 0: the wait alone */
 static void splash_lay(uint32_t ms, int anim)
 {
+    static const int8_t DROP[] = {-10, -4, 1, 0};   /* the bread falling onto the lemon, a bounce, settled */
     uint32_t k, used = 0;
+    int32_t was = 0, dy;
     if (anim) {
-        for (k = 0; k < 8u; k++) {
-#if MELODEE_LOOK
-            spl_tile(SPL_ORDER[k], 0, T_TEXT);
-#else
-            spl_tile(SPL_ORDER[k], 0, SPL_LAPIS[SPL_ORDER[k]]);
-#endif
+        spl_art(1, 0);                          /* the lemon */
+        spl_wait(4u * SPL_STEP_MS);
+        for (k = 0; k < NELEM(DROP); k++) {
+            dy = DROP[k];
+            if (dy > was)                       /* (the rows the last draw covered and this one does not: the
+                                                 * shadow's, first) */
+                lcd_fill(SPL_AX, (uint32_t)(SPL_AY + was), 2u * SPL_ART_W, (uint32_t)(dy - was), T_BG);
+            else if (dy < was)
+                lcd_fill(SPL_AX, (uint32_t)(SPL_AY + dy + 2 * SPL_ART_H), 2u * SPL_ART_W, (uint32_t)(was - dy), T_BG);
+            spl_art(2, dy);
+            was = dy;
             spl_wait(SPL_STEP_MS);
-            used += SPL_STEP_MS;
         }
-        spl_tile(SPL_GOLD, 2, SPL_GOLD_C);      /* the gold tessera, pressed in */
-        spl_wait(2u * SPL_STEP_MS);
-        spl_tile(SPL_GOLD, 2, T_BG);
-        spl_tile(SPL_GOLD, 0, SPL_GOLD_C);
-        spl_wait(2u * SPL_STEP_MS);
-        used += 4u * SPL_STEP_MS;
+        used = (4u + NELEM(DROP)) * SPL_STEP_MS;
         if (!spl_hold(SPL_HOLD_MS))
             LOOK((void)0, spl_outro());
     }
