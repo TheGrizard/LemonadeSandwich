@@ -2171,7 +2171,9 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
     rnd_tp(tr, P_LD_FLT, 0);
     rnd_tp(tr, P_LWAVE, 0);
     rnd_tp(tr, P_LSYNC, 0);
-    rnd_tp(tr, P_LTRIG, 0);
+    rnd_tp(tr, P_LTRIG, 1);                         /* FREE: the slow wander runs on (NOTE started it again at each
+                                                     * phrase, the note before still ringing: its filter jumped, a click,
+                                                     * heard and measured) */
     rnd_tp(tr, P_LFADE, 0);
     rnd_tp(tr, P_GLIDE, 0);
     rnd_tp(tr, P_CHRD, 0);
