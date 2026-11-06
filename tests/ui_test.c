@@ -7173,9 +7173,9 @@ static int test_rnd(void)
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
     }
-    {                                               /* CRATE: a little jazz record of sections, without drums */
+    {                                               /* CRATE: a little funk or soul record of sections, without drums */
         uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, form_ok = 1, keys_ok = 1, bass_ok = 1, head_ok = 1, dry = 1;
-        uint32_t forms[8] = {0}, walks = 1, quiet = 0, clipped_n = 0, again = 1, apart = 1, tried = 0, eights = 0, strings = 0, funky = 0;
+        uint32_t forms[8] = {0}, walks = 1, quiet = 0, clipped_n = 0, again = 1, apart = 1, tried = 0, eights = 0, strings = 0, funky = 0, tune_ok = 1;
         rnd_mode_put(RND_CRATE);
         press(B_REC);
         bad += check("RND CRATE: REC tapped: a roll, CRATE and the seed said", !memcmp(ui.msg, "CRATE ", 6));
@@ -7184,6 +7184,12 @@ static int test_rnd(void)
             rnd_roll();
             bpm = pid_get(PID_GLOBAL(G_BPM), 0);
             tempo_ok &= bpm >= 80 && bpm <= 100;
+            for (tr = 0; tr < 4u; tr++) {           /* in tune: TRIO's intervals the unison or octaves, FM6's
+                                                     * algorithm, feedback, ratios and vibrato the preset's */
+                const int16_t *e = &trk[tr].p[P_E0];
+                if (trk[tr].eng_req == 6u) tune_ok &= (e[1] == 0 || e[1] == 12 || e[1] == -12) && (e[2] == 0 || e[2] == 12 || e[2] == -12);
+                if (trk[tr].eng_req == ENGI_FM6) tune_ok &= !e[0] && !e[1] && !e[3] && !e[5];
+            }
             k = (uint32_t)trk[0].p[P_SCALE];
             key_ok &= k == 1u || k == 2u || k == 3u || k == 4u;
             fixed &= rnd_role_of[0] == RND_ROLE_CHORDS && rnd_role_of[1] == RND_ROLE_BASS &&
@@ -7261,6 +7267,7 @@ static int test_rnd(void)
         }
         bad += check("RND CRATE: 200 rolls: the keys on track 1, the bass 2, the head 3, the counter 4, every roll", fixed);
         bad += check("RND CRATE: ..80 to 100 BPM, MAJ MIN DOR MIX", tempo_ok && key_ok);
+        bad += check("RND CRATE: ..in tune: TRIO's INT2, INT3 0 or an octave; FM6's ALG, FB, MRAT, VMOD the preset's", tune_ok);
         bad += check("RND CRATE: ..a form (AABA ABAC ABCB) on every track alike, 4 or 8 bars a section, written at the roll",
                      form_ok && forms[4] > 40u && forms[2] > 30u && forms[3] > 30u && eights > 80u && eights < 160u);
         bad += check("RND CRATE: ..the keys diatonic sevenths, four chords a section from the book (WALK)", keys_ok && walks);

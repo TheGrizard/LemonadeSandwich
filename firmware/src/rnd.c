@@ -2495,6 +2495,15 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     rnd_nice = nice;
     rnd_want_e = rnd_want_pi = 0xFFu;
     e = trk[tr].eng_req;
+    if (e == 6u)                                    /* TRIO: INT2, INT3 the unison or an octave (the roll's push left
+                                                     * them a semitone or ten off, heard: atonal; DTN's cents kept) */
+        for (k = 1u; k < 3u; k++)
+            rnd_tp(tr, P_E0 + k, trk[tr].p[P_E0 + k] >= 6 ? 12 : trk[tr].p[P_E0 + k] <= -6 ? -12 : 0);
+    if (e == ENGI_FM6)                              /* FM6: the preset's algorithm, feedback, ratios and vibrato (the
+                                                     * push swapped a tine's ALG for another, clanging; MLVL, MEG, DTUN,
+                                                     * AEG: its tone, kept) */
+        for (k = 0; k < 6u; k++)
+            if (k != 2u && k != 4u) rnd_tp(tr, P_E0 + k, 0);
     rnd_tp_still(tr);
     rnd_tp(tr, P_LD_PIT, 0);
     rnd_tp(tr, P_GLIDE, 0);
@@ -2542,7 +2551,7 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
             rnd_tp(tr, P_E0 + 1u, horn ? 0 : 12); rnd_tp(tr, P_E0 + 2u, 0); rnd_tp(tr, P_E0 + 3u, rnd_rr(3, 10));
             rnd_tp(tr, P_E0 + 4u, horn ? 1 : 0);
             rnd_tp(tr, P_E0 + 5u, horn ? rnd_rr(55, 75) : rnd_rr(50, 75));
-            rnd_tp(tr, P_E0 + 6u, horn ? rnd_rr(30, 60) : rnd_rr(0, 20));
+            rnd_tp(tr, P_E0 + 6u, horn ? rnd_rr(15, 35) : rnd_rr(0, 20));   /* (the horn: nasal, not a whistle) */
             rnd_tp(tr, P_LRATE, rnd_rr(68, 78));    /* (a player's vibrato, slight) */
             rnd_tp(tr, P_LD_PIT, rnd_pct(60) ? 1 : 0);
             rnd_tp(tr, P_LFADE, rnd_rr(40, 80));
@@ -2613,7 +2622,7 @@ static void rnd_crate_generators(void)
     rnd_tx(tr, TX_MODE, TESS_ENG_TURING);
     rnd_tx(tr, TX_TUR_LEN, 16);
     rnd_tx(tr, TX_TUR_PROB, 0);                     /* (locked) */
-    rnd_tx(tr, TX_TUR_SPAN, funk ? 2 : 1);          /* (funk: octaves) */
+    rnd_tx(tr, TX_TUR_SPAN, 1);                     /* (2, octaves at random: leaping about, heard) */
     rnd_tp(tr, P_SDIV, funk ? 2 : 1);
     rnd_tp(tr, P_SGATE, funk ? rnd_rr(30, 60) : rnd_rr(55, 85));
     rnd_tp(tr, P_QUANT, Q_CHRD);
@@ -2679,7 +2688,7 @@ static void rnd_crate_generators(void)
 static void rnd_crate_registers(void)
 {
     rnd_tp(RND_CR_KEYS, P_TRANS, 0);
-    rnd_tp(RND_CR_BASS, P_TRANS, rnd_pct(60) ? -24 : -12);
+    rnd_tp(RND_CR_BASS, P_TRANS, -12);              /* (-24: down to MIDI 13, felt more than heard) */
     rnd_tp(RND_CR_HEAD, P_TRANS, rnd_pct(60) ? 12 : 0);
     rnd_tp(RND_CR_COUNTER, P_TRANS, rnd_pct(50) ? 0 : 12);
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(80, 100));
