@@ -96,7 +96,7 @@ static int settings_import(persist_t *p, int n)
      * record from before it has: an old LOW CUT of 1 stays nothing */
     settings_rnd_variant = (uint8_t)((p->lowcut & 0xFFu) >= 1u && (p->lowcut & 0xFFu) <= 7u &&
                                      (p->favorites.factory[15][24] & 0xC0u) ? p->lowcut & 0xFFu : 0u);   /* (rnd.c
-                                                     * RND_CODE: FALL, LOOPS, ORBIT, GLITCH ..) */
+                                                     * RND_CODE: FALL, LOOPS, ORBIT, WOZZA ..) */
     settings_rnd_drift = (uint8_t)(((p->lowcut >> 8) & 3u) <= 2u && (p->favorites.factory[15][24] & 0xC0u)
                                    ? (p->lowcut >> 8) & 3u : 0u);   /* (rnd.c DRIFT: bits 8, 9; OFF SLOW FAST) */
     settings.zoom = (p->zoom & 0xFFu) == 1u;

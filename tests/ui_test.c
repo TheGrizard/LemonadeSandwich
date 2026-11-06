@@ -6341,175 +6341,57 @@ static int test_rnd(void)
         int32_t o[2 * CTL];
         for (i = 0; i < 8u; i++) mix_block(o, CTL);
     }
-    {                                               /* AMBIENT: a drone, chords, two melodies; no effects */
-        uint32_t k, roles_ok = 1, fx_off = 1, qnt = 1, regs = 1, drone_regs = 0, quiet = 0, amb_heavy = 1, no_trem = 1, fx_slots = 0;
-        hold(B_HOME); ui.menu_sel = MI_REC_BTN; turn(EN_K2, 1);
-        bad += check("RND AMBIENT: MENU > REC BUTTON turned right from RND: AMBIENT (bits 6 and 7)",
-                     rnd_setting() == RND_AMBIENT && (favorites.factory[15][24] & 0xC0u) == 0xC0u);
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: NICE (bit 7 alone); left: AMBIENT", rnd_setting() == RND_NICE &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x80u && rnd_mode());
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: FALL (bit 7 and the lowcut word's 1)", rnd_setting() == RND_FALL &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_variant);
-        {                                           /* FALL kept through the settings record */
+    {                                               /* MENU > REC BUTTON: the modes in turn, saved and loaded */
+        uint32_t k;
+        static const struct { uint8_t m, bits, var; const char *name; } steps[] = {
+            {RND_FALL, 0x80, 1, "FALL"}, {RND_TIDE, 0x40, 4, "TIDE"}, {RND_LOOPS, 0x80, 2, "LOOPS"},
+            {RND_ORBIT, 0xC0, 1, "ORBIT"}, {RND_WOZZA, 0x40, 3, "WOZZA"}, {RND_HALO, 0x80, 3, "HALO"},
+            {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_CRATE, 0x80, 4, "CRATE"}};
+        uint32_t steps_ok = 1, saved_ok = 1;
+        hold(B_HOME); ui.menu_sel = MI_REC_BTN;
+        for (k = 0; k < NELEM(steps); k++) {
             persist_t pr;
-            settings_export(&pr);
-            settings_rnd_variant = 0;
-            favorites.factory[15][24] &= (uint8_t)~0xC0u;
-            settings_import(&pr, sizeof pr);
-            bad += check("RND AMBIENT: ..FALL saved and loaded with the settings (lowcut 1, a valid record)",
-                         rnd_setting() == RND_FALL && pr.lowcut == 1u);
-        }
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: LOOPS (the lowcut word's 2)", rnd_setting() == RND_LOOPS &&
-                     settings_rnd_variant == 2u);
-        {
-            persist_t pr;
-            settings_export(&pr);
-            settings_rnd_variant = 0;
-            settings_import(&pr, sizeof pr);
-            bad += check("RND AMBIENT: ..LOOPS saved and loaded with the settings", rnd_setting() == RND_LOOPS && pr.lowcut == 2u);
-        }
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: ORBIT (AMBIENT's bits with variant 1)", rnd_setting() == RND_ORBIT &&
-                     (favorites.factory[15][24] & 0xC0u) == 0xC0u && settings_rnd_variant == 1u);
-        {
-            persist_t pr;
-            settings_export(&pr);
-            settings_rnd_variant = 0;
-            favorites.factory[15][24] &= (uint8_t)~0xC0u;
-            settings_import(&pr, sizeof pr);
-            bad += check("RND AMBIENT: ..ORBIT saved and loaded with the settings", rnd_setting() == RND_ORBIT && pr.lowcut == 1u);
-        }
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: GLITCH (RND's bit with variant 1)", rnd_setting() == RND_GLITCH &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 1u);
-        {
-            persist_t pr;
-            settings_rnd_drift = RND_DRIFT_FAST;
+            turn(EN_K2, 1);
+            steps_ok &= rnd_setting() == steps[k].m && (favorites.factory[15][24] & 0xC0u) == steps[k].bits &&
+                        settings_rnd_variant == steps[k].var && rnd_mode();
+            if (!steps_ok) printf("rnd: REC BUTTON step %u: wanted %s, got mode %u\n", k, steps[k].name, rnd_setting());
+            settings_rnd_drift = (uint8_t)(k % RND_DRIFTS);
             settings_export(&pr);
             settings_rnd_variant = 0;
             settings_rnd_drift = 0;
             favorites.factory[15][24] &= (uint8_t)~0xC0u;
             settings_import(&pr, sizeof pr);
-            bad += check("RND AMBIENT: ..GLITCH and DRIFT FAST saved and loaded with the settings (bits 8, 9)",
-                         rnd_setting() == RND_GLITCH && settings_rnd_drift == RND_DRIFT_FAST && pr.lowcut == (1u | 2u << 8));
-            settings_rnd_drift = 0;
+            saved_ok &= rnd_setting() == steps[k].m && (pr.lowcut & 0xFFu) == steps[k].var &&
+                        settings_rnd_drift == k % RND_DRIFTS && pr.lowcut >> 8 == k % RND_DRIFTS;
         }
+        settings_rnd_drift = 0;
+        bad += check("RND MENU: REC BUTTON turned right from RND: FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE "
+                     "(their bits and variants)", steps_ok);
+        bad += check("RND MENU: ..each saved and loaded with the settings, DRIFT beside it", saved_ok);
         turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: PULSE (RND's bit with variant 2)", rnd_setting() == RND_PULSE &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 2u);
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: WOZZA (RND's bit with variant 3), saved and loaded", rnd_setting() == RND_WOZZA &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 3u);
-        {
-            persist_t pr;
-            settings_export(&pr);
-            settings_rnd_variant = 0;
-            favorites.factory[15][24] &= (uint8_t)~0xC0u;
-            settings_import(&pr, sizeof pr);
-            bad += check("RND AMBIENT: ..WOZZA saved and loaded with the settings (variant 3)",
-                         rnd_setting() == RND_WOZZA && (pr.lowcut & 0xFFu) == 3u);
-        }
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: HALO (NICE's bit with variant 3)", rnd_setting() == RND_HALO &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_variant == 3u);
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: MIRROR (AMBIENT's bits with variant 3)", rnd_setting() == RND_MIRROR &&
-                     (favorites.factory[15][24] & 0xC0u) == 0xC0u && settings_rnd_variant == 3u);
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: TIDE (RND's bit with variant 4), saved and loaded", rnd_setting() == RND_TIDE &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x40u && settings_rnd_variant == 4u);
-        {
-            persist_t pr;
-            settings_export(&pr);
-            settings_rnd_variant = 0;
-            settings_import(&pr, sizeof pr);
-            bad += check("RND AMBIENT: ..TIDE saved and loaded with the settings (variant 4)",
-                         rnd_setting() == RND_TIDE && (pr.lowcut & 0xFFu) == 4u);
-        }
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..right again: CRATE (NICE's bit with variant 4)", rnd_setting() == RND_CRATE &&
-                     (favorites.factory[15][24] & 0xC0u) == 0x80u && settings_rnd_variant == 4u);
-        turn(EN_K2, 1);
-        bad += check("RND AMBIENT: ..CRATE is the last (right again: stays)", rnd_setting() == RND_CRATE);
+        bad += check("RND MENU: ..CRATE is the last (right again: stays)", rnd_setting() == RND_CRATE);
+        for (k = 0; k < NELEM(steps) - 1u; k++) turn(EN_K2, -1);
+        bad += check("RND MENU: ..left back to FALL", rnd_setting() == RND_FALL && settings_rnd_variant == 1u);
         turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        turn(EN_K2, -1);
-        bad += check("RND AMBIENT: ..left twice: NICE (the lowcut word's 0 again)", rnd_setting() == RND_NICE &&
-                     !settings_rnd_variant);
-        turn(EN_K2, -1);
+        bad += check("RND MENU: ..left again: RND", rnd_setting() == RND_FREE);
         hold(B_HOME);
-        ui.home = 1; ui.force = 1; frame();
-        press(B_REC);
-        bad += check("RND AMBIENT: REC tapped: a roll, AMB and the seed said", !memcmp(ui.msg, "AMB ", 4) && !song.rec);
-        for (r = 0; r < 200u; r++) {
-            uint32_t drones = 0, chordt = 0, melodies = 0, heavy = 0;
-            rnd_roll();
-            for (tr = 0; tr < NTRK; tr++) {
-                uint32_t m = tessera.mode[tr], div = (uint32_t)trk[tr].p[P_SDIV], e = trk[tr].eng_req;
-                heavy += e == ENGI_FM6 || e == ENGI_ORACLE || e == ENGI_PHYS;
-                if (m == TESS_ENG_TURING && div >= 7u && trk[tr].p[P_VOICE] == V_LEGATO &&
-                    pid_get(PID_TESS(TX_TUR_SPAN), tr) == 1) {
-                    drones++;
-                    drone_regs |= 1u << (uint32_t)((trk[tr].p[P_TRANS] + 24) / 12);
-                } else if (m == TESS_ENG_CHORD && trk[tr].p[P_VOICE] == V_POLY) {
-                    chordt++;
-                } else if (m != TESS_ENG_CHORD && m != TESS_ENG_POLY && m != TESS_ENG_QUAD && m != TESS_ENG_OFF) {
-                    melodies++;
-                }
-                qnt &= trk[tr].p[P_QUANT] == Q_CHRD;
-                no_trem &= trk[tr].p[P_LD_AMP] == 0;
+        {                                           /* AMBIENT, NICE, GLITCH, PULSE gone: saved before, FALL now */
+            static const uint8_t gone[][2] = {{0xC0, 0}, {0x80, 0}, {0x40, 1}, {0x40, 2}, {0xC0, 2}};
+            uint32_t g, nice = 1;
+            for (g = 0; g < NELEM(gone); g++) {
+                favorites.factory[15][24] = (uint8_t)((favorites.factory[15][24] & ~0xC0u) | gone[g][0]);
+                settings_rnd_variant = gone[g][1];
+                nice &= rnd_setting() == RND_FALL && rnd_mode();
             }
-            {
-                uint32_t nfx = rnd_fx_mode_ok(0);
-                fx_off &= nfx >= 1u;                /* (a send at least) */
-                fx_slots += nfx - 1u;
-            }
-            roles_ok &= drones >= 1u && chordt == 1u && drones + chordt + melodies == NTRK;
-            regs &= rnd_registers_apart();
-            amb_heavy &= heavy <= 2u;
-            if (r % 25u == 0u) {                    /* listen: 15 s (a drone swells in slowly) */
-                int32_t o[2 * CTL], peak = 0;
-                uint32_t b, j;
-                if (!song.playing) transport_req = 1;
-                for (b = 0; b < 15u * FS / CTL; b++) {
-                    mix_block(o, CTL);
-                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
-                }
-                quiet += peak < 300;
-                printf("rnd: ambient roll %3u: %-6s %-6s %-6s %-6s TRN %3d %3d %3d %3d peak %5d\n", r,
-                       ENGINES[trk[0].eng_req]->name, ENGINES[trk[1].eng_req]->name, ENGINES[trk[2].eng_req]->name,
-                       ENGINES[trk[3].eng_req]->name, trk[0].p[P_TRANS], trk[1].p[P_TRANS], trk[2].p[P_TRANS],
-                       trk[3].p[P_TRANS], peak);
-            }
+            bad += check("RND MENU: AMBIENT, NICE, GLITCH, PULSE (and another branch's PLAITS) saved: read as FALL", nice);
         }
-        bad += check("RND AMBIENT: 200 rolls: a drone (TURING, a bar to four, legato), one CHORD track, the rest melodies",
-                     roles_ok);
-        printf("rnd: AMBIENT: %.1f of the 7 effect slots filled a roll (its 8 points)\n", fx_slots / 200.0);
-        bad += check("RND AMBIENT: ..light effects: a send or two, the inserts while its 8 points last; QNT CHRD on every "
-                     "track", fx_off && qnt);
-        bad += check("RND AMBIENT: ..an octave each, and the drone's not always low (three registers and more seen)",
-                     regs && __builtin_popcount(drone_regs) >= 3);
-        bad += check("RND AMBIENT: ..no tremolo, two heavy engines at most", no_trem && amb_heavy);
-        bad += check("RND AMBIENT: ..each roll listened to sounds within 15 s", !quiet);
-        transport_req = 2;
-        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
     }
-    {                                               /* NICE: AMBIENT's roles, nicer sounds */
+    {                                               /* FALL (as NICE was): the ambient roles, gentle sounds */
         uint32_t k, roles_ok = 1, fx_off = 1, regs = 1, quiet = 0, clean = 1, modal = 1, clipped_n = 0;
-        rnd_mode_put(RND_NICE);
+        rnd_mode_put(RND_FALL);
         press(B_REC);
-        bad += check("RND NICE: REC tapped: a roll, NICE and the seed said", !memcmp(ui.msg, "NICE ", 5) && !song.rec);
+        bad += check("RND FALL: REC tapped: a roll, FALL and the seed said", !memcmp(ui.msg, "FALL ", 5) && !song.rec);
         for (r = 0; r < 200u; r++) {
             uint32_t chordt = 0, drones = 0;
             rnd_roll();
@@ -6536,18 +6418,18 @@ static int test_rnd(void)
                 }
                 quiet += peak < 300;
                 clipped_n += rail > 2u * FS / 100u;
-                printf("rnd: nice roll %3u: %-6s %-6s %-6s %-6s TRN %3d %3d %3d %3d peak %5d\n", r,
+                printf("rnd: fall (gentle) roll %3u: %-6s %-6s %-6s %-6s TRN %3d %3d %3d %3d peak %5d\n", r,
                        ENGINES[trk[0].eng_req]->name, ENGINES[trk[1].eng_req]->name, ENGINES[trk[2].eng_req]->name,
                        ENGINES[trk[3].eng_req]->name, trk[0].p[P_TRANS], trk[1].p[P_TRANS], trk[2].p[P_TRANS],
                        trk[3].p[P_TRANS], peak);
             }
         }
-        bad += check("RND NICE: 200 rolls: AMBIENT's roles (a drone, one CHORD track, melodies), an effect in each slot the "
+        bad += check("RND FALL: 200 rolls: the ambient roles (a drone, one CHORD track, melodies), an effect in each slot the "
                      "points allow (no FORMANT or SPIT)", roles_ok && fx_off);
-        bad += check("RND NICE: ..clean sounds: no tremolo, sine LFO, no pitch envelope, TRIO's clean waves, ORACLE's "
+        bad += check("RND FALL: ..clean sounds: no tremolo, sine LFO, no pitch envelope, TRIO's clean waves, ORACLE's "
                      "noise low", clean);
-        bad += check("RND NICE: ..the modes only (no stranger tuning), QNT CHRD; an octave each, never +24", modal && regs);
-        bad += check("RND NICE: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
+        bad += check("RND FALL: ..the modes only (no stranger tuning), QNT CHRD; an octave each, never +24", modal && regs);
+        bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
@@ -6584,7 +6466,7 @@ static int test_rnd(void)
             }
         }
         bad += check("RND FALL: 200 rolls: every track TRIO on three triangles (TRI3, LP), no tremolo; effects (clean)", trio);
-        bad += check("RND FALL: ..AMBIENT's roles, an octave each; the melodies falling (BOUNCE's FALL) often",
+        bad += check("RND FALL: ..the ambient roles, an octave each; the melodies falling (BOUNCE's FALL) often",
                      roles_ok && falls >= 150u);
         bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
         transport_req = 2;
@@ -6679,246 +6561,6 @@ static int test_rnd(void)
         bad += check("RND ORBIT: ..LOOPS' smooth voices: soft onsets, no tremolo or ratchet; effects (clean)", smooth);
         bad += check("RND ORBIT: ..busier than LOOPS (twice the notes and more), each roll heard within 15 s, none at the rail",
                      orbit_rate > 2.0 * loops_rate && !quiet && !clipped_n);
-        transport_req = 2;
-        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
-        rnd_mode_put(RND_FREE);
-    }
-    {                                               /* GLITCH: two microsound tracks, a drone and a slow melody */
-        uint32_t k, roles_ok = 1, regs = 1, drone_low = 0, glitch_ok = 1, melody_ok = 1, drone_ok = 1, dry = 1, cpu = 1;
-        uint32_t links = 0, chr = 0, edo = 0, ratch = 0, quiet = 0, clipped_n = 0, limits_g = 0;
-        double grate = 0, mrate = 0;
-        rnd_mode_put(RND_GLITCH);
-        press(B_REC);
-        bad += check("RND GLITCH: REC tapped: a roll, GLITCH and the seed said", !memcmp(ui.msg, "GLITCH ", 7));
-        for (r = 0; r < 200u; r++) {
-            uint32_t nd = 0, nm = 0, ng = 0, f6 = 0, ph = 0, orc = 0, lo = 0, hi = 0;
-            rnd_roll();
-            for (tr = 0; tr < NTRK; tr++) {
-                const int16_t *p = trk[tr].p;
-                uint32_t m = tessera.mode[tr], role = rnd_role_of[tr], e = trk[tr].eng_req;
-                f6 += e == ENGI_FM6; ph += e == ENGI_PHYS; orc += e == ENGI_ORACLE;
-                cpu &= p[P_VOICE] != V_UNISON;
-                if (role == RND_ROLE_DRONE || role == RND_ROLE_MELODY) {
-                    lo += p[P_TRANS] <= -12; hi += p[P_TRANS] >= 12;
-                    if (role == RND_ROLE_DRONE) {
-                        nd++;
-                        drone_low += p[P_TRANS] < 0;
-                        drone_ok &= m == TESS_ENG_TURING && p[P_SDIV] >= 7;
-                    } else {
-                        nm++;
-                        melody_ok &= (m == TESS_ENG_QUAD || m == TESS_ENG_SERIES || m == TESS_ENG_TURING ||
-                                      m == TESS_ENG_MARKOV || m == TESS_ENG_AWAKE) &&
-                                     (p[P_SDIV] == 0 || p[P_SDIV] == 6 || p[P_SDIV] == 7) &&
-                                     pid_get(PID_TESS(TX_SUB_RATCH), tr) == 0;
-                    }
-                } else if (role == RND_ROLE_GLITCH) {
-                    uint32_t sp = rnd_speed((uint32_t)p[P_SDIV]), rt = (uint32_t)pid_get(PID_TESS(TX_SUB_RATCH), tr);
-                    ng++;
-                    glitch_ok &= sp != RND_SLOW && p[P_SGATE] <= 40 && rnd_tail(tr) <= 25 && p[P_VOICE] != V_LEGATO &&
-                                 m != TESS_ENG_CHORD;
-                    glitch_ok &= !rt || (p[P_SDIV] == 1 && p[P_VOICE] == V_MONO);   /* (ratchets: 1/8, one voice) */
-                    ratch += rt != 0;
-                    links += pid_get(PID_TESS(TX_TW_LOGIC), tr) != 0 || pid_get(PID_TESS(TX_TW_BRANCH), tr) != 0;
-                }
-            }
-            roles_ok &= nd == 1u && nm == 1u && ng == 2u;
-            regs &= lo == 1u && hi == 1u && rnd_registers_apart();
-            limits_g += f6 > 1u || ph > 1u || orc > 1u || f6 + ph + orc > RND_HEAVY;
-            dry &= rnd_fx_mode_ok(0) >= 1u;       /* (an effect in each slot the points allow) */
-            cpu &= settings_budget <= RND_BUDGET;
-            chr += trk[0].p[P_SCALE] == 0;
-            edo += trk[0].p[P_SCALE] >= 16;
-            if (r % 25u == 0u) {
-                int32_t o[2 * CTL], peak = 0;
-                uint32_t b, j, rail = 0, gn = 0, mn = 0;
-                uint8_t was[NTRK] = {0};
-                if (!song.playing) transport_req = 1;
-                for (b = 0; b < 15u * FS / CTL; b++) {
-                    mix_block(o, CTL);
-                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
-                    for (tr = 0; tr < NTRK; tr++) {
-                        uint32_t on = tessera.active_gate[tr] != 0;
-                        if (on && !was[tr]) { if (rnd_role_of[tr] == RND_ROLE_GLITCH) gn++; else if (rnd_role_of[tr] == RND_ROLE_MELODY) mn++; }
-                        was[tr] = (uint8_t)on;
-                    }
-                }
-                grate += gn * 4.0 / 2.0 / 8.0;      /* (a glitch track's notes a minute, of 8 listened rolls) */
-                mrate += mn * 4.0 / 8.0;
-                quiet += peak < 300;
-                clipped_n += rail > 2u * FS / 100u;
-            }
-        }
-        printf("rnd: GLITCH: drone low in %u of 200, %u glitch tracks ratcheting, %u linked, %u chromatic, %u EDO; notes a "
-               "minute: a glitch track %.0f, the melody %.0f\n", drone_low, ratch, links, chr, edo, grate, mrate);
-        bad += check("RND GLITCH: 200 rolls: a drone, a slow melody, two glitch tracks; the slow two one low, one mid-high "
-                     "(the drone either), an octave each", roles_ok && regs && drone_low > 60u && drone_low < 140u);
-        bad += check("RND GLITCH: ..the glitch tracks fast, short hits (gate, tail), never LEGATO; ratchets on an 1/8 track "
-                     "on one voice; linked now and then", glitch_ok && ratch > 10u && links > 30u);
-        bad += check("RND GLITCH: ..the drone held slow (TURING, a bar and more); the melody slow and atonal-minded (QUAD, "
-                     "SERIES, TURING, MARKOV, AWAKE)", drone_ok && melody_ok);
-        bad += check("RND GLITCH: ..effects in the slots, the engines within their limits, BUDGET at most 12; chromatic and EDO keys among "
-                     "them", dry && cpu && !limits_g && chr > 30u && edo > 20u);
-        bad += check("RND GLITCH: ..each roll heard within 15 s, none at the rail; the glitch tracks busier than the melody "
-                     "(three times and more)", !quiet && !clipped_n && grate > 3.0 * mrate && grate > 60.0);
-        {                                           /* DRIFT: OFF, SLOW, FAST; not before the roll (held) */
-            uint32_t h, s0, st_slow, st_fast, st_back, bpm = (uint32_t)song.g[G_BPM];
-            int changed_slow, changed_fast;
-            song.g[G_BPM] = 240;
-            settings_rnd_drift = RND_DRIFT_OFF;
-            rnd_roll();
-            h = rnd_hash_of(0);
-            s0 = rnd_drift_s.steps;
-            rnd_play_bars(16);
-            bad += check("DRIFT OFF: 16 bars, nothing changed", rnd_hash_of(0) == h && rnd_drift_s.steps == s0);
-            settings_rnd_drift = RND_DRIFT_SLOW;
-            rnd_drift_start();
-            h = rnd_hash(); s0 = rnd_drift_s.steps;
-            rnd_play_bars(32);
-            st_slow = rnd_drift_s.steps - s0; changed_slow = rnd_hash() != h;
-            settings_rnd_drift = RND_DRIFT_FAST;
-            rnd_drift_start();
-            h = rnd_hash(); s0 = rnd_drift_s.steps;
-            rnd_play_bars(32);
-            st_fast = rnd_drift_s.steps - s0; changed_fast = rnd_hash() != h;
-            rnd_back();
-            h = rnd_hash_of(0); s0 = rnd_drift_s.steps;
-            rnd_play_bars(16);
-            st_back = rnd_drift_s.steps - s0;
-            bad += check("DRIFT: held back to before the roll, it waits", st_back == 0 && rnd_hash_of(0) == h);
-            rnd_back();
-            printf("rnd: DRIFT in 32 bars: SLOW %u changes, FAST %u\n", st_slow, st_fast);
-            bad += check("DRIFT SLOW: a change every 4 to 8 bars (32 bars: 4 to 8)", changed_slow && st_slow >= 3u && st_slow <= 9u);
-            bad += check("DRIFT FAST: a change every bar or two (32 bars: 16 to 32)", changed_fast && st_fast >= 14u && st_fast <= 33u);
-            {                                       /* and GLITCH as it was: the CPU's rules after all of it */
-                uint32_t ok2 = settings_budget <= RND_BUDGET, lo = 0, hi = 0;
-                for (tr = 0; tr < NTRK; tr++) {
-                    if (rnd_role_of[tr] == RND_ROLE_GLITCH)
-                        ok2 &= rnd_speed((uint32_t)trk[tr].p[P_SDIV]) != RND_SLOW && rnd_tail(tr) <= 55 && trk[tr].p[P_DEC] <= 40 &&
-                               trk[tr].p[P_VOICE] != V_LEGATO;
-                    if (rnd_role_of[tr] == RND_ROLE_DRONE || rnd_role_of[tr] == RND_ROLE_MELODY) {
-                        lo += trk[tr].p[P_TRANS] <= -12; hi += trk[tr].p[P_TRANS] >= 12;
-                    }
-                }
-                bad += check("DRIFT: ..GLITCH still GLITCH (fast short glitch tracks, BUDGET, the slow two one low one high)",
-                             ok2 && lo == 1u && hi == 1u);
-            }
-            settings_rnd_drift = RND_DRIFT_OFF;
-            song.g[G_BPM] = (int16_t)bpm;
-        }
-        transport_req = 2;
-        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
-        rnd_mode_put(RND_FREE);
-    }
-    {                                               /* PULSE: dance music: a kick, hats, a bass, a riff */
-        uint32_t k, roles_ok = 1, regs = 1, lowperc_ok = 1, noise_ok = 1, slow_ok = 1, dry = 1, cpu = 1, atlas = 0, micro = 0;
-        uint32_t presets_ok = 1, phys_slow = 0, tri_slow = 0, drone_low = 0, human = 1, cords_ok = 1, quiet = 0, clipped_n = 0;
-        uint32_t four = 0, tempo_ok = 1, key_ok = 1, fast = 0, poly_rolls = 0;
-        double prate = 0;
-        rnd_mode_put(RND_PULSE);
-        press(B_REC);
-        bad += check("RND PULSE: REC tapped: a roll, PULSE and the seed said", !memcmp(ui.msg, "PULSE ", 6));
-        for (r = 0; r < 200u; r++) {
-            uint32_t n[8] = {0}, lp = NTRK, nz = NTRK, poly = 0;
-            rnd_roll();
-            for (tr = 0; tr < NTRK; tr++) {
-                const int16_t *p = trk[tr].p;
-                uint32_t role = rnd_role_of[tr], e = trk[tr].eng_req, m = tessera.mode[tr];
-                n[role]++;
-                if (role == RND_ROLE_LOWPERC) {
-                    uint32_t k2, known = 0;
-                    lp = tr;
-                    for (k2 = 0; k2 < NELEM(RND_FM6_PERC); k2++) known |= trk[tr].preset == RND_FM6_PERC[k2];
-                    lowperc_ok &= e == ENGI_FM6 && p[P_TRANS] < 0 && p[P_ATK] == 0 && p[P_SDIV] == 2 && p[P_ED_PIT] < 0;
-                    presets_ok &= known;
-                    four += m == TESS_ENG_EUCLID && pid_get(PID_TESS(TX_EUC_PULSES), tr) == 4 &&
-                            pid_get(PID_TESS(TX_EUC_STEPS), tr) == 16 && pid_get(PID_TESS(TX_EUC_ROT), tr) == 0;
-                } else if (role == RND_ROLE_NOISE) {
-                    nz = tr;
-                    noise_ok &= e == 6u && p[P_TRANS] >= 0 && p[P_ATK] == 0 && p[P_DEC] <= 50 && (p[P_SDIV] == 2 || p[P_SDIV] == 5);
-                    micro += p[P_E0] != 8 && p[P_E0] != 7;
-                } else if (role == RND_ROLE_DRONE || role == RND_ROLE_MELODY) {
-                    slow_ok &= ((e == 6u && (p[P_E0] == 4 || p[P_E0] == 7 || p[P_E0] == 13 || p[P_E0] == 14 || p[P_E0] == 9)) ||
-                                (e == ENGI_PHYS && p[P_E0 + 6u] <= 40)) &&   /* (TRI3 or roughed up; PHYS struck) */
-                               p[P_ATK] <= 4 && rnd_speed((uint32_t)p[P_SDIV]) != RND_SLOW &&
-                               (role == RND_ROLE_DRONE ? p[P_TRANS] < 0 : p[P_TRANS] > 0);   /* (the bass low, the riff high) */
-                    phys_slow += e == ENGI_PHYS; tri_slow += e == 6u;
-                    if (role == RND_ROLE_DRONE) drone_low += p[P_TRANS] < 0;
-                    fast += p[P_SDIV] == 2;
-                }
-                if (role != RND_ROLE_LOWPERC)               /* (a cycle of its own against the kick's 16) */
-                    poly |= p[P_SLEN] != 16 || p[P_SDIV] == 4 || p[P_SDIV] == 5 || m == TESS_ENG_POLY ||
-                            (m == TESS_ENG_EUCLID && pid_get(PID_TESS(TX_EUC_STEPS), tr) != 16);
-                if (role == RND_ROLE_LOWPERC || role == RND_ROLE_NOISE) {
-                    atlas += m == TESS_ENG_GRIDS;
-                    human &= pid_get(PID_TESS(TX_TW_HUMAN), tr) >= (role == RND_ROLE_NOISE ? 50 : 20);   /* (the kick steadier) */
-                    cpu &= p[P_VOICE] != V_LEGATO && (!pid_get(PID_TESS(TX_SUB_RATCH), tr) ||
-                                                     (p[P_VOICE] == V_MONO && (p[P_SDIV] == 1 || role == RND_ROLE_NOISE)));
-                    cpu &= role != RND_ROLE_LOWPERC || p[P_VOICE] == V_MONO;
-                }
-            }
-            roles_ok &= n[RND_ROLE_DRONE] == 1u && n[RND_ROLE_MELODY] == 1u && n[RND_ROLE_LOWPERC] == 1u && n[RND_ROLE_NOISE] == 1u;
-            poly_rolls += poly;
-            regs &= rnd_registers_apart();
-            {                                       /* (each percussion track: cords of its own, a hit each its own) */
-                uint32_t i, cl = 0, cn = 0;
-                for (i = 0; i < CORD_LIVE; i++) {
-                    const cord_t *c = cord_get(i);
-                    if (!c->amount || c->dst == CD_OFF) continue;
-                    cl += c->dst_trk == lp; cn += c->dst_trk == nz;
-                }
-                cords_ok &= cl >= 2u && cn >= 2u;
-            }
-            dry &= rnd_fx_mode_ok(0) >= 1u;       /* (an effect in each slot the points allow) */
-            cpu &= settings_budget <= RND_BUDGET;
-            tempo_ok &= (song.g[G_BPM] >= 122 && song.g[G_BPM] <= 145) || (song.g[G_BPM] >= 160 && song.g[G_BPM] <= 174);
-            key_ok &= trk[0].p[P_SCALE] >= 2 && trk[0].p[P_SCALE] <= 8 && trk[0].p[P_SCALE] != 5;
-            if (r % 25u == 0u) {
-                int32_t o[2 * CTL], peak = 0;
-                uint32_t b, j, rail = 0, pn = 0;
-                uint8_t was[NTRK] = {0};
-                if (!song.playing) transport_req = 1;
-                for (b = 0; b < 15u * FS / CTL; b++) {
-                    mix_block(o, CTL);
-                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; rail += v >= 32700; }
-                    for (tr = 0; tr < NTRK; tr++) {
-                        uint32_t on = tessera.active_gate[tr] != 0;
-                        if (on && !was[tr] && (tr == lp || tr == nz)) pn++;
-                        was[tr] = (uint8_t)on;
-                    }
-                }
-                prate += pn * 4.0 / 2.0 / 8.0;
-                quiet += peak < 300;
-                clipped_n += rail > 2u * FS / 100u;
-            }
-        }
-        printf("rnd: PULSE: four on the floor in %u of 200, polyrhythmic %u, ATLAS on %u of 400 drum tracks, %u micro sounds, "
-               "bass and riff: %u PHYS %u TRIO, %u at 1/16; a drum track's hits a minute %.0f\n", four, poly_rolls, atlas, micro,
-               phys_slow, tri_slow, fast, prate);
-        bad += check("RND PULSE: 200 rolls: a kick, hats, a bass, a riff; an octave each; a dance tempo, a minor or modal "
-                     "key", roles_ok && regs && tempo_ok && key_ok);
-        bad += check("RND PULSE: ..the kick FM6 (a percussive preset) low at 1/16, its pitch dropping, four on the floor "
-                     "often; the hats TRIO's noise at 1/16 (a micro sound seldom)", lowperc_ok && presets_ok && noise_ok &&
-                     four > 60u && micro > 25u && micro < 80u);
-        bad += check("RND PULSE: ..the bass low and the riff high, plucked, on TRIO's triangles (roughed up now and then) or "
-                     "PHYS struck; polyrhythmic most rolls (a cycle against the kick's 16)", slow_ok && phys_slow > 50u &&
-                     tri_slow > 150u && drone_low == 200u && fast > 120u && poly_rolls > 140u);
-        bad += check("RND PULSE: ..ATLAS often, HUMAN on, cords on each drum track; effects in the slots, CPU rules (the kick one voice; "
-                     "rolls on the hats' one voice)", atlas > 120u && human &&
-                     cords_ok && dry && cpu);
-        bad += check("RND PULSE: ..each roll heard within 15 s, none at the rail; the drums busy (120 hits a minute and more)",
-                     !quiet && !clipped_n && prate > 120.0);
-        settings_rnd_drift = RND_DRIFT_FAST;        /* (DRIFT on PULSE: its roles kept) */
-        rnd_drift_start();
-        song.g[G_BPM] = 240;
-        rnd_play_bars(48);
-        song.g[G_BPM] = 120;
-        settings_rnd_drift = RND_DRIFT_OFF;
-        for (tr = 0, k = 1; tr < NTRK; tr++) {
-            if (rnd_role_of[tr] == RND_ROLE_LOWPERC) k &= trk[tr].eng_req == ENGI_FM6 && trk[tr].p[P_ATK] == 0;
-            if (rnd_role_of[tr] == RND_ROLE_NOISE) k &= trk[tr].eng_req == 6u && trk[tr].p[P_DEC] <= 70;
-        }
-        bad += check("RND PULSE: ..48 bars of DRIFT FAST: still FM6 percussion and TRIO noise, BUDGET kept",
-                     k && settings_budget <= RND_BUDGET);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
@@ -7409,7 +7051,7 @@ static int test_rnd(void)
         rnd_mode_put(RND_FREE);
     }
     {                                               /* DRIFT: the key to its relative and home, in the other modes */
-        static const uint8_t md[] = {RND_AMBIENT, RND_NICE, RND_FALL, RND_LOOPS, RND_ORBIT, RND_WOZZA};
+        static const uint8_t md[] = {RND_FALL, RND_LOOPS, RND_ORBIT, RND_WOZZA};
         uint8_t drift_was = settings_rnd_drift;
         uint32_t i, b, r, ok = 1, moved = 0, tried = 0;
         settings_rnd_drift = RND_DRIFT_FAST;
@@ -7439,7 +7081,7 @@ static int test_rnd(void)
             }
             moved += pivots > 0u;
         }
-        bad += check("RND DRIFT: AMBIENT NICE FALL LOOPS ORBIT WOZZA: the key to its relative (the same notes, every track) and home",
+        bad += check("RND DRIFT: NICE FALL LOOPS ORBIT WOZZA: the key to its relative (the same notes, every track) and home",
                      ok && moved >= 4u);
         printf("rnd: DRIFT pivots: %u of %u modes moved (%u rolls tried)\n", moved, (uint32_t)NELEM(md), tried);
         transport_req = 2;
@@ -7521,7 +7163,7 @@ static int test_rnd(void)
     }
     {                                               /* every roll in tune: TRIO's intervals unisons, octaves or fifths,
                                                      * rolled and nudged by DRIFT FAST; CRATE's octaves only */
-        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0;
+        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0, in_key = 1;
         uint8_t was = settings_rnd_drift;
         int32_t o[2 * CTL];
         settings_rnd_drift = RND_DRIFT_FAST;
@@ -7538,6 +7180,7 @@ static int test_rnd(void)
                         bad_iv += ((i2 + 48) % 12 != 0 && (i2 + 48) % 12 != 7) || ((i3 + 48) % 12 != 0 && (i3 + 48) % 12 != 7);
                         if (m == RND_CRATE) crate_bad += (i2 + 48) % 12 != 0 || (i3 + 48) % 12 != 0;
                     }
+                for (tr = 0; tr < NTRK; tr++) in_key &= trk[tr].p[P_QUANT] == Q_WHITE || trk[tr].p[P_QUANT] == Q_CHRD;
             }
         }
         transport_req = 2;
@@ -7547,12 +7190,13 @@ static int test_rnd(void)
         printf("rnd: TRIO intervals: %u TRIO tracks over every mode, %u off, CRATE %u off its octaves\n", seen, bad_iv, crate_bad);
         bad += check("RND: every mode, DRIFT FAST: TRIO's INT2, INT3 unisons, octaves or fifths (CRATE's octaves)",
                      seen > 100u && !bad_iv && !crate_bad);
+        bad += check("RND: ..and every track's QUANTIZE WHITE or CHRD: the scale on the white keys, to play along", in_key);
     }
     {                                               /* no clicks: a voice the budget takes fades gently (voice.c) */
         static voice_t was[NPART][NVOICE];
         uint32_t k, b, p, v, loud = 0, kills0 = voice_kills, most = 0, fading = 0, cap = 0;
         int32_t o[2 * CTL];
-        rnd_mode_put(RND_NICE);
+        rnd_mode_put(RND_FALL);
         rnd_state = 0x1234ABCDu;                    /* (rolls of its own: the tests before it left another state, and
                                                      * some draws take no voice at all, measured) */
         for (k = 0; k < 6u; k++) {
@@ -7577,7 +7221,7 @@ static int test_rnd(void)
                 cap |= f > VOICE_SOFT_FADES;
             }
         }
-        printf("rnd: 2 min of NICE: %u voices taken, %u blocks of gentle fades, at most %u voices, %u loud cut-offs\n",
+        printf("rnd: 2 min of FALL: %u voices taken, %u blocks of gentle fades, at most %u voices, %u loud cut-offs\n",
                voice_kills - kills0, fading, most, loud);
         bad += check("RND: a voice the budget takes fades gently (no loud cut-off), at most 4 such fades, 16 voices",
                      voice_kills > kills0 && fading && !loud && !cap && most <= 16u);

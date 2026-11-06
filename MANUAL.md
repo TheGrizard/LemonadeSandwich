@@ -811,8 +811,8 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 
 ## RND: one button, a new piece
 
-After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **AMBIENT**, **NICE**, **FALL**, **LOOPS**,
-**ORBIT**, **GLITCH**, **PULSE**, **WOZZA**, **HALO**, **MIRROR**, **TIDE** or **CRATE**, below) and REC becomes a roll:
+After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **FALL**, **TIDE**, **LOOPS**, **ORBIT**,
+**WOZZA**, **HALO**, **MIRROR** or **CRATE**, below, in that order) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -838,42 +838,61 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   CPU, where it starts to click). Add your own after a roll.
 - **MODS**: three to nine cords, slow sources (DRIFT, the SLOTHs, OCHD, S&H, the LFO) into the sound, the effects
   and the generators' own settings. The tracks' four MOD routes are cleared.
+- **To play along**: every track's **QUANTIZE** is **WHITE**, the roll's scale on the white keys, so whatever you
+  play on the keys is in its key. A track on **CHRD** (FALL's, HALO's bells, CRATE's bass and strings ..) keeps it:
+  its notes are the chord's, and its keys snap to the chord. In every roll TRIO's **INT2** and **INT3** are a unison,
+  an octave or a fifth, never a semitone or two off.
 
-**AMBIENT.** With REC BUTTON on **AMBIENT**, a roll gives the four tracks roles, in a random order:
+**FALL.** With REC BUTTON on **FALL**, a roll gives the four tracks roles, in a random order:
 
 | Role | What it plays |
 |---|---|
-| **Drone** | TURING moving between two to four notes, one every bar to four bars, LEGATO with glide; a slow swell, long sustain and release; ORACLE with its noise up, TRIO on a noisy wave, PHYS bowed or a slow FM6. |
+| **Drone** | TURING moving between two to four notes, one every bar to four bars, LEGATO with glide; a slow swell, long sustain and release. |
 | **Chords** | A CHORD track: a progression held (or on the beat) over two or four bars, a slow pad (POLY). |
-| **Melodies** (two) | A line generator (TURING, MARKOV, AWAKE, BOUNCE, CONSTELLATION, SERIES, MORPH or EUCLID), sparser and slower than RND's, struck sounds. |
+| **Melodies** (two) | A line generator, sparser and slower than RND's: most of the time BOUNCE's **FALL** (after ambalek's norns script Fall), leaves landing low on the left and high on the right, the WIND calm. |
 
-The registers are dealt as in RND, so the drone can be low one roll and high the next. The key leans to modes
-(minor, Dorian, Mixolydian, the pentatonics, Phrygian, Lydian, major) and **QNT CHRD** is on, so the drone and the
-melodies follow the chords. There is no tremolo, and only slow modulation (two to five cords, never on pitch). The
-screen shows **AMB** and the seed.
+Every track is on **TRIO** on three triangles (WAVE TRI3, LP): octaves, fifths and unisons between its oscillators, a
+little detune, the filter open and soft, each preset kept close to how it was made, a gentle sine LFO (no tremolo), no
+pitch envelope and only gentle cords. The registers are dealt as in RND, so the drone can be low one roll and high the
+next. The key is one of the modes (minor, Dorian, Mixolydian, the pentatonics, Phrygian, Lydian, major) and **QNT
+CHRD** is on, so the drone and the melodies follow the chords. The screen shows **FALL** and the seed.
 
-**Effects in the modes after RND.** None: AMBIENT, NICE, FALL, LOOPS, ORBIT, GLITCH, PULSE and WOZZA roll dry, as RND
-does (every effect slot off, nothing sent). Rolled effects took the FM-1 to 70 or 80 % CPU, and past about 70 % it
-clicks. Set an effect yourself after a roll if you want one: the next roll turns it off again.
+**Effects in the modes after RND.** None: every mode rolls dry, as RND does (every effect slot off, nothing sent).
+Rolled effects took the FM-1 to 70 or 80 % CPU, and past about 70 % it clicks. Set an effect yourself after a roll if
+you want one: the next roll turns it off again.
 
-**NICE.** With REC BUTTON on **NICE**, a roll works as AMBIENT (the same roles, generators and registers) with nicer
-sounds: each track's factory preset kept close to how it was made, TRIO on its clean waves (no
-noise or ring), ORACLE's noise low, a gentle sine LFO (a little vibrato and filter movement, no tremolo), no pitch
-envelope, and only gentle cords (never on the engines' own eight). The key is always one of the modes (no stranger
-tunings) and no track goes two octaves up. The screen shows **NICE** and the seed.
-
-**FALL.** With REC BUTTON on **FALL**, a roll works as NICE with every track on **TRIO** on three triangles (WAVE
-TRI3, LP): octaves, fifths and unisons between its oscillators, a little detune, the filter open and soft. The melodies
-are struck and ring out, and most of the time they fall: BOUNCE's **FALL** (after ambalek's norns script Fall), leaves
-landing low on the left and high on the right, the WIND calm. The screen shows **FALL** and the seed.
+**TIDE.** With REC BUTTON on **TIDE**, a roll is slow (64 to 84 BPM, a minor, dorian, pentatonic, major, lydian or
+mixolydian key) and always the same four, on the same tracks, so you can mix and mute them by heart. **Track 1, the sub
+groove:** a synthesized sub kick, pitched to the bed's lowest note two octaves down (TWEAK FOLLOW, so it moves with the
+chords), its rhythm mostly across the bar (EUCLID on 5, 7, 9, 10, 11 or 13 steps, or 12 in threes; on 1/8, now and then
+8T) and now and then four on the floor. It is a soft, low boom: TRIO's triangles filtered to near a sine, a breath of
+attack (no click), the pitch falling a little or not at all, a long decay. **Track 2, the melody:** FALL's leaves
+(BOUNCE) or now and then a line by step (SERIES, as HALO's), in the middle or an octave up, onto the chord's notes now
+and then (QNT CHRD), dark. Half the rolls it is soft and struck (TRIO's triangles, sine and triangle, PPT); half a
+filtered lead (a saw, pulse, triangle or sine and triangle, the filter low with a little resonance, gliding), mostly
+runs by step on 1/8 or 1/4: each note held two steps (four for the leaves), so notes that come close tie and glide
+(LEGATO) and a phrase runs on until two rests let it breathe (about three notes in four tied); each phrase's first note
+swells in softly. The LFO moves its filter, the LFO and the note's height move its place in the stereo, a slow wanderer
+its colour. **Track 3, the bed:** TRIO's triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK, two or four
+bars a chord), in the middle, under the melody. **Track 4, the texture:** TRIO's noise mostly, now and then a pulse
+with noise, a saw or a triangle (in octaves, beating slowly), through its low-pass or band-pass with the cutoff low (a
+band-pass rings a little), held, soft; its colour, its place in the stereo and even its LFO's pace wander on slow
+random walks (the LFO very slow, a sine or S&H steps). With **DRIFT** on, TIDE moves on HALO's clock: the groove anew
+(across the bar, or four on the floor now and then), the melody's pace a step, or the key to its relative and home (the
+sub kept in its octave). No effects, as every roll. The screen shows **TIDE** and the seed.
 
 **LOOPS.** After Brian Eno's *Music for Airports*: with REC BUTTON on **LOOPS**, each track is a **EUCLID** loop of a
 length of its own (four of 7, 9, 11, 13, 15, 17, 19 and 23 steps), one to three notes in it, all four on one slow DIV
 (1/4, 1/8 or 1/2). The loops drift against each other and seldom line up the same way twice. Nothing is dropped, there
 is no ratchet or swing, and no cord moves a generator, so each loop stays as it is (now and then one changes a little
-every 16 bars: EVOLVE). The voices are NICE's with a soft onset and a long tail, the key a bright mode (major, Lydian,
-the pentatonics, Mixolydian, Dorian, minor), each track in an octave of its own. The first loop starts on
-its first step, so a roll is heard at once. The screen shows **LOOPS** and the seed.
+every 16 bars: EVOLVE). One track is **PHYS**, soft and ringing: vibes, marimba, harp or kalimba struck, or a drone
+string, bowed string or bowed metal. The other three are **TRIO** on its stranger waves (S&T, P&S, SYNCP, RING3, R+S,
+R+SP, now and then SYNC or the triangles), filtered low (LP, now and then BP), the filter swelling with the envelope
+and moving slowly with a free LFO, panned apart. Every envelope is long and soft: a slow swell, a long sustain and a
+long release, so the notes overlap. The four are spread wide, from two octaves down to two up, each in an octave of
+its own (PHYS within an octave of the middle). The key is a bright mode (major, Lydian, the pentatonics, Mixolydian,
+Dorian, minor). The first loop starts on its first step, so a roll is heard at once. The screen shows **LOOPS** and
+the seed.
 
 **ORBIT.** With REC BUTTON on **ORBIT**, every track starts on **BOUNCE** or **CONSTELLATION**, at a middling density
 (about twice LOOPS'): BOUNCE two or three balls at a moderate speed (now and then FALL's leaves instead),
@@ -881,36 +900,6 @@ CONSTELLATION a middling sky with the ship steering itself (AUTO); mostly 1/8, s
 a little dropped now and then, no ratchet or swing. The voices are LOOPS' (soft onsets, long tails), the key a bright
 mode, each track in an octave of its own; slow cords may move the balls and the stars. The screen shows
 **ORBIT** and the seed.
-
-**GLITCH.** With REC BUTTON on **GLITCH** (after Autechre and Richard Devine), a roll deals two **glitch** tracks and
-two slow ones, in a random order. The slow two are a **drone** (as AMBIENT's) and a slow **melody**, random or
-atonal: a tone row (QUAD), the infinity series in wide leaps (SERIES), or a wandering TURING, MARKOV or AWAKE line at
-1/4, 1/2 or 1/1, many of its steps left out. One of the two is low (-24 or -12) and the other mid-high (+12 or +24),
-whichever: the drone is as often high as low. The glitch tracks are microsound: hits of a few milliseconds (no attack,
-a short decay, almost no release), pitch envelopes that zap, a fast LFO now and then, a chop now and then; FM6's metal,
-PHYS struck, ORACLE's noise, TRIO's noisy waves. Their rhythm is fast (1/16, 1/32, triplets, or 1/8 with ratchets of
-up to eight hits that speed up or slow down) on odd lengths, so they run against each other (polymeters), steps
-dropped, the phrase mutating every bar or few (EVOLVE); now and then they are tied together: one plays only with, or
-only against, the other (LOGIC), hits jump from one sound to the other (BRANCH), one plays only in some bars (COND).
-Fast cords (S&H, RANDOM, the note, the gate) move their sound from hit to hit; slow ones move the drone and the
-melody. The key is no key, mostly: chromatic, an EDO between the semitones (13, 17, 19, 22, 31) or a dark scale. The
-screen shows **GLITCH** and the seed.
-
-**PULSE.** With REC BUTTON on **PULSE**, a roll is electronic dance music, busy and fast: it sets a dance tempo
-(122 to 132, 133 to 145, now and then 160 to 174 BPM; held REC brings yours back) and a minor or modal key (MIN,
-DOR, PHRY, HARM, MPEN, MIX), and deals four parts in a random order. The **kick** is FM6 on a bass, drop or mallet
-preset (FM BASS, SOLID BASS, DROP, MALLET, MOKUGYO and more) low, its pitch dropping hard, harder hits brighter: four
-on the floor about half the time, otherwise a broken beat (EUCLID, or ATLAS' kick and toms). The **hats** are TRIO's
-noise through its high- or band-pass, resonant, its filter moving, at 1/16 or 16T: ATLAS' hats, snares and claps
-(the Grids map, its accents), a busy EUCLID line on a cycle of its own (12, 10, 14, 9, 7, 13 steps) or offbeat open
-hats, with rolls of two to four now and then and now and then a synthesized micro sound. The **bass** (low) and the
-**riff** (above) are on TRIO's three triangles (roughed up now and then: noise in, ring or sync) or PHYS struck,
-plucked: short lines (a locked TURING, AWAKE, MARKOV, BOUNCE, POLY; EUCLID, POLY or TURING for the bass) at 1/16, 1/8 or
-triplets, often on loops of their own lengths (5, 6, 7, 9, 10, 12 ..), so against the kick's bar the four are
-**polyrhythmic**; they turn every few bars and often pump under the beat (the LFO a saw at 1/4 on the level). The
-kick's FM is dirty (its feedback up). One swing for all four; TWEAK HUMAN varies each hit's
-velocity; cords make every hit its own (velocity into the decay and brightness, RANDOM into the drop, the gain and
-the cutoff). The screen shows **PULSE** and the seed.
 
 **WOZZA.** With REC BUTTON on **WOZZA**, a roll is minimal piano and synth, low-key and worn, modelled on five
 reference tracks measured on the PC (their tempo, keys, timing, timbre and lo-fi). It sets a slow tempo (72 to 84 BPM;
@@ -972,26 +961,6 @@ twelve notes), the mirror to the line's other side, or the key to its relative a
 not in whole tone or diminished). No effects, as every roll. The screen shows **MIRROR** and the
 seed.
 
-**TIDE.** With REC BUTTON on **TIDE**, a roll is slow (64 to 84 BPM, a minor, dorian, pentatonic, major, lydian or
-mixolydian key) and always the same four, on the same tracks, so you can mix and mute them by heart. **Track 1, the sub
-groove:** a synthesized sub kick, pitched to the bed's lowest note two octaves down (TWEAK FOLLOW, so it moves with the
-chords), its rhythm mostly across the bar (EUCLID on 5, 7, 9, 10, 11 or 13 steps, or 12 in threes; on 1/8, now and then
-8T) and now and then four on the floor. It is a soft, low boom: TRIO's triangles filtered to near a sine, a breath of
-attack (no click), the pitch falling a little or not at all, a long decay. **Track 2, the melody:** FALL's leaves
-(BOUNCE) or now and then a line by step (SERIES, as HALO's), in the middle or an octave up, onto the chord's notes now
-and then (QNT CHRD), dark. Half the rolls it is soft and struck (TRIO's triangles, sine and triangle, PPT); half a
-filtered lead (a saw, pulse, triangle or sine and triangle, the filter low with a little resonance, gliding), mostly
-runs by step on 1/8 or 1/4: each note held two steps (four for the leaves), so notes that come close tie and glide
-(LEGATO) and a phrase runs on until two rests let it breathe (about three notes in four tied); each phrase's first note
-swells in softly. The LFO moves its filter, the LFO and the note's height move its place in the stereo, a slow wanderer
-its colour. **Track 3, the bed:** TRIO's triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK, two or four
-bars a chord), in the middle, under the melody. **Track 4, the texture:** TRIO's noise mostly, now and then a pulse
-with noise, a saw or a triangle (in octaves, beating slowly), through its low-pass or band-pass with the cutoff low (a
-band-pass rings a little), held, soft; its colour, its place in the stereo and even its LFO's pace wander on slow
-random walks (the LFO very slow, a sine or S&H steps). With **DRIFT** on, TIDE moves on HALO's clock: the groove anew
-(across the bar, or four on the floor now and then), the melody's pace a step, or the key to its relative and home (the
-sub kept in its octave). No effects, as every roll. The screen shows **TIDE** and the seed.
-
 **CRATE.** With REC BUTTON on **CRATE**, a roll is a little record to dig for and sample: an old funk or soul side
 with no drums and no dust (add those on your sampler), 80 to 100 BPM, in a minor, dorian, major or mixolydian key,
 lightly swung. It is a song more than a generator: a form of sections, **AABA**, **ABAC** or **ABCB** (A the verse, B
@@ -1009,7 +978,7 @@ player's (a few milliseconds late now and then), on the grid otherwise: send MID
 tempo to the BPM on the screen. DRIFT leaves CRATE alone: roll again for another record. No effects, as every roll.
 The screen shows **CRATE** and the seed.
 
-**The key's relative, in the other modes.** With **DRIFT** on, AMBIENT, NICE, FALL, LOOPS, ORBIT and WOZZA also move
+**The key's relative, in the other modes.** With **DRIFT** on, FALL, LOOPS, ORBIT and WOZZA also move
 the key, on HALO's clock about a third of the time: to its relative on the same notes (major to minor, minor to
 major; dorian and phrygian to their notes' major, lydian and mixolydian to their notes' minor), and home the next time.
 The tracks with their own line drop an octave when the root moves up past a fourth, so they sound a little lower
@@ -1020,9 +989,8 @@ keys) stay where they are.
 its mode's rules, so it becomes another piece over the minutes without a new roll: **SLOW** one change every 4 to 8
 bars, **FAST** every bar or two; **OFF** (the default) none. A change is one of: a track's engine knob nudged (never
 a kind of thing, such as TRIO's WAVE), its envelope, filter, LFO or pan nudged, a knob of its generator nudged (not in
-LOOPS), a cord's depth nudged; in RND and GLITCH also now and then a new generator or a whole new sound for one track
-(the CPU's rules and the guard as for a roll), and in GLITCH the drone and the melody swap registers. NICE, FALL, LOOPS
-and ORBIT nudge by less. Held REC (before the roll) pauses it; any mode, works with all of them.
+LOOPS), a cord's depth nudged; in RND also now and then a new generator or a whole new sound for one track (the CPU's rules
+and the guard as for a roll). FALL, LOOPS and ORBIT nudge by less. Held REC (before the roll) pauses it; any mode, works with all of them.
 
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
 at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
@@ -1049,7 +1017,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece; **AMBIENT**: a drone, chords and two melodies; **NICE**: the same with nicer sounds; **FALL**: NICE on TRIO's triangles, the melodies falling; **LOOPS**: four sparse loops of lengths apart, drifting; **ORBIT**: BOUNCE and CONSTELLATION only, LOOPS' voices; **GLITCH**: two microsound tracks, a drone, a slow atonal melody; **PULSE**: dance music, an FM6 kick, TRIO's noise hats, a pumping bass and riff; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting, one soft PHYS voice and three filtered TRIO ones, spread wide; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |
