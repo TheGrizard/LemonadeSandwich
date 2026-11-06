@@ -25,8 +25,8 @@
  * (minimal piano and synth, slow, off the grid, tape-worn: rnd_wozza_sound), RND_HALO HALO (after Pärt's
  * tintinnabuli: a line, bells on its triad, a slow canon, a halo: rnd_halo_sound), RND_MIRROR MIRROR (HALO's mirror:
  * glassy, digital, its rules loosened: rnd_mirror_sound), RND_TIDE TIDE (a sub groove across the bar, FALL's leaves,
- * a triangle bed, a noise: rnd_tide_sound), RND_CRATE CRATE (crate digging: a little jazz record of sections, without
- * drums, to sample: rnd_crate_sound). Saved as RND_CODE:
+ * a triangle bed, a noise: rnd_tide_sound), RND_CRATE CRATE (crate digging: a little funk or soul record of
+ * sections, without drums, to sample: rnd_crate_sound). Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
  * beside them (0..7: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
@@ -230,7 +230,17 @@ static void rnd_take(void)
 }
 
 /* ------------------------------------------------------------ the roll: sound --- */
-static void rnd_tp(uint32_t tr, uint32_t id, int32_t v) { pid_set(PID_TRACK(id), tr, v); }
+/* a track's knob, as a roll or DRIFT sets it. TRIO's INT2 and INT3: the nearest unison, octave or fifth (-24 -17 -12
+ * -5 0 7 12 19 24), every roll and nudge (a semitone or a tritone off, heard: out of tune; DTN's cents kept) */
+static void rnd_tp(uint32_t tr, uint32_t id, int32_t v)
+{
+    if ((id == P_E0 + 1u || id == P_E0 + 2u) && trk[tr].eng_req == 6u) {
+        int32_t o = (v + 48) / 12 * 12 - 48, r = v - o;   /* (the octave below or at v, and how far over) */
+        v = o + (r < 4 ? 0 : r < 10 ? 7 : 12);      /* (0..3: the octave; 4..9: its fifth; 10, 11: the next) */
+        v = v > 24 ? 19 : v;
+    }
+    pid_set(PID_TRACK(id), tr, v);
+}
 static void rnd_tx(uint32_t tr, uint32_t id, int32_t v) { pid_set(PID_TESS(id), tr, v); }
 /* the modulation a preset brought, off (WOZZA HALO CRATE: their own, set after): the envelope's pitch and shape, the
  * LFO's depths but pitch, its wave, sync, trigger and fade-in */
@@ -2497,8 +2507,8 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     rnd_nice = nice;
     rnd_want_e = rnd_want_pi = 0xFFu;
     e = trk[tr].eng_req;
-    if (e == 6u)                                    /* TRIO: INT2, INT3 the unison or an octave (the roll's push left
-                                                     * them a semitone or ten off, heard: atonal; DTN's cents kept) */
+    if (e == 6u)                                    /* TRIO: INT2, INT3 the unison or an octave, CRATE's (rnd_tp's
+                                                     * fifths too thick for its strings and keys, asked) */
         for (k = 1u; k < 3u; k++)
             rnd_tp(tr, P_E0 + k, trk[tr].p[P_E0 + k] >= 6 ? 12 : trk[tr].p[P_E0 + k] <= -6 ? -12 : 0);
     if (e == ENGI_FM6)                              /* FM6: the preset's algorithm, feedback, ratios and vibrato (the

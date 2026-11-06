@@ -7519,6 +7519,35 @@ static int test_rnd(void)
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
     }
+    {                                               /* every roll in tune: TRIO's intervals unisons, octaves or fifths,
+                                                     * rolled and nudged by DRIFT FAST; CRATE's octaves only */
+        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0;
+        uint8_t was = settings_rnd_drift;
+        int32_t o[2 * CTL];
+        settings_rnd_drift = RND_DRIFT_FAST;
+        for (m = RND_FREE; m < RND_MODES; m++) {
+            rnd_mode_put(m);
+            for (r = 0; r < 12u; r++) {
+                rnd_roll();
+                if (!song.playing) transport_req = 1;
+                for (b = 0; b < 8u * FS / CTL; b++) { mix_block(o, CTL); if (!(b & 63u)) rnd_drift(); }
+                for (tr = 0; tr < NTRK; tr++)
+                    if (trk[tr].eng_req == 6u) {
+                        int32_t i2 = trk[tr].p[P_E0 + 1u], i3 = trk[tr].p[P_E0 + 2u];
+                        seen++;
+                        bad_iv += ((i2 + 48) % 12 != 0 && (i2 + 48) % 12 != 7) || ((i3 + 48) % 12 != 0 && (i3 + 48) % 12 != 7);
+                        if (m == RND_CRATE) crate_bad += (i2 + 48) % 12 != 0 || (i3 + 48) % 12 != 0;
+                    }
+            }
+        }
+        transport_req = 2;
+        { int32_t o2[2 * CTL]; uint32_t k; for (k = 0; k < 8u; k++) mix_block(o2, CTL); }
+        settings_rnd_drift = was;
+        rnd_mode_put(RND_FREE);
+        printf("rnd: TRIO intervals: %u TRIO tracks over every mode, %u off, CRATE %u off its octaves\n", seen, bad_iv, crate_bad);
+        bad += check("RND: every mode, DRIFT FAST: TRIO's INT2, INT3 unisons, octaves or fifths (CRATE's octaves)",
+                     seen > 100u && !bad_iv && !crate_bad);
+    }
     {                                               /* no clicks: a voice the budget takes fades gently (voice.c) */
         static voice_t was[NPART][NVOICE];
         uint32_t k, b, p, v, loud = 0, kills0 = voice_kills, most = 0, fading = 0, cap = 0;
