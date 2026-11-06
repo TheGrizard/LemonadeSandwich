@@ -6638,6 +6638,8 @@ static int test_rnd(void)
             uint32_t b, m = NTRK, t = NTRK, c = NTRK, hl = NTRK, paces = 0, flips = 0, held = 1, kept = 1, moved_off = 0;
             uint32_t pivots = 0, away = 0, piv_ok = 1, home_pcs, tries;
             int16_t div0, tt0, home_sc, home_rt, home_mt;
+            rnd_state = 0x48A10F00u;                /* (rolls of its own: the tests before it leave another state, and
+                                                     * a 200-bar draw now and then moves one of the two not at all) */
             for (tries = 0; tries < 50u; tries++) {   /* (a key with a relative: MAJ MIN DOR LYD MIX) */
                 rnd_roll();
                 k = (uint32_t)trk[0].p[P_SCALE];

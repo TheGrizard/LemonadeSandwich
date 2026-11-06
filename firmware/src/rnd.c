@@ -2257,7 +2257,8 @@ static void rnd_cpu(uint32_t tr)
         rnd_tp(tr, P_SDIV, rnd_pct(50) || rnd_perc(tr) ? 1 : 0);
     sp = rnd_speed((uint32_t)t->p[P_SDIV]);
     if (sp != RND_SLOW) {
-        rnd_tail_cap(tr, sp == RND_FAST ? 55 : 85);
+        if (!rnd_loops) rnd_tail_cap(tr, sp == RND_FAST ? 55 : 85);   /* (LOOPS: its tails long; few notes, measured
+                                                     * 74 a minute on all four, BUDGET keeping the voices) */
         rnd_cap(tr, P_SGATE, sp == RND_FAST ? 90 : 127);
         rnd_tx(tr, TX_SUB_RATCH, 0);                /* (ratchets only on a slow track) */
         if (t->p[P_CHRD] && !(rnd_crate && tessera.mode[tr] == TESS_ENG_CHORD))
@@ -2288,7 +2289,7 @@ static void rnd_tails(void)
     for (tr = 0; tr < NTRK; tr++) {
         track_t *t = &trk[tr];
         (void)t;
-        if (rnd_tail(tr) <= RND_REL_LONG || ++n <= 2u) continue;
+        if (rnd_loops || rnd_tail(tr) <= RND_REL_LONG || ++n <= 2u) continue;   /* (LOOPS: all four long) */
         rnd_tail_cap(tr, rnd_rr(50, RND_REL_LONG));
     }
 }
@@ -2350,11 +2351,13 @@ static void rnd_key_ambient(void)
     }
     scale_share(&trk[0]);
 }
-/* LOOPS' key: the bright modes (MAJ LYD PEN MIX DOR MPEN MIN); the generators' own notes in it (QNT as by default) */
+/* LOOPS' key: the pentatonics (PEN MPEN); ORBIT's the bright modes (MAJ LYD PEN MIX DOR MPEN MIN); the generators' own
+ * notes in it (QNT as by default) */
 static void rnd_key_loops(void)
 {
     static const uint8_t sc[] = {1, 9, 5, 4, 3, 6, 2}, sw[] = {4, 4, 4, 2, 2, 2, 1};
-    int32_t scale = (int32_t)rnd_pick(sc, sw, NELEM(sc)), root = rnd_rr(0, 11);
+    static const uint8_t lw[] = {0, 0, 3, 0, 0, 2, 0};   /* (LOOPS: the pentatonics only, PEN MPEN: nothing clashes) */
+    int32_t scale = (int32_t)rnd_pick(sc, rnd_loops ? lw : sw, NELEM(sc)), root = rnd_rr(0, 11);
     uint32_t tr;
     rnd_tx(0, TX_KEY_LINK, 1);
     for (tr = 0; tr < NTRK; tr++) {
@@ -2442,87 +2445,60 @@ static void rnd_orbit_generators(void)
     }
 }
 
-/* LOOPS' voices: one PHYS, struck or bowed, soft and ringing on (VIBES MARIMBA HARP KALIMBA; DRONE STRING, BOWED
- * STRING, BOWED METAL; DULCIMER measured bright, most of it over 5 kHz), and three TRIO on its stranger waves (S&T P&S SYNCP RING3 R+S R+SP, now and then SYNC or
- * the triangles), filtered low and moving slowly (the filter's envelope swelling, a slow free LFO on it), panned apart;
- * their envelopes long and soft (rnd_loops_sound), an octave or two apart (rnd_loops_registers) */
-static uint8_t rnd_lp_phys;                         /* the track PHYS plays (rnd_roll) */
+/* LOOPS' voices, after Music for Airports: a felt piano (PHYS' hammered string as WOZZA's, rnd_wozza_piano; FM6's
+ * tines without PHYS), two warm pads (HALO's triangles, rnd_halo_tri) and a glass (FALL's triangles, struck, high),
+ * panned apart; their envelopes long and soft (rnd_loops_sound), their registers set (rnd_loops_registers). (The stranger
+ * waves and the PHYS mix before: random and harsh, heard) */
+static uint8_t rnd_lp_phys, rnd_lp_glass;           /* the piano's track, the glass' (rnd_roll) */
 static void rnd_loops_voice(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
-    static const uint8_t pp[] = {9, 1, 8, 4, 7, 14, 3}, pw[] = {4, 3, 3, 2, 3, 2, 1};
-    static const uint8_t tv[] = {5, 6, 10, 13, 14, 15, 9, 4}, tw[] = {3, 4, 2, 2, 3, 3, 1, 1};
-    static const uint8_t iv[] = {24, 36, 31, 12, 43}, iw[] = {3, 3, 2, 2, 1};   /* (+24: 0 +12 +7 -12 +19) */
     uint8_t nice = rnd_nice;
-    uint32_t e;
-    int ph = tr == rnd_lp_phys && !*phys && eng_ok(ENGI_PHYS);
-    rnd_want_e = ph ? ENGI_PHYS : 6u;
-    rnd_want_pi = ph ? rnd_pick(pp, pw, NELEM(pp)) : 5u;   /* (TRIO: WARM PAD, its wave made below) */
+    int piano = tr == rnd_lp_phys, ph = piano && !*phys && eng_ok(ENGI_PHYS), fm = piano && !ph && !*fm6s && eng_ok(ENGI_FM6);
+    rnd_want_e = ph ? ENGI_PHYS : fm ? ENGI_FM6 : 6u;
+    rnd_want_pi = ph ? 12u : fm ? 0u : 5u;          /* (the hammered string; TINE EP; TRIO's WARM PAD, made below) */
     rnd_nice = 1;
     rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
     rnd_nice = nice;
     rnd_want_e = rnd_want_pi = 0xFFu;
-    e = trk[tr].eng_req;
     rnd_tp_still(tr);
     rnd_tp(tr, P_LTRIG, 1);                         /* (FREE: never started again under a ringing note) */
-    rnd_tp(tr, P_LRATE, rnd_rr(8, 35));
-    rnd_tp(tr, P_PAN, rnd_rr(-55, 55));
-    rnd_tp(tr, P_SPRD, rnd_rr(30, 80));
+    rnd_tp(tr, P_PAN, rnd_rr(-45, 45));
+    rnd_tp(tr, P_SPRD, rnd_rr(30, 70));
     rnd_tp(tr, P_CHRD, 0);
-    if (e == 6u) {                                  /* (WAVE INT2 INT3 DTN MODE CUT RES PW) */
-        int bp = rnd_pct(15);
-        rnd_tp(tr, P_E0, (int32_t)rnd_pick(tv, tw, NELEM(tv)));
-        rnd_tp(tr, P_E0 + 1u, (int32_t)rnd_pick(iv, iw, NELEM(iv)) - 24);
-        rnd_tp(tr, P_E0 + 2u, (int32_t)rnd_pick(iv, iw, NELEM(iv)) - 24);
-        rnd_tp(tr, P_E0 + 3u, rnd_rr(4, 20));       /* DTN, cents */
-        rnd_tp(tr, P_E0 + 4u, bp ? 1 : 0);          /* BP now and then, LP */
-        rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(60, 82) : rnd_rr(48, 72));   /* CUT: low, soft */
-        rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 35));
-        rnd_tp(tr, P_E0 + 7u, rnd_rr(30, 90));      /* PW (P&S, R+SP) */
-        if (trk[tr].p[P_E0] >= 9 && trk[tr].p[P_E0] != 12 && trk[tr].p[P_E0] != 13)
-            rnd_cap(tr, P_E0 + 5u, 58);             /* (the synced waves darker: their resets' edges a buzz, measured) */
-        rnd_tp(tr, P_ED_FLT, rnd_rr(10, 28));       /* (the filter swelling with the long envelope) */
-        rnd_tp(tr, P_LD_FLT, rnd_rr(8, 20));
-    } else if (e == ENGI_PHYS) {
-        rnd_tp(tr, P_E0 + 2u, rnd_rr(15, 40));      /* BRIT: soft */
+    rnd_tp(tr, P_LD_PIT, rnd_pct(50) ? 1 : 0);     /* (a vibrato, if any, the least there is, slow: +-2 at NICE's rate
+                                                     * was a wobble of 40 cents, heard: far too much) */
+    rnd_tp(tr, P_LRATE, rnd_rr(2, 12));
+    if (trk[tr].eng_req == ENGI_PHYS) rnd_wozza_piano(tr);
+    else if (trk[tr].eng_req == ENGI_FM6) {
+        uint32_t k;
+        for (k = 0; k < 6u; k++)
+            if (k != 2u && k != 4u) rnd_tp(tr, P_E0 + k, 0);   /* (the preset's algorithm, feedback, ratios: CRATE's rule) */
+        rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 0));      /* MLVL: mellow */
+    } else if (trk[tr].eng_req == 6u) {
+        rnd_halo_tri(tr);                           /* (TRI3, warm, a little haze) */
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(3, 10));       /* (DTN: half HALO's, its beating a wobble too) */
+        if (tr == rnd_lp_glass) rnd_tp(tr, P_E0 + 5u, rnd_rr(70, 90));   /* (the glass: brighter, struck) */
     }
 }
-/* LOOPS' registers: an octave or two apart, -24 to +24 (PHYS between -12 and +12); TRIO two octaves up darker, two
- * down louder (measured: the one bright, the other lost) */
-static void rnd_loops_reg(uint32_t tr, int32_t o)
-{
-    rnd_tp(tr, P_TRANS, o);
-    if (trk[tr].eng_req != 6u) return;
-    if (o > 12) rnd_tp(tr, P_E0 + 5u, trk[tr].p[P_E0 + 5u] - 15);   /* (two down: louder, rnd_loops_sound) */
-}
+/* LOOPS' registers: a pad low (-12), the piano in the middle, a pad above it (+12), the glass high (+24) */
 static void rnd_loops_registers(void)
 {
-    int8_t o[5] = {-24, -12, 0, 12, 24};
-    uint32_t tr, n = 5u, k;
-    if (rnd_lp_phys < NTRK) {
-        k = 1u + rnd_next() % 3u;                   /* (-12, 0 or +12) */
-        rnd_loops_reg(rnd_lp_phys, o[k]);
-        o[k] = o[--n];
-    }
-    for (tr = 0; tr < NTRK; tr++) {
-        if (tr == rnd_lp_phys) continue;
-        k = rnd_next() % n;
-        rnd_loops_reg(tr, o[k]);
-        o[k] = o[--n];
-    }
+    uint32_t tr, pads = 0;
+    for (tr = 0; tr < NTRK; tr++)
+        rnd_tp(tr, P_TRANS, tr == rnd_lp_glass ? 24 : tr == rnd_lp_phys ? 0 : pads++ ? 12 : -12);
 }
 /* LOOPS' envelopes long and soft, sustained (ORBIT's: a soft onset and a long tail), POLY, no glide */
 static void rnd_loops_sound(uint32_t tr)
 {
     track_t *t = &trk[tr];
     if (rnd_loops) {
-        static const int8_t lt[][3] = {{P_ATK, 45, 80}, {P_DEC, 100, 127}, {P_SUS, 70, 110}, {P_REL, 100, 127},
-                                       {P_LEVEL, 86, 100}};
-        static const int8_t lp[][3] = {{P_ATK, 12, 30}, {P_DEC, 100, 127}, {P_SUS, 60, 110}, {P_REL, 100, 127},
-                                       {P_LEVEL, 92, 106}};   /* (PHYS: struck, a quick soft onset; quieter at a
-                                                     * level, measured) */
-        if (t->eng_req == ENGI_PHYS) rnd_tp_rr(tr, lp, NELEM(lp));
-        else rnd_tp_rr(tr, lt, NELEM(lt));
-        if (t->eng_req == 6u && t->p[P_TRANS] < -12) rnd_tp(tr, P_LEVEL, t->p[P_LEVEL] + 8);
+        static const int8_t pad[][3] = {{P_ATK, 60, 90}, {P_DEC, 105, 127}, {P_SUS, 95, 120}, {P_REL, 108, 127},
+                                        {P_LEVEL, 80, 92}};   /* (the pads: a slow swell, held, a long tail) */
+        static const int8_t hit[][3] = {{P_ATK, 28, 48}, {P_DEC, 105, 127}, {P_SUS, 70, 105}, {P_REL, 108, 127},
+                                        {P_LEVEL, 84, 98}};   /* (the piano, the glass: a soft onset, ringing long) */
+        int struck = tr == rnd_lp_phys || tr == rnd_lp_glass;
+        rnd_tp_rr(tr, struck ? hit : pad, struck ? NELEM(hit) : NELEM(pad));
+        if (t->eng_req == ENGI_PHYS) rnd_tp(tr, P_LEVEL, t->p[P_LEVEL] + 10);   /* (quieter at a level, measured) */
         rnd_tp(tr, P_VOICE, V_POLY);
         rnd_tp(tr, P_GLIDE, 0);
         return;
@@ -3330,7 +3306,11 @@ static void rnd_roll(void)
     if (rnd_tide) rnd_roles_tide(role);
     if (rnd_crate) rnd_roles_crate(role);
     memcpy(rnd_role_of, role, sizeof rnd_role_of);
-    rnd_lp_phys = (uint8_t)(rnd_loops ? rnd_next() % NTRK : NTRK);   /* (LOOPS: the one PHYS voice) */
+    rnd_lp_phys = rnd_lp_glass = NTRK;
+    if (rnd_loops) {                                /* (LOOPS: the piano's track, the glass') */
+        rnd_lp_phys = (uint8_t)(rnd_next() % NTRK);
+        rnd_lp_glass = (uint8_t)((rnd_lp_phys + 1u + rnd_next() % (NTRK - 1u)) % NTRK);
+    }
     undo_depth++;                                   /* (a roll is not four sound loads to undo one by one) */
     {                                               /* (the drone and the chords pick their engines first) */
         static const uint8_t order[] = {RND_ROLE_LOWPERC, RND_ROLE_DRONE, RND_ROLE_CHORDS, RND_ROLE_MELODY,

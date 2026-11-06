@@ -885,14 +885,11 @@ sub kept in its octave). No effects, as every roll. The screen shows **TIDE** an
 length of its own (four of 7, 9, 11, 13, 15, 17, 19 and 23 steps), one to three notes in it, all four on one slow DIV
 (1/4, 1/8 or 1/2). The loops drift against each other and seldom line up the same way twice. Nothing is dropped, there
 is no ratchet or swing, and no cord moves a generator, so each loop stays as it is (now and then one changes a little
-every 16 bars: EVOLVE). One track is **PHYS**, soft and ringing: vibes, marimba, harp or kalimba struck, or a drone
-string, bowed string or bowed metal. The other three are **TRIO** on its stranger waves (S&T, P&S, SYNCP, RING3, R+S,
-R+SP, now and then SYNC or the triangles), filtered low (LP, now and then BP), the filter swelling with the envelope
-and moving slowly with a free LFO, panned apart. Every envelope is long and soft: a slow swell, a long sustain and a
-long release, so the notes overlap. The four are spread wide, from two octaves down to two up, each in an octave of
-its own (PHYS within an octave of the middle). The key is a bright mode (major, Lydian, the pentatonics, Mixolydian,
-Dorian, minor). The first loop starts on its first step, so a roll is heard at once. The screen shows **LOOPS** and
-the seed.
+every 16 bars: EVOLVE). The four are gentle and long: a **felt piano** in the middle (PHYS' hammered string, as
+WOZZA's; FM6's tines without PHYS), two **warm pads** an octave below and above it (HALO's triangles: a slow swell,
+held), and a **glass** two octaves up (FALL's triangles, a soft onset), panned apart. Every note rings on with a long
+release, so the loops overlap. The key is pentatonic (major or minor), so no two notes clash. The first loop starts
+on its first step, so a roll is heard at once. The screen shows **LOOPS** and the seed.
 
 **ORBIT.** With REC BUTTON on **ORBIT**, every track starts on **BOUNCE** or **CONSTELLATION**, at a middling density
 (about twice LOOPS'): BOUNCE two or three balls at a moderate speed (now and then FALL's leaves instead),
@@ -1017,7 +1014,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting, one soft PHYS voice and three filtered TRIO ones, spread wide; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |
