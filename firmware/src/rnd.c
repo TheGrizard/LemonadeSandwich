@@ -781,21 +781,15 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     if (role == RND_ROLE_NOISE) {
         rnd_want_e = eng_ok(11u) ? 11u : 6u;        /* (NOISE; TRIO's noise wave without it) */
         rnd_want_pi = 0;
-    } else if (role == RND_ROLE_MELODY) {           /* piano mostly: PHYS' hammered string, FM6's tines */
-        static const uint8_t fp[] = {0, 8, 38, 19}, fw[] = {6, 5, 1, 1};   /* TINE EP, DX TINE, KOTO WARM, KALIMBA */
-        static const uint8_t pp[] = {9, 4, 1}, pw[] = {2, 1, 1};           /* VIBES, KALIMBA, MARIMBA */
-        uint32_t k = (uint32_t)rnd_rr(0, 99);
-        int ph = !*phys && rnd_phys_ok(), fm = !*fm6s && eng_ok(ENGI_FM6), orc = !*oracles && eng_ok(ENGI_ORACLE);
-        if (ph && (k < 50u || !fm)) rnd_want_e = ENGI_PHYS, rnd_want_pi = k < 92u || !fm ? 12 : rnd_pick(pp, pw, NELEM(pp));
-        else if (orc && (k < 60u || !fm)) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 9;   /* (PLUCK: Poly-Mod, ringing; PHYS'
-                                                     * piano gone) */
-        else if (fm) rnd_want_e = ENGI_FM6, rnd_want_pi = k < 90u ? (rnd_pct(55) ? 0 : 8) : rnd_pick(fp, fw, NELEM(fp));
-        else rnd_want_e = 6u, rnd_want_pi = 10;     /* (TRIO's SOFT LEAD) */
-    } else if (role == RND_ROLE_OSTI) {             /* a low piano when one is left; else TRIO's pads plucked */
-        if (!*phys && rnd_phys_ok() && rnd_pct(75)) rnd_want_e = ENGI_PHYS, rnd_want_pi = 12;
-        else if (!*oracles && eng_ok(ENGI_ORACLE) && rnd_pct(60)) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 9;   /* PLUCK */
-        else if (!*fm6s && eng_ok(ENGI_FM6) && rnd_pct(75)) rnd_want_e = ENGI_FM6, rnd_want_pi = 0;
-        else if (rnd_pct(30) && eng_ok(7u)) rnd_want_e = 7u, rnd_want_pi = 3;   /* (WHEEL's SOFT FLUTE, where built) */
+    } else if (role == RND_ROLE_MELODY) {           /* ORACLE's synth leads and its keys, or TRIO's leads (no plucks,
+                                                     * no tines, no FM6: heard, toy-like) */
+        static const uint8_t op[] = {11, 17, 21, 5}, ow[] = {4, 3, 2, 1};   /* KEYS SQUARE LEAD FLUTE SYNC LEAD */
+        static const uint8_t tp[] = {10, 11, 1}, tw[] = {4, 3, 2};          /* SOFT LEAD BREATH FLUTE ARP LEAD */
+        if (*oracles < 2u && eng_ok(ENGI_ORACLE) && rnd_pct(70)) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pick(op, ow, NELEM(op));
+        else rnd_want_e = 6u, rnd_want_pi = rnd_pick(tp, tw, NELEM(tp));
+    } else if (role == RND_ROLE_OSTI) {             /* ORACLE's keys, low (a second ORACLE: WOZZA slow, light), else
+                                                     * TRIO's pads */
+        if (*oracles < 2u && eng_ok(ENGI_ORACLE) && rnd_pct(55)) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 11;   /* KEYS */
         else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 8 : 5;        /* (SOFT PAD, WARM PAD) */
     } else {                                        /* the bed: a dark pad (TRIO: the pianos keep FM6 and PHYS) */
         static const uint8_t tp[] = {5, 7, 8, 14, 6}, tw[] = {4, 3, 3, 2, 2};    /* WARM HOLLOW SOFT PAD, FIFTH DRONE, STRING MACH */
@@ -879,12 +873,12 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         }
         return;
     }
-    /* the melody: struck, ringing */
+    /* the melody: a soft synth lead or keys (ORACLE: its own envelopes) */
     {
-        static const int8_t rg[][3] = {{P_ATK, 0, 3}, {P_DEC, 80, 115}, {P_SUS, 0, 40}, {P_REL, 70, 95}};
+        static const int8_t rg[][3] = {{P_ATK, 6, 30}, {P_DEC, 80, 115}, {P_SUS, 60, 100}, {P_REL, 60, 90}};
         rnd_tp_rr(tr, rg, NELEM(rg));
     }
-    rnd_tp(tr, P_VOICE, V_POLY);
+    rnd_tp(tr, P_VOICE, e == ENGI_ORACLE && trk[tr].preset == 11u ? V_POLY : rnd_pct(60) ? V_MONO : V_LEGATO);
     rnd_tp(tr, P_LEVEL, rnd_rr(76, 92));
     rnd_tp(tr, P_PAN, rnd_rr(-35, 35));
     if (e == ENGI_FM6) { rnd_tp(tr, P_E0 + 2u, rnd_rr(-25, 5)); rnd_tp(tr, P_E0 + 7u, rnd_rr(0, 20)); }   /* (MLVL mellow, AEG
@@ -3785,6 +3779,7 @@ static void rnd_in_key(void)
     for (tr = 0; tr < NTRK; tr++)
         if (trk[tr].p[P_QUANT] != Q_CHRD) rnd_tp(tr, P_QUANT, Q_WHITE);
 }
+static void rnd_no_pitch(void);
 static void rnd_drift(void)
 {
     if (rnd_phase) {                                /* (PHASE: its own process, whatever DRIFT) */
@@ -3820,6 +3815,7 @@ static void rnd_drift(void)
     }
     rnd_drift_s.left = rnd_drift_wait();
     rnd_drift_step();
+    rnd_no_pitch();                                 /* (a nudge to ORACLE's patch, a new cord: no pitch modulation) */
     rnd_in_key();
 }
 

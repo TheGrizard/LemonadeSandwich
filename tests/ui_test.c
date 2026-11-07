@@ -7309,12 +7309,12 @@ static int test_rnd(void)
                     bed_ok &= m == TESS_ENG_SERIES && p[P_SGATE] == 127 && p[P_VOICE] == V_LEGATO && p[P_SDIV] >= 7 &&
                               p[P_TRANS] <= 0 && !pid_get(PID_TESS(TX_TW_DROP), tr) && p[P_ATK] >= 70;
                 else if (role == RND_ROLE_OSTI)
-                    osti_ok &= m == TESS_ENG_SERIES && pid_get(PID_TESS(TX_SR_LOOP), tr) == 2 && p[P_TRANS] <= 0 &&
+                    osti_ok &= (e == 6u || (e == ENGI_ORACLE && trk[tr].preset == 11u)) && m == TESS_ENG_SERIES && pid_get(PID_TESS(TX_SR_LOOP), tr) == 2 && p[P_TRANS] <= 0 &&
                                (p[P_SDIV] == 0 || p[P_SDIV] == 6 || p[P_SDIV] == 1);
                 else if (role == RND_ROLE_MELODY)
-                    mel_ok &= (m == TESS_ENG_TURING || m == TESS_ENG_AWAKE || m == TESS_ENG_MARKOV) && p[P_ATK] <= 3 &&
-                              (p[P_VOICE] == V_POLY || rnd_speed((uint32_t)p[P_SDIV]) == RND_FAST) && p[P_TRANS] >= 0 &&
-                              pid_get(PID_TESS(TX_TW_DROP), tr) <= 70;   /* (rnd_cpu: a fast line on one voice) */
+                    mel_ok &= (m == TESS_ENG_TURING || m == TESS_ENG_AWAKE || m == TESS_ENG_MARKOV) && p[P_ATK] >= 6 &&
+                              p[P_ATK] <= 30 && p[P_TRANS] >= 0 && pid_get(PID_TESS(TX_TW_DROP), tr) <= 70 &&
+                              (e == 6u || e == ENGI_ORACLE) && !(e == ENGI_ORACLE && (trk[tr].preset == 9u || trk[tr].preset == 10u));
                 else if (role == RND_ROLE_NOISE)
                     tex_ok &= e == 6u && p[P_E0] == 8 && m == TESS_ENG_SERIES && p[P_SDIV] == 9 && p[P_LEVEL] <= 66 &&
                               p[P_VOICE] == V_LEGATO;
@@ -7325,7 +7325,7 @@ static int test_rnd(void)
             }
             roles_ok &= n[RND_ROLE_DRONE] == 1u && n[RND_ROLE_OSTI] == 1u && n[RND_ROLE_NOISE] <= 1u &&
                         n[RND_ROLE_MELODY] + n[RND_ROLE_NOISE] == 2u && n[RND_ROLE_MELODY] >= 1u;
-            cpu &= nf <= 1u && np <= 1u && settings_budget <= RND_BUDGET;
+            cpu &= nf == 0u && np == 0u && no <= 2u && settings_budget <= RND_BUDGET;
             fm6 += nf; phys += np; orcs += no;
             if (r % 40u == 0u) {                    /* listen: 15 s (the bed swells in) */
                 int32_t o[2 * CTL], peak = 0;
@@ -7344,12 +7344,12 @@ static int test_rnd(void)
         bad += check("RND WOZZA: ..slow (72 to 84 BPM), a plain key (PEN MAJ MPEN MIN DOR LYD) on all four", tempo_ok && key_ok);
         bad += check("RND WOZZA: ..the bed held (SERIES, legato, a bar to four, swelling), never above the middle", bed_ok);
         bad += check("RND WOZZA: ..the ostinato two notes taking turns (SERIES on two steps), a beat or two each", osti_ok);
-        bad += check("RND WOZZA: ..the melody a line struck (TURING AWAKE MARKOV, gaps, ringing over), never below", mel_ok);
+        bad += check("RND WOZZA: ..the melody a soft synth line (TURING AWAKE MARKOV, gaps) on ORACLE's leads or keys or TRIO's "
+                     "leads, no plucks or tines; the ostinato ORACLE's KEYS or TRIO's pads; never below", mel_ok);
         bad += check("RND WOZZA: ..the texture TRIO's noise, held and low", tex_ok);
         bad += check("RND WOZZA: ..the wow (a sine on the pitch, a fifth of a semitone at most), a player's timing", wow && human);
-        bad += check("RND WOZZA: ..dry, the CPU rules (FM6 and PHYS once each at most, FM6 never fast)", dry && cpu);
-        bad += check("RND WOZZA: ..FM6 and ORACLE both often (the struck melodies: ORACLE's PLUCK), PHYS never", fm6 > 60u &&
-                     orcs > 60u && !phys);
+        bad += check("RND WOZZA: ..dry, the CPU rules (ORACLE twice at most, no FM6, no PHYS)", dry && cpu);
+        bad += check("RND WOZZA: ..ORACLE often (its leads and keys), FM6 and PHYS never", !fm6 && orcs > 100u && !phys);
         bad += check("RND WOZZA: ..each roll heard within 15 s, none at the rail", !quiet && !clipped_n && seconds);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
