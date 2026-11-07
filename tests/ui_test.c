@@ -6293,7 +6293,8 @@ static int test_rnd(void)
         limits += n_fm6 > 1u || n_phys > 1u || n_oracle > 1u || n_chord > 1u;
         {
             uint32_t live = cord_count();
-            cords_ok &= live >= 1u && live <= 9u;
+            cords_ok &= live >= 1u && live <= CORD_LIVE;   /* (3 to 9 of its own, then the expression's: VEL and KEY
+                                                     * into each track's cutoff, as many as the slots left) */
         }
         if (r % 20u == 0u) {                        /* listen to it: 12 s */
             int32_t o[2 * CTL], peak = 0;
@@ -6525,6 +6526,7 @@ static int test_rnd(void)
         uint32_t k, gens_ok = 1, smooth = 1, quiet = 0, clipped_n = 0, both = 0;
         double loops_rate = 0, orbit_rate = 0;
         rnd_mode_put(RND_LOOPS);
+        rnd_state = 0x100B5EEDu;
         for (k = 0; k < 24u; k++) { rnd_roll(); loops_rate += rnd_note_rate(20) / 24.0; }   /* (24: a roll's rate varies) */
         rnd_mode_put(RND_ORBIT);
         press(B_REC);
@@ -6554,6 +6556,8 @@ static int test_rnd(void)
                 clipped_n += rail > 2u * FS / 100u;
             }
         }
+        rnd_state = 0x0B17A5EDu;                    /* (rolls of their own, as LOOPS' below: the rate a sample of 24, the
+                                                     * state the tests before left moving it by a tenth) */
         for (k = 0; k < 24u; k++) { rnd_roll(); orbit_rate += rnd_note_rate(20) / 24.0; }
         printf("rnd: notes a minute (four tracks): LOOPS %.0f, ORBIT %.0f\n", loops_rate, orbit_rate);
         bad += check("RND ORBIT: 200 rolls: BOUNCE or CONSTELLATION on every track (both kinds in most rolls), an octave each",
@@ -6818,7 +6822,7 @@ static int test_rnd(void)
         rnd_mode_put(RND_FREE);
     }
     {                                               /* CRATE: a little funk or soul record of sections, without drums */
-        uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, form_ok = 1, keys_ok = 1, bass_ok = 1, head_ok = 1, dry = 1;
+        uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, form_ok = 1, keys_ok = 1, bass_ok = 1, head_ok = 1, dry = 1, expr = 0;
         uint32_t forms[8] = {0}, walks = 1, quiet = 0, clipped_n = 0, again = 1, apart = 1, tried = 0, eights = 0, strings = 0, funky = 0, tune_ok = 1;
         rnd_mode_put(RND_CRATE);
         press(B_REC);
@@ -6832,14 +6836,20 @@ static int test_rnd(void)
                                                      * algorithm, feedback, ratios and vibrato the preset's */
                 const int16_t *e = &trk[tr].p[P_E0];
                 if (trk[tr].eng_req == 6u) tune_ok &= (e[1] == 0 || e[1] == 12 || e[1] == -12) && (e[2] == 0 || e[2] == 12 || e[2] == -12);
-                if (trk[tr].eng_req == ENGI_FM6) tune_ok &= !e[0] && !e[1] && !e[3] && !e[5];
+                if (trk[tr].eng_req == ENGI_FM6) tune_ok &= !e[0] && !e[1] && !e[3] && e[5] >= 0;   /* (VMOD: the
+                                                     * expression's, harder brighter) */
             }
             k = (uint32_t)trk[0].p[P_SCALE];
             key_ok &= k == 1u || k == 2u || k == 3u || k == 4u;
             fixed &= rnd_role_of[0] == RND_ROLE_CHORDS && rnd_role_of[1] == RND_ROLE_BASS &&
                      rnd_role_of[2] == RND_ROLE_MELODY && rnd_role_of[3] == RND_ROLE_COUNTER;
             dry &= rnd_fx_mode_ok(0) >= 1u;
-            for (k = 0; k < CORD_LIVE; k++) { const cord_t *c = cord_get(k); dry &= !c || !c->src; }
+            for (k = 0; k < CORD_LIVE; k++) {       /* (the cords: the expression's only, a track's VEL or KEY on its own
+                                                     * cutoff) */
+                const cord_t *c = cord_get(k);
+                dry &= !c || !c->src || ((c->src == CS_VEL || c->src == CS_KEY) && c->dst == CD_CUTOFF && c->src_trk == c->dst_trk);
+                expr += c && c->src == CS_VEL && c->dst == CD_CUTOFF;
+            }
             f = pid_get(PID_TESS(TX_FM_FORM), 0); ev = pid_get(PID_TESS(TX_EV_EVERY), 0);
             forms[f & 7]++;
             eights += ev == 4;
@@ -6911,7 +6921,7 @@ static int test_rnd(void)
         }
         bad += check("RND CRATE: 200 rolls: the keys on track 1, the bass 2, the head 3, the counter 4, every roll", fixed);
         bad += check("RND CRATE: ..80 to 100 BPM, MAJ MIN DOR MIX", tempo_ok && key_ok);
-        bad += check("RND CRATE: ..in tune: TRIO's INT2, INT3 0 or an octave; FM6's ALG, FB, MRAT, VMOD the preset's", tune_ok);
+        bad += check("RND CRATE: ..in tune: TRIO's INT2, INT3 0 or an octave; FM6's ALG, FB, MRAT the preset's", tune_ok);
         bad += check("RND CRATE: ..a form (AABA ABAC ABCB) on every track alike, 4 or 8 bars a section, written at the roll",
                      form_ok && forms[4] > 40u && forms[2] > 30u && forms[3] > 30u && eights > 80u && eights < 160u);
         bad += check("RND CRATE: ..the keys diatonic sevenths, four chords a section from the book (WALK)", keys_ok && walks);
@@ -6920,7 +6930,9 @@ static int test_rnd(void)
                      head_ok && strings > 120u && strings < 180u);
         bad += check("RND CRATE: ..the bass on sixteenths about half the rolls (funk), else eighths (soul)", funky > 75u && funky < 145u);
         bad += check("RND CRATE: ..A the same each time it comes round, B not A", again && apart && tried == 3u);
-        bad += check("RND CRATE: ..no effects, no cords; each heard within 12 s, none at the rail", dry && !quiet && !clipped_n);
+        bad += check("RND CRATE: ..no effects, no cords but the expression's (VEL, KEY to a track's own CUTOFF); each heard "
+                     "within 12 s, none at the rail", dry && !quiet && !clipped_n);
+        bad += check("RND CRATE: ..every track's velocity on its cutoff", expr == 800u);
         printf("rnd: CRATE: AABA %u, ABAC %u, ABCB %u; 8-bar sections %u of 200; strings %u, funk bass %u\n", forms[4], forms[2],
                forms[3], eights, strings, funky);
         {                                           /* DRIFT: none (a record, played as pressed) */
@@ -7165,7 +7177,7 @@ static int test_rnd(void)
     }
     {                                               /* every roll in tune: TRIO's intervals unisons, octaves or fifths,
                                                      * rolled and nudged by DRIFT FAST; CRATE's octaves only */
-        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0, in_key = 1;
+        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0, in_key = 1, expr_ok = 1;
         uint8_t was = settings_rnd_drift;
         int32_t o[2 * CTL];
         settings_rnd_drift = RND_DRIFT_FAST;
@@ -7183,6 +7195,18 @@ static int test_rnd(void)
                         if (m == RND_CRATE) crate_bad += (i2 + 48) % 12 != 0 || (i3 + 48) % 12 != 0;
                     }
                 for (tr = 0; tr < NTRK; tr++) in_key &= trk[tr].p[P_QUANT] == Q_WHITE || trk[tr].p[P_QUANT] == Q_CHRD;
+                {                                   /* expression: the tracks with VEL on their cutoff, by mode */
+                    uint32_t k, on = 0, want = 0;
+                    for (k = 0; k < CORD_LIVE; k++) {
+                        const cord_t *c = cord_get(k);
+                        if (c && c->src == CS_VEL && c->dst == CD_CUTOFF && c->src_trk == c->dst_trk) on |= 1u << c->dst_trk;
+                    }
+                    for (tr = 0; tr < NTRK; tr++)
+                        if (m == RND_WOZZA || m == RND_CRATE || m == RND_ORBIT || m == RND_FREE ||
+                            (m == RND_FALL && rnd_role_of[tr] == RND_ROLE_MELODY) || (m == RND_TIDE && tr == RND_TD_MEL))
+                            want |= 1u << tr;
+                    expr_ok &= m == RND_FREE ? on && !(on & ~want) : on == want;   /* (RND: as many as the slots left) */
+                }
             }
         }
         transport_req = 2;
@@ -7193,6 +7217,8 @@ static int test_rnd(void)
         bad += check("RND: every mode, DRIFT FAST: TRIO's INT2, INT3 unisons, octaves or fifths (CRATE's octaves)",
                      seen > 100u && !bad_iv && !crate_bad);
         bad += check("RND: ..and every track's QUANTIZE WHITE or CHRD: the scale on the white keys, to play along", in_key);
+        bad += check("RND: ..velocity on the cutoff: every track of WOZZA, CRATE, ORBIT and RND, FALL's melodies, TIDE's "
+                     "lead; none in HALO, MIRROR, LOOPS (DRIFT FAST on)", expr_ok);
     }
     {                                               /* no clicks: a voice the budget takes fades gently (voice.c) */
         static voice_t was[NPART][NVOICE];

@@ -3268,6 +3268,53 @@ static const char *rnd_name(void)
            rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " :
            "RND ";
 }
+/* expression: cords from the track's own VEL and KEY to its CUTOFF, each voice its own (mod.c mod_voice): a harder
+ * note brighter, a higher one brighter; sh, VEL to SHAPE too (FM6: its feedback, a hard note grittier; TRIO, ORACLE:
+ * the pulse's width). The cutoff (TRIO's CUT, ORACLE's CUT, FM6's MLVL) down by about the lift a usual velocity brings;
+ * FM6's VMOD up (its own: harder, brighter); TWEAK HUMAN at least hu, the velocities a player's. vel, key, sh: cord
+ * percentages (a cord a slot free: VEL first, KEY after) */
+static void rnd_expr_one(uint32_t tr, int32_t vel, int32_t key, int32_t sh, int32_t hu)
+{
+    track_t *t = &trk[tr];
+    uint32_t e = t->eng_req;
+    int32_t low = vel * 64 / 100 * 3 / 5;               /* (60 % of the lift at full velocity: the mean one, near) */
+    cord_t c;
+    memset(&c, 0, sizeof c);
+    c.src_trk = c.dst_trk = (uint8_t)tr;
+    c.src = CS_VEL; c.dst = CD_CUTOFF; c.amount = (int8_t)vel;
+    if (vel && rnd_cord_add(&c)) {
+        if (e == 6u) rnd_tp(tr, P_E0 + 5u, t->p[P_E0 + 5u] - low);
+        else if (e == ENGI_ORACLE) rnd_tp(tr, P_E0, t->p[P_E0] - low);
+        else if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, t->p[P_E0 + 2u] - low * 2 / 3);   /* (a CUT step: 2/3 of MLVL's) */
+    }
+    c.src = CS_KEY; c.amount = (int8_t)key;
+    if (key) rnd_cord_add(&c);
+    c.src = CS_VEL; c.dst = CD_SHAPE; c.amount = (int8_t)sh;
+    if (sh) rnd_cord_add(&c);
+    if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 5u, rnd_rr(2, 4));
+    if (pid_get(PID_TESS(TX_TW_HUMAN), tr) < hu) rnd_tx(tr, TX_TW_HUMAN, hu);
+}
+/* the modes' expression: WOZZA soft, CRATE's keys biting, ORBIT lively, RND anywhere; FALL's and TIDE's lines only
+ * (their drones, pads, kick and noise even). The others none */
+static void rnd_expression(void)
+{
+    uint32_t tr;
+    for (tr = 0; tr < NTRK; tr++) {
+        uint8_t r = rnd_role_of[tr];
+        if (rnd_wozza) rnd_expr_one(tr, rnd_rr(25, 35), rnd_rr(25, 40), 0, rnd_rr(20, 35));
+        else if (rnd_crate)
+            rnd_expr_one(tr, tr == RND_CR_KEYS ? rnd_rr(50, 65) : tr == RND_CR_BASS ? rnd_rr(25, 35) :
+                         tr == RND_CR_HEAD ? rnd_rr(35, 45) : rnd_rr(15, 22),
+                         tr == RND_CR_BASS ? rnd_rr(8, 15) : rnd_rr(25, 35), 0, 0);   /* (its HUMAN its own) */
+        else if (rnd_orbit)
+            rnd_expr_one(tr, rnd_rr(35, 50), rnd_rr(35, 50),
+                         trk[tr].eng_req == ENGI_FM6 && rnd_pct(50) ? rnd_rr(15, 25) : 0, rnd_rr(25, 40));
+        else if (rnd_setting() == RND_FREE)
+            rnd_expr_one(tr, rnd_rr(20, 70), rnd_rr(15, 70), rnd_pct(40) ? rnd_rr(10, 40) : 0, rnd_rr(15, 50));
+        else if ((rnd_fall && r == RND_ROLE_MELODY) || (rnd_tide && tr == RND_TD_MEL))
+            rnd_expr_one(tr, rnd_rr(22, 32), rnd_rr(25, 35), 0, rnd_rr(15, 25));
+    }
+}
 static void rnd_drift_start(void);
 static void rnd_roll(void)
 {
@@ -3391,6 +3438,7 @@ static void rnd_roll(void)
         else rnd_fx_dry();
         rnd_cords();
     }
+    rnd_expression();
     rnd_in_key();
     rnd_chord_prime();
     sync_reload = 1;

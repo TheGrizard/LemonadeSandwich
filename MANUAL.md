@@ -842,6 +842,12 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   play on the keys is in its key. A track on **CHRD** (FALL's, HALO's bells, CRATE's bass and strings ..) keeps it:
   its notes are the chord's, and its keys snap to the chord. In every roll TRIO's **INT2** and **INT3** are a unison,
   an octave or a fifth, never a semitone or two off.
+- **Expression**: in RND, ORBIT, WOZZA and CRATE every track, and in FALL and TIDE the melodies only (their drones,
+  pads, kick and noise stay even), get two cords on MODS: the track's own **VEL** and **KEY** into its **CUTOFF**, each
+  note its own. A harder note is brighter, a higher one too (key tracking). On FM6 the cutoff is the modulators'
+  level (MLVL), and its **VMOD** is turned up as well; ORBIT and RND sometimes send VEL to **SHAPE** too (on FM6 its
+  feedback: a hard note grittier). The cutoff is set lower to make room, and **TWEAK HUMAN** varies the velocities a
+  little, as a player would. HALO, MIRROR and LOOPS stay smooth: none.
 
 **FALL.** With REC BUTTON on **FALL**, a roll gives the four tracks roles, in a random order:
 
