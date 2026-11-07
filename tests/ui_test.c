@@ -6563,8 +6563,9 @@ static int test_rnd(void)
         bad += check("RND ORBIT: 200 rolls: BOUNCE or CONSTELLATION on every track (both kinds in most rolls), an octave each",
                      gens_ok && both > 120u);
         bad += check("RND ORBIT: ..LOOPS' smooth voices: soft onsets, no tremolo or ratchet; effects (clean)", smooth);
-        bad += check("RND ORBIT: ..busier than LOOPS (twice the notes and more), each roll heard within 15 s, none at the rail",
-                     orbit_rate > 2.0 * loops_rate && !quiet && !clipped_n);
+        bad += check("RND ORBIT: ..busier than LOOPS (half as many notes again and more), each roll heard within 15 s, none "
+                     "at the rail", orbit_rate > 1.6 * loops_rate && !quiet && !clipped_n);   /* (LOOPS reworked: 90 to 100
+                                                     * a minute, ORBIT about 200; twice, the ratio's edge: 1.96 once) */
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
