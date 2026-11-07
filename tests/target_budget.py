@@ -45,7 +45,11 @@ EXTRACTED = {
 }
 KERNEL_NAMES = {n for names in EXTRACTED.values() for n in names}
 FEATURE_OPTIONAL = {"fm6_render",                            # MELODEE_FM6=0 omits it
-                    "sid_render"}                            # and MELODEE_SID=0 this
+                    "sid_render",                            # and MELODEE_SID=0 this
+                    "drum_render", "dr_bd", "dr_sd", "dr_tom", "dr_rs", "dr_cl", "dr_cp", "dr_ma", "dr_metal",
+                    "dr_cb", "dr_cy", "dr_hat", "dr8_run", "drum_source", "drum_limit", "drum_color", "dr_metal_tune",
+                    "d9_render_bd", "d9_render_sd", "d9_render_tom", "d9_render_rim", "d9_render_clap",
+                    "d9_render_smp"}                         # and MELODEE_DRUM=0 DRUM's (LEMONADE SANDWICH's device build)
 TOL = 0.10                      # exact (no noise): small edits pass, a grown render loop does not
 DIV_W = 8                       # a divide weighs 1 + 8 instructions
 NEST = 4                        # an instruction in a loop inside a loop weighs 4, two deep 16, ...
