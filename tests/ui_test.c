@@ -7357,7 +7357,7 @@ static int test_rnd(void)
     }
     {                                               /* every roll in tune: TRIO's intervals unisons, octaves or fifths,
                                                      * rolled and nudged by DRIFT FAST; CRATE's octaves only */
-        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0, in_key = 1, expr_ok = 1, no_phys = 1, crate_bass = 1;
+        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0, in_key = 1, expr_ok = 1, no_phys = 1, crate_bass = 1, no_pit = 1;
         uint8_t was = settings_rnd_drift;
         int32_t o[2 * CTL];
         settings_rnd_drift = RND_DRIFT_FAST;
@@ -7376,6 +7376,19 @@ static int test_rnd(void)
                     }
                 for (tr = 0; tr < NTRK; tr++) in_key &= trk[tr].p[P_QUANT] == Q_WHITE || trk[tr].p[P_QUANT] == Q_CHRD;
                 for (tr = 0; tr < NTRK; tr++) no_phys &= trk[tr].eng_req != ENGI_PHYS;
+                for (tr = 0; tr < NTRK; tr++) {     /* (no pitch modulation: WOZZA's wow, TIDE's kick thump only) */
+                    const track_t *t = &trk[tr];
+                    no_pit &= (m == RND_WOZZA ? t->p[P_LD_PIT] <= 1 : t->p[P_LD_PIT] == 0) &&
+                              (t->p[P_ED_PIT] == 0 || (m == RND_TIDE && tr == RND_TD_KICK)) &&
+                              (t->eng_req != ENGI_ORACLE || (!or_patch[tr][OR_POLY_FREQ] && !or_patch[tr][OR_WHEEL_FREQ_A] &&
+                                                             !or_patch[tr][OR_WHEEL_FREQ_B])) &&
+                              (t->eng_req != ENGI_FM6 || (!fm6_patch[tr][FP_LPMD] && !fm6_patch[tr][FP_LPMS])) &&
+                              (rnd_static ? !t->p[P_GLIDE] : 1);
+                }
+                for (b = 0; b < CORD_LIVE; b++) {
+                    const cord_t *c = cord_get(b);
+                    no_pit &= !c->amount || (c->dst != CD_PITCH && c->dst != CD_LFO_PIT && c->dst != CD_ENV_PIT);
+                }
                 if (m == RND_CRATE)
                     crate_bass &= trk[RND_CR_BASS].eng_req == 6u &&
                                   (trk[RND_CR_BASS].p[P_E0] == 1 || trk[RND_CR_BASS].p[P_E0] == 4);   /* (PLS3, TRI3) */
@@ -7402,6 +7415,8 @@ static int test_rnd(void)
                      seen > 100u && !bad_iv && !crate_bad);
         bad += check("RND: ..and every track's QUANTIZE WHITE or CHRD: the scale on the white keys, to play along", in_key);
         bad += check("RND: ..PHYS in no roll; CRATE's bass TRIO's square or triangle", no_phys && crate_bass);
+        bad += check("RND: ..no pitch modulation: no vibrato, pitch envelope, ORACLE Poly-Mod or LFO on FREQ, FM6 PMD, "
+                     "pitch cord, STATIC glide (WOZZA's wow, TIDE's kick thump kept)", no_pit);
         bad += check("RND: ..velocity on the cutoff: every track of WOZZA, CRATE, ORBIT and RND, FALL's melodies, TIDE's "
                      "lead; none in HALO, MIRROR, LOOPS (DRIFT FAST on)", expr_ok);
     }

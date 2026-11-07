@@ -842,6 +842,9 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   play on the keys is in its key. A track on **CHRD** (FALL's, HALO's bells, CRATE's bass and strings ..) keeps it:
   its notes are the chord's, and its keys snap to the chord. In every roll TRIO's **INT2** and **INT3** are a unison,
   an octave or a fifth, never a semitone or two off.
+- **No pitch modulation**: no roll moves a note's pitch. No vibrato (the LFO, FM6's PMD), no pitch envelope, no cord
+  to PITCH, and ORACLE's Poly-Mod goes to the filter or the pulse width, never FREQ A (its FENV on FREQ was a swoop on
+  every note). WOZZA's tape wow and TIDE's soft kick thump are the only exceptions. STATIC's layers do not glide.
 - **Expression**: in RND, ORBIT, WOZZA and CRATE every track, and in FALL and TIDE the melodies only (their drones,
   pads, kick and noise stay even), get two cords on MODS: the track's own **VEL** and **KEY** into its **CUTOFF**, each
   note its own. A harder note is brighter, a higher one too (key tracking). On FM6 the cutoff is the modulators'
@@ -931,8 +934,7 @@ onto the nearest note of the halo's triad (QNT CHRD): Pärt's tintinnabuli voice
 (beside a high line, or below it). The **canon** follows the M-voice too, half as fast, held, an octave down (a high
 line's mostly in its own octave): the slow voice of a mensuration canon, on the triangles or FM6's SOFT PAD or SOFT
 SWELL. A T-voice dealt before its M-voice plays the
-line a step behind, an echo. Every voice is detuned and spread; the line's and the halo's pitch sways a hair (the LFO
-slow on the pitch), or the halo's filter breathes. Slow cords move the colours and the bells' place. No effects, as
+line a step behind, an echo. Every voice is a little detuned and spread, and the halo's filter breathes. Slow cords move the colours and the bells' place. No effects, as
 every roll. The screen shows **HALO** and the seed.
 
 With **DRIFT** on, HALO also moves on its own slower clock, about every 16 to 32 bars on SLOW (a minute or two) and
@@ -974,7 +976,7 @@ soul turns (i to IV, I vi IV V, IV iii ii I and others), stabbed on and off the 
 low, onto the chord's notes, a fixed line each section: funk's sixteenths jumping octaves about half the time, else
 soul's eighths, on TRIO, a square or a triangle. **Track 3, the hook:** a fixed phrase for each section on FM6's
 horns or flute, ORACLE's FLUTE or SQUARE LEAD, or TRIO's flute or muted horn. **Track 4, the strings** (three rolls in four): a lush, slow line
-by step onto the chord's notes, a note every half or whole bar, swelling in, wide, with a slight vibrato (TRIO's
+by step onto the chord's notes, a note every half or whole bar, swelling in, wide (TRIO's
 string machine or pads, or FM6's strings); otherwise a quieter second voice answering the hook. The timing is a
 player's (a few milliseconds late now and then), on the grid otherwise: send MIDI clock to your sampler, or set its
 tempo to the BPM on the screen. DRIFT leaves CRATE alone: roll again for another record. No effects, as every roll.

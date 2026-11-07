@@ -364,13 +364,13 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
         static const int8_t rg[][3] = {{P_DEC, 20, 127}, {P_SUS, 30, 127}, {P_REL, 50, 127}, {P_ED_FLT, -64, 63}};
         rnd_tp_rr(tr, rg, NELEM(rg));
     }
-    rnd_tp(tr, P_ED_PIT, rnd_pct(20) ? rnd_rr(-64, 63) : rnd_rr(-6, 6));
+    rnd_tp(tr, P_ED_PIT, 0);                        /* (no pitch modulation in any roll: rnd_no_pitch) */
     rnd_tp(tr, P_ED_SHP, rnd_rr(-64, 63));
     /* the LFO: slow mostly, now and then fast enough to tear */
     rnd_tp(tr, P_LRATE, rnd_pct(75) ? rnd_rr(0, 60) : rnd_rr(60, 127));
     rnd_tp(tr, P_LWAVE, rnd_rr(0, 4));
     rnd_tp(tr, P_LFADE, rnd_rr(0, 127));
-    rnd_tp(tr, P_LD_PIT, rnd_pct(25) ? rnd_rr(-40, 40) : rnd_rr(-4, 4));
+    rnd_tp(tr, P_LD_PIT, 0);
     rnd_tp(tr, P_LD_FLT, rnd_rr(-64, 63));
     rnd_tp(tr, P_LD_SHP, rnd_rr(-64, 63));
     rnd_tp(tr, P_LD_AMP, rnd_pct(40) ? rnd_rr(0, 90) : 0);
@@ -410,7 +410,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         }
         rnd_tp(tr, P_ED_PIT, 0);
         rnd_tp(tr, P_LRATE, rnd_rr(0, 25));
-        rnd_tp(tr, P_LD_PIT, rnd_rr(-2, 2));
+        rnd_tp(tr, P_LD_PIT, 0);
         rnd_tp(tr, P_LTRIG, 1);
         rnd_tp(tr, P_LSYNC, 0);
         rnd_tp(tr, P_VOICE, V_LEGATO);
@@ -437,7 +437,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
             rnd_tp_rr(tr, rg, NELEM(rg));
         }
         rnd_tp(tr, P_ED_PIT, 0);
-        rnd_tp(tr, P_LD_PIT, rnd_rr(-3, 3));
+        rnd_tp(tr, P_LD_PIT, 0);
         rnd_tp(tr, P_VOICE, V_POLY);
         rnd_tp(tr, P_GLIDE, 0);
         rnd_tp(tr, P_CHRD, 0);
@@ -453,7 +453,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         }
     } else {
         {
-            static const int8_t rg[][3] = {{P_ATK, 0, 40}, {P_SUS, 40, 110}, {P_REL, 60, 115}, {P_ED_PIT, -4, 4},
+            static const int8_t rg[][3] = {{P_ATK, 0, 40}, {P_SUS, 40, 110}, {P_REL, 60, 115}, {P_ED_PIT, 0, 0},
                                            {P_LRATE, 0, 50}, {P_LEVEL, 80, 96}, {P_PAN, -50, 50}};
             rnd_tp_rr(tr, rg, NELEM(rg));
         }
@@ -467,7 +467,7 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         rnd_tp(tr, P_ED_SHP, rnd_rr(-15, 15));
         rnd_tp(tr, P_LRATE, rnd_rr(10, 50));
         rnd_tp(tr, P_LWAVE, 0);                     /* (a sine) */
-        rnd_tp(tr, P_LD_PIT, rnd_rr(-2, 2));
+        rnd_tp(tr, P_LD_PIT, 0);
         rnd_tp(tr, P_LD_FLT, rnd_rr(-15, 15));
         rnd_tp(tr, P_LD_SHP, rnd_rr(-15, 15));
         rnd_tp(tr, P_LSYNC, 0);
@@ -1035,7 +1035,7 @@ static void rnd_halo_tri(uint32_t tr)               /* FALL's three triangles, w
     rnd_tp(tr, P_E0, 4);                            /* WAVE TRI3 */
     rnd_tp(tr, P_E0 + 1u, (int32_t)rnd_pick(i2, i2w, NELEM(i2)) - 24);   /* INT2 */
     rnd_tp(tr, P_E0 + 2u, (int32_t)rnd_pick(i3, i3w, NELEM(i3)) - 24);   /* INT3 */
-    rnd_tp(tr, P_E0 + 3u, rnd_rr(6, 22));           /* DTN, cents: the haze */
+    rnd_tp(tr, P_E0 + 3u, rnd_rr(3, 10));           /* DTN, cents: the haze (22 beat like a wobble, heard) */
     rnd_tp(tr, P_E0 + 4u, 0);                       /* MODE LP */
     rnd_tp(tr, P_E0 + 5u, rnd_rr(48, 80));          /* CUT: warm */
     rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 20));           /* RES */
@@ -1073,14 +1073,14 @@ static void rnd_halo_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
     rnd_tp_still(tr);
     rnd_tp(tr, P_ED_FLT, rnd_rr(0, 15));
     rnd_tp(tr, P_LRATE, rnd_rr(40, 56));            /* (0.4 to 1 Hz: a slow sway) */
-    rnd_tp(tr, P_LD_PIT, (role == RND_ROLE_MELODY || role == RND_ROLE_CHORDS) && rnd_pct(50) ? 1 : 0);
+    rnd_tp(tr, P_LD_PIT, 0);                        /* (no sway on the pitch: heard, far too much) */
     rnd_tp(tr, P_GLIDE, 0);
     rnd_tp(tr, P_CHRD, 0);
     rnd_tp(tr, P_DETUNE, rnd_rr(40, 100));
     rnd_tp(tr, P_SPRD, rnd_rr(60, 127));
     if (e == 6u && role != RND_ROLE_TINT && role != RND_ROLE_CHORDS) rnd_halo_tri(tr);
     if (role == RND_ROLE_CHORDS) {                  /* the halo: swells in, holds, breathes */
-        if (e == 6u) { rnd_tp(tr, P_E0 + 3u, rnd_rr(10, 30)); rnd_tp(tr, P_E0 + 5u, rnd_rr(40, 65)); }   /* (DTN, CUT) */
+        if (e == 6u) { rnd_tp(tr, P_E0 + 3u, rnd_rr(4, 12)); rnd_tp(tr, P_E0 + 5u, rnd_rr(40, 65)); }   /* (DTN, CUT) */
         rnd_tp(tr, P_ATK, rnd_rr(90, 120));
         rnd_tp(tr, P_DEC, 127);
         rnd_tp(tr, P_SUS, rnd_rr(110, 127));
@@ -2019,7 +2019,7 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
                                        {P_LRATE, 66, 74}, {P_LFADE, 60, 90}};
         rnd_tp_rr(tr, sr, NELEM(sr));
         rnd_tp(tr, P_VOICE, V_POLY);
-        rnd_tp(tr, P_LD_PIT, 1);
+        rnd_tp(tr, P_LD_PIT, 0);                    /* (no vibrato: rnd_no_pitch) */
         if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(80, 94));   /* (TRIO: warm, the top soft; lower, measured: lost) */
         else if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 0));
     } else {                                        /* the head, the counter */
@@ -2032,7 +2032,7 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
             rnd_tp(tr, P_E0 + 5u, horn ? rnd_rr(55, 75) : rnd_rr(50, 75));
             rnd_tp(tr, P_E0 + 6u, horn ? rnd_rr(15, 35) : rnd_rr(0, 20));   /* (the horn: nasal, not a whistle) */
             rnd_tp(tr, P_LRATE, rnd_rr(68, 78));    /* (a player's vibrato, slight) */
-            rnd_tp(tr, P_LD_PIT, rnd_pct(60) ? 1 : 0);
+            rnd_tp(tr, P_LD_PIT, 0);
             rnd_tp(tr, P_LFADE, rnd_rr(40, 80));
         }
         rnd_tp(tr, P_ATK, e == 6u ? rnd_rr(5, 25) : rnd_rr(0, 6));
@@ -2264,9 +2264,13 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
         (*fm6s)++;
     } else if (tr == RND_ST_DRIVE && !*oracles && eng_ok(ENGI_ORACLE) && rnd_pct(45)) {   /* ORACLE: noise, Poly-Mod */
         uint8_t *q;
+        uint8_t tune[3];
         engine_load_of(t, ENGI_ORACLE, rnd_pct(50) ? 22u : 4u);   /* FAT POLY, BRASS */
-        rnd_oracle(tr, 40u);
         q = or_patch_of(t);
+        tune[0] = q[OR_FREQ_A]; tune[1] = q[OR_FREQ_B]; tune[2] = q[OR_FINE_B];
+        rnd_oracle(tr, 40u);
+        q[OR_FREQ_A] = tune[0]; q[OR_FREQ_B] = tune[1]; q[OR_FINE_B] = tune[2];   /* (in tune: the preset's) */
+        q[OR_GLIDE] = 0;
         q[OR_NOISE] = (uint8_t)rnd_rr(50, 110);
         q[OR_RESONANCE] = (uint8_t)rnd_rr(40, 90);
         q[OR_ATTACK_AMP] = (uint8_t)rnd_rr(40, 80);
@@ -2302,7 +2306,7 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
     }
     rnd_tp_still(tr);
     rnd_tp(tr, P_LD_PIT, 0);
-    rnd_tp(tr, P_GLIDE, tr == RND_ST_BED ? 0 : rnd_rr(30, 80));   /* (the layers slide to the next chord's notes) */
+    rnd_tp(tr, P_GLIDE, 0);                         /* (no slides between the chords' notes: heard, silly) */
     rnd_tp(tr, P_CHRD, 0);
     rnd_tp(tr, P_MUTE, 0);
     rnd_tp(tr, P_AMODE, 0);
@@ -3041,7 +3045,7 @@ static void rnd_loops_voice(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_
     rnd_tp(tr, P_PAN, rnd_rr(-45, 45));
     rnd_tp(tr, P_SPRD, rnd_rr(30, 70));
     rnd_tp(tr, P_CHRD, 0);
-    rnd_tp(tr, P_LD_PIT, rnd_pct(50) ? 1 : 0);     /* (a vibrato, if any, the least there is, slow: +-2 at NICE's rate
+    rnd_tp(tr, P_LD_PIT, 0);                        /* (no vibrato: rnd_no_pitch. Before, the least there was: +-2 at NICE's rate
                                                      * was a wobble of 40 cents, heard: far too much) */
     rnd_tp(tr, P_LRATE, rnd_rr(2, 12));
     if (trk[tr].eng_req == ENGI_PHYS) rnd_wozza_piano(tr);
@@ -3317,7 +3321,8 @@ static void rnd_cords(void)
                                   CD_FX_SEND, CD_E1, CD_E2, CD_E3, CD_E4, CD_E5, CD_E6, CD_E7, CD_E8,
                                   CD_FX1_MIX, CD_FX1_RATE, CD_FX1_CHAR, CD_FX2_CHAR, CD_RELEASE, CD_ENV_FLT,
                                   CD_EV_AMOUNT, CD_SF1_MIX, CD_SF2_CHAR, 0xFF /* the generator's own */};
-    static const uint8_t dw[] = {14, 10, 4, 5, 4, 5, 4, 5, 6, 6, 6, 6, 6, 6, 4, 4, 5, 5, 6, 4, 3, 4, 3, 3, 3, 12};
+    static const uint8_t dw[] = {14, 10, 0, 5, 4, 5, 4, 5, 6, 6, 6, 6, 6, 6, 4, 4, 5, 5, 6, 4, 3, 4, 3, 3, 3, 12};   /* (PITCH
+                                                     * none: no pitch modulation, rnd_no_pitch) */
     uint32_t i, n = (uint32_t)rnd_rr(3, 9);
     for (i = 0; i < CORD_LIVE; i++) {
         cord_t c;
@@ -3674,6 +3679,8 @@ static void rnd_drift_step(void)
             const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + e), tr);
             if (!d || d->fmt == F_ENUM || d->max <= d->min) continue;
             if ((rnd_fall || rnd_halo || rnd_tide) && t->eng_req == 6u && (e == 1u || e == 2u)) continue;
+            if ((t->eng_req == ENGI_ORACLE && (e == 2u || e == 3u)) || (t->eng_req == ENGI_FM6 && e == 6u)) continue;   /* (ORACLE's
+                                                     * TUNE A, B; FM6's DTUN: the pitch, kept) */
             if (rnd_tide && t->eng_req == 6u && (e == 0u || e == 4u)) continue;   /* (TIDE: the waves, the noise's LP or
                                                      * BP, kept) */   /* (FALL, HALO: TRIO's
                                                      * intervals kept) */
@@ -3889,6 +3896,43 @@ static void rnd_orc_levels(void)
         if (trk[tr].eng_req == ENGI_ORACLE && (trk[tr].preset == 9u || trk[tr].preset == 10u))
             rnd_tp(tr, P_LEVEL, trk[tr].p[P_LEVEL] + 24);
 }
+/* no pitch modulation in any roll (heard: far too much, silly): no vibrato (the track's LFO, FM6's PMD and PMS,
+ * ORACLE's LFO on its oscillators; its Poly-Mod to the filter or width, never FREQ A), no pitch envelope (TIDE's kick its thump kept), no cord to the pitch. WOZZA's tape
+ * wow (the track LFO a fifth of a semitone) its one exception. Expression stays on the cutoff and FM6's feedback */
+static void rnd_no_pitch(void)
+{
+    uint32_t tr, i;
+    for (tr = 0; tr < NTRK; tr++) {
+        track_t *t = &trk[tr];
+        if (!rnd_wozza) rnd_tp(tr, P_LD_PIT, 0);
+        if (!(rnd_tide && tr == RND_TD_KICK)) rnd_tp(tr, P_ED_PIT, 0);
+        if (t->eng_req == ENGI_ORACLE) {
+            uint8_t *q = or_patch_of(t);
+            q[OR_WHEEL_FREQ_A] = q[OR_WHEEL_FREQ_B] = 0;
+            if (q[OR_POLY_FREQ]) {                  /* (Poly-Mod's FENV and OSC B to the filter or the width, not
+                                                     * oscillator A's pitch: its swoop the pitch modulation heard) */
+                q[OR_POLY_FREQ] = 0;
+                if (!q[OR_POLY_PW] && !q[OR_POLY_FILTER])   /* (the width: oscillator A a pulse alone; else the filter.
+                                                     * Decided by the patch, so PHASE's copies stay alike) */
+                    q[q[OR_PULSE_A] && !q[OR_SAW_A] ? OR_POLY_PW : OR_POLY_FILTER] = 1;
+            }
+        }
+        if (t->eng_req == ENGI_FM6 && (fm6_patch[tr][FP_LPMD] || fm6_patch[tr][FP_LPMS])) {
+            uint8_t v[FP_SIZE + 1u];
+            memcpy(v, fm6_patch[tr], FP_SIZE);
+            v[FP_LPMD] = v[FP_LPMS] = 0;
+            fm6_set_patch(tr, v);
+        }
+    }
+    for (i = 0; i < CORD_LIVE; i++) {
+        const cord_t *c = cord_get(i);
+        if (c->amount && (c->dst == CD_PITCH || c->dst == CD_LFO_PIT || c->dst == CD_ENV_PIT)) {
+            cord_t z;
+            memset(&z, 0, sizeof z);
+            cord_set(i, &z);
+        }
+    }
+}
 /* the modes' expression: WOZZA soft, CRATE's keys biting, ORBIT lively, RND anywhere; FALL's and TIDE's lines only
  * (their drones, pads, kick and noise even). The others none */
 static void rnd_expression(void)
@@ -4053,6 +4097,7 @@ static void rnd_roll(void)
         rnd_cords();
     }
     rnd_orc_levels();
+    rnd_no_pitch();
     rnd_expression();
     rnd_in_key();
     rnd_chord_prime();
