@@ -6347,7 +6347,7 @@ static int test_rnd(void)
         static const struct { uint8_t m, bits, var; const char *name; } steps[] = {
             {RND_FALL, 0x80, 1, "FALL"}, {RND_TIDE, 0x40, 4, "TIDE"}, {RND_LOOPS, 0x80, 2, "LOOPS"},
             {RND_ORBIT, 0xC0, 1, "ORBIT"}, {RND_WOZZA, 0x40, 3, "WOZZA"}, {RND_HALO, 0x80, 3, "HALO"},
-            {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_CRATE, 0x80, 4, "CRATE"}};
+            {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_CRATE, 0x80, 4, "CRATE"}, {RND_PHASE, 0x40, 5, "PHASE"}};
         uint32_t steps_ok = 1, saved_ok = 1;
         hold(B_HOME); ui.menu_sel = MI_REC_BTN;
         for (k = 0; k < NELEM(steps); k++) {
@@ -6366,11 +6366,11 @@ static int test_rnd(void)
                         settings_rnd_drift == k % RND_DRIFTS && pr.lowcut >> 8 == k % RND_DRIFTS;
         }
         settings_rnd_drift = 0;
-        bad += check("RND MENU: REC BUTTON turned right from RND: FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE "
+        bad += check("RND MENU: REC BUTTON turned right from RND: FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE PHASE "
                      "(their bits and variants)", steps_ok);
         bad += check("RND MENU: ..each saved and loaded with the settings, DRIFT beside it", saved_ok);
         turn(EN_K2, 1);
-        bad += check("RND MENU: ..CRATE is the last (right again: stays)", rnd_setting() == RND_CRATE);
+        bad += check("RND MENU: ..PHASE is the last (right again: stays)", rnd_setting() == RND_PHASE);
         for (k = 0; k < NELEM(steps) - 1u; k++) turn(EN_K2, -1);
         bad += check("RND MENU: ..left back to FALL", rnd_setting() == RND_FALL && settings_rnd_variant == 1u);
         turn(EN_K2, -1);
@@ -6946,6 +6946,101 @@ static int test_rnd(void)
             bad += check("RND CRATE: ..DRIFT FAST on: the record as it was rolled", rnd_hash_of(0) == h && rnd_drift_s.steps == s0);
             settings_rnd_drift = was;
         }
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* PHASE: one cell on two tracks, one moving ahead (Reich) */
+        uint32_t r, tr, k, pair = 1, cell = 1, bed_ok = 1, even = 1, dry = 1, quiet = 0, clipped_n = 0, thirds = 0, tempo_ok = 1;
+        uint32_t heavy3 = 0, kinds[3] = {0}, moved = 1, met = 1, still = 1;
+        rnd_mode_put(RND_PHASE);
+        press(B_REC);
+        bad += check("RND PHASE: REC tapped: a roll, PHASE and the seed said", !memcmp(ui.msg, "PHASE ", 6));
+        for (r = 0; r < 200u; r++) {
+            const track_t *a = &trk[RND_PH_A], *b = &trk[RND_PH_B];
+            int32_t bpm;
+            uint32_t ncopy = rnd_ph.third ? 3u : 2u, nheavy = 0;
+            rnd_roll();
+            ncopy = rnd_ph.third ? 3u : 2u;
+            bpm = pid_get(PID_GLOBAL(G_BPM), 0);
+            tempo_ok &= a->eng_req == ENGI_FM6 ? bpm >= 160 && bpm <= 184 && a->p[P_SDIV] == 1 :
+                                                 bpm >= 88 && bpm <= 104 && a->p[P_SDIV] == 2;
+            kinds[a->eng_req == ENGI_FM6 ? 0 : a->eng_req == ENGI_ORACLE ? 1 : 2]++;
+            for (tr = 1; tr < ncopy; tr++) {        /* (the copies: one sound, one cell) */
+                const track_t *c = &trk[tr];
+                pair &= c->eng_req == a->eng_req && c->preset == a->preset && c->p[P_LEVEL] == a->p[P_LEVEL] &&
+                        c->p[P_SDIV] == a->p[P_SDIV] && c->p[P_SGATE] == a->p[P_SGATE] && c->p[P_VOICE] == a->p[P_VOICE] &&
+                        !memcmp(&c->p[P_E0], &a->p[P_E0], 8u * sizeof a->p[0]) && c->p[P_ATK] == a->p[P_ATK] &&
+                        c->p[P_REL] == a->p[P_REL] && !memcmp(or_patch[tr], or_patch[RND_PH_A], OR_N) &&
+                        (a->eng_req != ENGI_FM6 || !memcmp(fm6_patch[tr], fm6_patch[RND_PH_A], FP_SIZE));
+                cell &= tessera.mode[tr] == TESS_ENG_EUCLID && tessera.euclid[tr].steps == tessera.euclid[0].steps &&
+                        tessera.euclid[tr].pulses == tessera.euclid[0].pulses && tessera.euclid[tr].rot == tessera.euclid[0].rot &&
+                        tessera.seed[tr] == tessera.seed[0];
+            }
+            cell &= tessera.mode[0] == TESS_ENG_EUCLID && tessera.euclid[0].pulses * 3u >= tessera.euclid[0].steps * 2u - 2u &&
+                    b->p[P_PAN] > 0 && a->p[P_PAN] < 0;
+            thirds += rnd_ph.third;
+            heavy3 += rnd_ph.third && a->eng_req != 6u;
+            for (tr = 0; tr < NTRK; tr++) {
+                nheavy += trk[tr].eng_req == ENGI_FM6 || trk[tr].eng_req == ENGI_ORACLE;
+                even &= pid_get(PID_TESS(TX_TW_DROP), tr) == 0 && pid_get(PID_TESS(TX_TW_HUMAN), tr) == 0 &&
+                        pid_get(PID_TESS(TX_SUB_HUMAN), tr) == 0 && pid_get(PID_TESS(TX_FM_FORM), tr) == 0 &&
+                        pid_get(PID_TESS(TX_EV_EVERY), tr) == 0 && trk[tr].p[P_SSWING] == 0 &&
+                        trk[tr].eng_req != ENGI_PHYS;
+                dry &= trk[tr].p[P_FXTYPE] == FX_OFF && !trk[tr].p[P_FXSEND];
+            }
+            heavy3 += nheavy > 3u;
+            bed_ok &= tessera.mode[RND_PH_BED] == TESS_ENG_CHORD && trk[RND_PH_BED].p[P_LEVEL] < a->p[P_LEVEL];
+            for (k = 0; k < CORD_LIVE; k++) dry &= !cord_get(k)->amount;
+            if (r % 40u == 0u) {                    /* listen: 12 s */
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t bb, j;
+                if (!song.playing) transport_req = 1;
+                for (bb = 0; bb < 12u * FS / CTL; bb++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
+                }
+                quiet += peak < 300;
+                clipped_n += peak >= 32767;
+            }
+        }
+        bad += check("RND PHASE: 200 rolls: the cell on tracks 1 and 2 (3 too, a TRIO cell's, now and then): one sound, "
+                     "one EUCLID cell (its length, hits, rotation, seed), dense, panned apart", pair && cell && thirds > 30u);
+        bad += check("RND PHASE: ..FM6's mallets on 1/8 at 160-184 BPM, ORACLE's and TRIO's on 1/16 at 88-104; each kind",
+                     tempo_ok && kinds[0] > 20u && kinds[1] > 20u && kinds[2] > 40u);
+        bad += check("RND PHASE: ..three FM6 or ORACLE tracks at most, and no heavy third copy", !heavy3);
+        bad += check("RND PHASE: ..track 4 a CHORD bed under the cell; even (nothing dropped, no HUMAN, FORM, EVOLVE, "
+                     "swing, PHYS); dry, no cords; heard within 12 s, none at the rail", bed_ok && even && dry && !quiet && !clipped_n);
+        {                                           /* the process: B a step ahead every hold bars, whatever DRIFT */
+            uint8_t was = settings_rnd_drift;
+            uint32_t n, d0, bars, gone, seed0;
+            settings_rnd_drift = 0;
+            rnd_roll();
+            n = rnd_ph.steps;
+            rnd_play_bars(1);
+            d0 = (tessera.euclid[RND_PH_B].step_idx + n - tessera.euclid[RND_PH_A].step_idx) % n;
+            still &= d0 == 0u;                      /* (in unison first) */
+            rnd_play_bars(rnd_ph.hold + 1u);
+            d0 = (tessera.euclid[RND_PH_B].step_idx + n - tessera.euclid[RND_PH_A].step_idx) % n;
+            moved &= d0 == 1u && rnd_ph.moved_b == 1u;
+            rnd_play_bars(rnd_ph.hold * 2u);
+            d0 = (tessera.euclid[RND_PH_B].step_idx + n - tessera.euclid[RND_PH_A].step_idx) % n;
+            moved &= d0 == 3u;
+            seed0 = tessera.seed[RND_PH_A];
+            for (bars = 0, gone = 0; bars < (n + 2u) * rnd_ph.hold && !gone; bars++) {
+                rnd_play_bars(1);
+                gone = tessera.seed[RND_PH_A] != seed0 || rnd_ph.moved_b == 0u;
+            }
+            n = rnd_ph.steps;
+            rnd_play_bars(1);
+            met &= gone && tessera.seed[RND_PH_A] == tessera.seed[RND_PH_B] &&
+                   (tessera.euclid[RND_PH_B].step_idx + n - tessera.euclid[RND_PH_A].step_idx) % n == 0u;
+            settings_rnd_drift = was;
+        }
+        bad += check("RND PHASE: ..in unison first; B a step ahead after HOLD bars, three after three HOLDs (DRIFT OFF too)",
+                     still && moved);
+        bad += check("RND PHASE: ..B round to A again: a new cell, the two in unison", met);
+        printf("rnd: PHASE: FM6 %u, ORACLE %u, TRIO %u cells; a third copy %u of 200\n", kinds[0], kinds[1], kinds[2], thirds);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);

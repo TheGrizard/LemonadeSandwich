@@ -811,7 +811,7 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 ## RND: one button, a new piece
 
 After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **FALL**, **TIDE**, **LOOPS**, **ORBIT**,
-**WOZZA**, **HALO**, **MIRROR** or **CRATE**, below, in that order) and REC becomes a roll:
+**WOZZA**, **HALO**, **MIRROR**, **CRATE** or **PHASE**, below, in that order) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -979,6 +979,19 @@ player's (a few milliseconds late now and then), on the grid otherwise: send MID
 tempo to the BPM on the screen. DRIFT leaves CRATE alone: roll again for another record. No effects, as every roll.
 The screen shows **CRATE** and the seed.
 
+**PHASE.** With REC BUTTON on **PHASE**, a roll is a phase piece after Steve Reich (Piano Phase, Clapping Music,
+Drumming). **Tracks 1 and 2** play one short, bright cell, the same sound and the same notes (a EUCLID cell of 8 to 16
+steps, nearly every step a note), panned left and right. They start in unison. After about 10 to 16 seconds track 2
+moves one step ahead and stays there, and new patterns come out of the way the two lock together. A while later it
+moves another step, and so on, until the two meet in unison again. Then a new cell begins on the next bar line.
+**Track 3** is a third copy that moves a step back half as often (TRIO cells only), or a low pulse of a few notes on
+the cell's length. **Track 4** is a soft chord bed under it all: one chord or two, four or two bars each, pulsing on
+every step of a slower clock or held and breathing. The cell is on TRIO's bright pulses, FM6's mallets (marimbas,
+mallet, kalimba, tines: on 1/8 at 160 to 184 BPM) or ORACLE's plucks (on 1/16 at 88 to 104 BPM). The key is pentatonic
+or modal. Every note is even, with no human timing, nothing dropped and no swing, because that evenness is the point.
+The phasing is the piece, so it goes on whatever **DRIFT** says (DRIFT FAST holds each place half as long), and DRIFT
+changes nothing else. No effects and no cords. The screen shows **PHASE** and the seed.
+
 **The key's relative, in the other modes.** With **DRIFT** on, FALL, LOOPS, ORBIT and WOZZA also move
 the key, on HALO's clock about a third of the time: to its relative on the same notes (major to minor, minor to
 major; dorian and phrygian to their notes' major, lydian and mixolydian to their notes' minor), and home the next time.
@@ -1018,7 +1031,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |
