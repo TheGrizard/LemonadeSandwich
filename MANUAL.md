@@ -65,8 +65,8 @@ On the home page each track's tile shows its sound and engine. **ALGORITHM** pic
 the left knob, with MENU > TRACK KNOB set to LEFT), and **SELECT** turns the pages of the section shown (on the home
 page, the tempo). When a section has more pages than the footer's tabs show, the header gives the page's place (4/10:
 SEQ counts GEN's pages and the sequencer's together, the way the button goes through them) and arrows at the footer's
-ends say more pages lie that way. The four sounds a new project starts with are an ambient set: **GLASS PAD**
-and **BELLS** and **ORGAN** (a bass) on FM6, and **STRING MACH** on TRIO. (Track 2 is a TRIO pad so that
+ends say more pages lie that way. The four sounds a new project starts with are an ambient set: **WARM PAD**
+and **SQUARE LEAD** on ORACLE, and **STRING MACH** and **SUB BASS** on TRIO. (Track 2 is a TRIO pad so that
 generators on both pads stay within what the FM-1 can play: see [How many voices at once](#how-many-voices-at-once).) A new project has no mods, so nothing moves until
 you patch it.
 
@@ -138,7 +138,9 @@ key skips it.
 
 ## Sounds
 
-LEMONADE SANDWICH has four engines on the device (DRUM is out: drums come from another machine):
+LEMONADE SANDWICH has three engines on the device: ORACLE, TRIO and PHYS. FM6 is out (its tines and bells sounded
+cheap; Plaits models are to take its room), and so is DRUM (drums come from another machine). FM6 is described below
+for the builds that keep it.
 
 | Engine | What it is |
 |---|---|
@@ -153,7 +155,7 @@ LEMONADE SANDWICH has four engines on the device (DRUM is out: drums come from a
 MODAL's overtones in tune from 16 to 48, a chime's near 84 and a marimba's at the top (the picture names where it
 is); a dull, short or bowed sound is as loud as a bright one. An old project's PHYS track (one not saved again
 since 2.0, which turned it into FM6) plays PHYS again, a little differently towards the ends of the knobs. **SID** is no longer in the device build, and neither is CZ-1: a track saved
-with SID loads FM6's INIT, and so does a track saved with **DRUM**, which is out of the device build too (no drum grid). DRUM's SID KIT
+with SID, **FM6** or **DRUM** loads TRIO's first voice, its common settings kept (no drum grid). DRUM's SID KIT
 and SID DIGI are out too (2.2, for flash room): a track saved with KIT SID loads as the 909. FM6 and TRIO presets have
 releases that ring out, so short sequenced notes are not cut off. The slow pads (GLASS PAD, SOFT PAD, DEEP PAD, PAD,
 STRINGS) swell in slowly: they speak on long notes and drones, and stay quiet on short steps.

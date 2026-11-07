@@ -6330,8 +6330,8 @@ static int test_rnd(void)
                  "very long tails on two tracks at most", fx_ok && tails_ok);
     bad += check("RND: ..ORACLE's patches in range, an oscillator and a level up", oracle_ok);
     bad += check("RND: ..a handful of mods, nothing past the live cords", cords_ok);
-    bad += check("RND: ..the instrument engines all picked, most generators, modes and stranger tunings",
-                 (engines_seen & (1u << ENGI_FM6)) && (engines_seen & (1u << ENGI_ORACLE)) &&
+    bad += check("RND: ..ORACLE and TRIO picked, FM6 never, most generators, modes and stranger tunings",
+                 !(engines_seen & (1u << ENGI_FM6)) && (engines_seen & (1u << ENGI_ORACLE)) &&   /* (FM6 in no roll) */
                  __builtin_popcount(gens_seen) >= 10 && scales_seen == 3u);
     printf("rnd: %u of %u rolls listened to: %u silent, %u loud (peak > -6 dBFS), %u clipping\n", heard, heard, silent,
            loud, clipped);
@@ -6445,8 +6445,11 @@ static int test_rnd(void)
             uint32_t chordt = 0;
             rnd_roll();
             for (tr = 0; tr < NTRK; tr++) {
-                trio &= trk[tr].eng_req == 6u && trk[tr].p[P_E0] == 4 && trk[tr].p[P_E0 + 4u] == 0 &&
-                        trk[tr].p[P_LD_AMP] == 0;
+                const track_t *t = &trk[tr];        /* (the melodies ORACLE's leads; the rest TRIO's triangles) */
+                trio &= rnd_role_of[tr] == RND_ROLE_MELODY ?
+                            t->eng_req == ENGI_ORACLE && (t->preset == 21u || t->preset == 17u || t->preset == 18u || t->preset == 11u) :
+                            t->eng_req == 6u && t->p[P_E0] == 4 && t->p[P_E0 + 4u] == 0;
+                trio &= t->p[P_LD_AMP] == 0;
                 chordt += tessera.mode[tr] == TESS_ENG_CHORD;
                 falls += tessera.mode[tr] == TESS_ENG_BOUNCE && pid_get(PID_TESS(TX_BNC_BALLS), tr) == 5;
             }
@@ -6467,7 +6470,8 @@ static int test_rnd(void)
                        trk[2].p[P_TRANS], trk[3].p[P_TRANS], peak);
             }
         }
-        bad += check("RND FALL: 200 rolls: every track TRIO on three triangles (TRI3, LP), no tremolo; effects (clean)", trio);
+        bad += check("RND FALL: 200 rolls: the melodies on ORACLE's FLUTE, SQUARE LEAD, VOX or KEYS, the rest TRIO on three "
+                     "triangles (TRI3, LP), no tremolo; effects (clean)", trio);
         bad += check("RND FALL: ..the ambient roles, an octave each; the melodies falling (BOUNCE's FALL) often",
                      roles_ok && falls >= 150u);
         bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
@@ -6977,7 +6981,7 @@ static int test_rnd(void)
             for (k = 0; k < CORD_LIVE; k++) nc += cord_get(k)->amount != 0;
             cords_ok &= nc >= 4u && nc <= 6u;
             fx_ok &= trk[RND_ST_DRIVE].p[P_FXTYPE] == FX_SPIT && ins <= 2u && song.g[G_MFXTYPE] == FX_OFF;
-            heavy &= orc <= 1u && fm <= 1u;
+            heavy &= orc <= 1u && !fm;
             kinds |= 1u << (trk[RND_ST_NOISE].p[P_E0] == 8 || trk[RND_ST_NOISE].p[P_E0] == 7 ? 0 : 3);
             kinds |= (trk[RND_ST_FIZZ].eng_req == ENGI_FM6 ? 2u : trk[RND_ST_FIZZ].p[P_E0] >= 9 ? 4u : 8u);
             if (r % 40u == 0u) {                    /* listen: 12 s */
@@ -6994,8 +6998,8 @@ static int test_rnd(void)
         }
         bad += check("RND STATIC: 200 rolls: the bed a held CHORD on track 1; the noise, fizz, drive on 2 to 4 held, slow, on "
                      "its chord (QUANTIZE CHRD); 60-80 BPM", roles && tempo_ok);
-        bad += check("RND STATIC: ..the noise TRIO's noise, the fizz FM6's feedback or TRIO's ring and sync; ORACLE, FM6 once "
-                     "each at most, no PHYS", (kinds & 1u) && (kinds & 2u) && (kinds & 4u) && !(kinds & 8u) && heavy);
+        bad += check("RND STATIC: ..the noise TRIO's noise, the fizz TRIO's ring and sync; ORACLE once at most, no FM6, no "
+                     "PHYS", (kinds & 1u) && !(kinds & 2u) && (kinds & 4u) && !(kinds & 8u) && heavy);
         bad += check("RND STATIC: ..SPIT on the drive, one more insert (SPIT, TAPE) at most, no sends; its cords (S&H fizz); "
                      "heard within 12 s, none at the rail", fx_ok && cords_ok && !quiet && !clipped_n);
         {                                           /* the process: built up, a wall, the collapse, built again */
@@ -7088,8 +7092,8 @@ static int test_rnd(void)
         }
         bad += check("RND PHASE: 200 rolls: the cell on tracks 1 and 2 (3 too, a TRIO cell's, now and then): one sound, "
                      "one EUCLID cell (its length, hits, rotation, seed), dense, panned apart", pair && cell && thirds > 30u);
-        bad += check("RND PHASE: ..FM6's mallets on 1/8 at 160-184 BPM, ORACLE's and TRIO's on 1/16 at 88-104; each kind",
-                     tempo_ok && kinds[0] > 20u && kinds[1] > 20u && kinds[2] > 40u);
+        bad += check("RND PHASE: ..ORACLE's plucks and TRIO's pulses on 1/16 at 88-104 BPM, each often; no FM6",
+                     tempo_ok && !kinds[0] && kinds[1] > 50u && kinds[2] > 50u);
         bad += check("RND PHASE: ..three FM6 or ORACLE tracks at most, and no heavy third copy", !heavy3);
         bad += check("RND PHASE: ..track 4 a CHORD bed under the cell; even (nothing dropped, no HUMAN, FORM, EVOLVE, "
                      "swing, PHYS); dry, no cords; heard within 12 s, none at the rail", bed_ok && even && dry && !quiet && !clipped_n);

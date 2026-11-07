@@ -362,6 +362,8 @@ if core && [ $TABLES = 1 ]; then
         engine_switch_fm:engine_switch_test $FW -DMELODEE_SID=0 -DMELODEE_SID_KIT=0 -DMELODEE_PHYS=0 -DMELODEE_CZ=0 -DMELODEE_ORACLE=0
     t "engines off (SID, PHYS, DRUM, CZ-1, ORACLE left out): DRUM's tracks FM6's first voice, no drum grid, the parts play" \
         engine_switch_drum:engine_switch_test $FW -DMELODEE_SID=0 -DMELODEE_SID_KIT=0 -DMELODEE_PHYS=0 -DMELODEE_DRUM=0 -DMELODEE_CZ=0 -DMELODEE_ORACLE=0
+    t "engines off as the device (FM6, SID, DRUM, CZ-1 out): their tracks TRIO's first voice, ORACLE and TRIO at power-on" \
+        engine_device_test $FW -DMELODEE_FM6=0 -DMELODEE_SID=0 -DMELODEE_SID_KIT=0 -DMELODEE_DRUM=0 -DMELODEE_CZ=0
     t "editor: real C protocol, malformed transfers and queue recovery" editor_test $FW
     t "DX7 librarian: USB voice/bank receive, dump replies and malformed frame recovery" fm6_sysex_test $FW
     t "SWING: track + global at most 100, sequencer step lengths, the SWG display" swing_test -O2 $FW

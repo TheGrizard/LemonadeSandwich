@@ -232,7 +232,7 @@ static uint32_t eng_rank(uint32_t e)
 {
     uint32_t n;
     if (!eng_ok(e))
-        e = ENGI_FALLBACK;                       /* (a retired or reserved engine: FM6's place, or SID's) */
+        e = ENGI_FALLBACK;                       /* (a retired or reserved engine: FM6's place, SID's or TRIO's) */
     for (n = 0; n < NENG_SHOWN && ENGINE_ORDER[n] != e; n++)
         ;
     return n < NENG_SHOWN ? n : 0u;
@@ -256,10 +256,14 @@ static const uint8_t TRK_DEF[NPART][2] = {
                                                      * in the device build 2026-10-31: its start stays FM6's) */
 #elif MELODEE_SID
     {ENGI_SID, 26},                                 /* (without it: SID BELL RING) */
-#else
+#elif MELODEE_FM6
     {ENGI_FM6, 16},                                 /* FM6 GLASS PAD, the drone (FM back, PHYS and SID out: 2026-10-21) */
+#elif MELODEE_ORACLE
+    {ENGI_ORACLE, 1},                               /* ORACLE WARM PAD, the drone (FM6 out too: 2026-11-07) */
+#else
+    {6, 15},                                        /* TRIO SWEEP PAD */
 #endif
-#if MELODEE_FM6
+#if MELODEE_FM6 || !MELODEE_SID
     {6, 6},                                         /* TRIO STRING MACH (2026-10-28: two FM6 pads under generators
                                                      * crackle, past the FM-1's six-operator limit; was FM6 STRINGS) */
 #else
@@ -267,13 +271,19 @@ static const uint8_t TRK_DEF[NPART][2] = {
 #endif
 #if MELODEE_SID
     {3, 0},                                         /* SID INIT SID */
-#else
+#elif MELODEE_FM6
     {ENGI_FM6, 11},                                 /* FM6 BELLS (without SID; was KALIMBA) */
+#elif MELODEE_ORACLE
+    {ENGI_ORACLE, 17},                              /* ORACLE SQUARE LEAD (without FM6) */
+#else
+    {6, 10},                                        /* TRIO SOFT LEAD */
 #endif
 #if MELODEE_DRUM
     {ENGI_DRUM, 0}};                                /* DRUM KIT */
-#else
+#elif MELODEE_FM6
     {ENGI_FM6, 6}};                                 /* FM6 ORGAN, a bass (without DRUM) */
+#else
+    {6, 9}};                                        /* TRIO SUB BASS (without DRUM and FM6) */
 #endif
 /* the power-on presets when project format 1 was written (project.c PROJ_DEF_SOUND): fixed, whatever TRK_DEF becomes */
 static const uint8_t TRK_DEF_V1[NPART] = {4, 4, 0, 0};

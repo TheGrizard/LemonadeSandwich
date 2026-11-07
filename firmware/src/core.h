@@ -86,9 +86,11 @@
 #define TRIO_ON (MELODEE_TRIO || MELODEE_LEGACY_EXTRAS)
 #define PHYS_ON (MELODEE_PHYS || MELODEE_LEGACY_EXTRAS)
 #define ENGI_SID 3u
-#define ENGI_FALLBACK (MELODEE_FM6 ? 12u : ENGI_SID)   /* a retired engine's place (eng_rank, the designer, project.c) */
-#if !MELODEE_FM6 && !MELODEE_SID
-#error "MELODEE_FM6 or MELODEE_SID: one of them is the place of an engine left out"
+#define ENGI_FALLBACK (MELODEE_FM6 ? 12u : MELODEE_SID ? ENGI_SID : 6u)   /* a retired engine's place (eng_rank, the
+                                                   * designer, project.c): FM6, SID, or TRIO (LEMONADE SANDWICH's device
+                                                   * build: both out, 2026-11-07) */
+#if !MELODEE_FM6 && !MELODEE_SID && !TRIO_ON
+#error "MELODEE_FM6, MELODEE_SID or MELODEE_TRIO: one of them is the place of an engine left out"
 #endif
 #define ENGI_CZ 15u      /* retired (the CZ-1) */
 #define ENGI_ORACLE 19u  /* ORACLE (the Prophet's ID until 2026-10-22); 16..18 reserved: historical preset namespaces */
