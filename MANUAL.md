@@ -821,11 +821,11 @@ After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **FALL**,
 
 What a roll writes, every one an ordinary setting you can then change on its page:
 
-- **The sound** of each track: an instrument engine (two of FM6, ORACLE and PHYS at most, one of each, the rest
-  TRIO; never DRUM) and one of its presets,
+- **The sound** of each track: an instrument engine (FM6 and ORACLE once each at most, the rest TRIO; never DRUM,
+  never PHYS: no roll uses it, it stays to play by hand) and one of its presets,
   pushed a long way from where it started: the engine's eight (EDIT), the envelope (slow swells or hard snaps, long
   releases), the LFO, the voice mode (never UNISON), glide and spread, the register (TRN: an octave or two down, a fifth or an
-  octave up). On ORACLE the patch itself too, often with noise in it. At most one FM6 and one PHYS track a roll
+  octave up). On ORACLE the patch itself too, often with noise in it. At most one FM6 and one ORACLE track a roll
   (the FM-1's CPU).
 - **What plays**: a generator on each track (TURING, EUCLID, MARKOV, MORPH, BOUNCE, AWAKE, POLY, QUAD,
   CONSTELLATION, SERIES or one CHORD track) with its settings, EVOLVE and now and then a FORM, TWEAK's DROP and
@@ -891,8 +891,8 @@ sub kept in its octave). No effects, as every roll. The screen shows **TIDE** an
 length of its own (four of 7, 9, 11, 13, 15, 17, 19 and 23 steps), one to three notes in it, all four on one slow DIV
 (1/4, 1/8 or 1/2). The loops drift against each other and seldom line up the same way twice. Nothing is dropped, there
 is no ratchet or swing, and no cord moves a generator, so each loop stays as it is (now and then one changes a little
-every 16 bars: EVOLVE). The four are gentle and long: a **felt piano** in the middle (PHYS' hammered string, as
-WOZZA's; FM6's tines without PHYS), two **warm pads** an octave below and above it (HALO's triangles: a slow swell,
+every 16 bars: EVOLVE). The four are gentle and long: a **piano** in the middle (ORACLE's PLUCK, Poly-Mod and
+ringing; FM6's tines without ORACLE), two **warm pads** an octave below and above it (HALO's triangles: a slow swell,
 held), and a **glass** two octaves up (FALL's triangles, a soft onset), panned apart. Every note rings on with a long
 release, so the loops overlap. The key is pentatonic (major or minor), so no two notes clash. The first loop starts
 on its first step, so a roll is heard at once. The screen shows **LOOPS** and the seed.
@@ -908,13 +908,12 @@ mode, each track in an octave of its own; slow cords may move the balls and the 
 reference tracks measured on the PC (their tempo, keys, timing, timbre and lo-fi). It sets a slow tempo (72 to 84 BPM;
 held REC brings yours back) and a plain key (major pentatonic or major mostly; minor pentatonic, minor, dorian or
 lydian now and then), and deals four parts in a random order. The **bed** is a dark pad on TRIO (WARM, HOLLOW or SOFT
-PAD, FIFTH DRONE, STRING MACH; FM6 and PHYS are kept for the pianos): two to four notes, a bar to four bars each, held
+PAD, FIFTH DRONE, STRING MACH; FM6 and ORACLE are kept for the pianos): two to four notes, a bar to four bars each, held
 (SERIES, so it never drops out), low or now and then in the middle, a slow tremolo now and then. The **ostinato** is
 two notes taking turns (SERIES on a two-step loop, a third, fourth or fifth apart), a beat or two each, soft. The **melody** is an itty bitty line on a few notes, with repeats, short phrases and
 gaps (a short, nearly locked TURING, AWAKE or a sparse MARKOV, with DROP; on the beat, now and then a note struck two or
-three times), piano mostly, struck and ringing: PHYS' string made a piano (stiff, hammered near its end, soft, long)
-or FM6's electric pianos (TINE EP, DX TINE), now and then VIBES, KALIMBA, MARIMBA or KOTO WARM. The ostinato is a low
-piano too when one is left (FM6 and PHYS once each a roll), otherwise TRIO's pads plucked. The fourth part is the **texture** (TRIO's noise, low and dark: a rumble or a hiss, held
+three times), struck and ringing: ORACLE's PLUCK (Poly-Mod, ringing) or FM6's electric pianos (TINE EP, DX TINE), now and then
+KALIMBA or KOTO WARM. The ostinato is struck too when one is left (FM6 and ORACLE once each a roll), otherwise TRIO's pads plucked. The fourth part is the **texture** (TRIO's noise, low and dark: a rumble or a hiss, held
 under it all) or, in a quarter of the rolls, a second melody, higher and sparser. Every pitched part wobbles like worn
 tape (the LFO a sine at about 2.5 Hz, a fifth of a semitone on the pitch, as the references' wow measured), and every
 step plays a little late by a new amount (TIMING HUMAN), so the parts sit off the grid. Cords move the bed's and
@@ -927,7 +926,7 @@ then), four parts in a random order. The **halo** is a warm TRIO pad (WARM, HOLL
 the tonic triad (CHORD on DRONE, now and then TWO: I and IV), four bars a chord, swelling in slowly, quiet, breathing.
 The **M-voice** is a slow line, mostly by step (SERIES a degree at a time, FALL's falling leaves, or a loose TURING), on
 FALL's three triangles, warmer and hazier (detuned a little, the filter lower). The **T-voice** is bells (FM6's ZEN
-BELL, RIN, BELL, TINE EP or FURIN; PHYS' VIBES; TRIO's RING BELL) that follow the M-voice (TWEAK FOLLOW) on its clock
+BELL, RIN, BELL, TINE EP or FURIN; ORACLE's POLY BELLS; TRIO's RING BELL) that follow the M-voice (TWEAK FOLLOW) on its clock
 onto the nearest note of the halo's triad (QNT CHRD): Pärt's tintinnabuli voice, an octave above the line or below it
 (beside a high line, or below it). The **canon** follows the M-voice too, half as fast, held, an octave down (a high
 line's mostly in its own octave): the slow voice of a mensuration canon, on the triangles or FM6's SOFT PAD or SOFT
@@ -953,7 +952,7 @@ STRINGS, or TRIO's SOFT PAD on a sharper wave; in twelve notes a CHORD track (DR
 or pulsing on the beat or off it), off them a cluster of two or three notes taking turns, held. The **line** is digital
 (SID's C64 KEYS, ARP PLUCK, COIN PLUCK, BELL RING, TRI ORGAN or 8580 LEAD; FM6's DX TINE, MALLET, STEEL DRUM or DX
 MARIMBA; TRIO on SST, PPT or PLS3), by step or not (SERIES, TURING, BOUNCE, MARKOV or AWAKE), on 1/16 to 1/4, tight.
-The **mirror** is glass bells (FM6's BELLS, TUBULAR, FURIN, RIN or BELL; PHYS' VIBES; ORACLE's POLY BELLS; SID's BELL
+The **mirror** is glass bells (FM6's BELLS, TUBULAR, FURIN, RIN or BELL; ORACLE's POLY BELLS; SID's BELL
 RING) following the line: onto the halo's chord (QNT CHRD, the tintinnabuli voice) or in parallel a few degrees off
 (TWEAK SHIFT; always, off twelve notes), on the line's clock or twice as fast, now and then stuttering (ratchets). The
 **canon** is the line again an octave down (SID, ORACLE or TRIO), half as fast or across it in triplets. No wow: the
@@ -971,10 +970,10 @@ the chorus, C the bridge), 4 or 8 bars each, all written at the roll, so every s
 each time and loops and chops cleanly. Press REC and it plays from the top of A. Always the same four, on the same
 tracks. **Track 1, the keys:** seventh chords (now and then plain triads), four a section from a book of vamps and
 soul turns (i to IV, I vi IV V, IV iii ii I and others), stabbed on and off the beat or on the eighths and sixteenths
-(FM6's clavinet or electric pianos, PHYS' vibes), or held (an organ, drawbars or strings). **Track 2, the bass:**
+(FM6's clavinet or electric pianos, ORACLE's KEYS or CLAV), or held (an organ, drawbars or strings). **Track 2, the bass:**
 low, onto the chord's notes, a fixed line each section: funk's sixteenths jumping octaves about half the time, else
-soul's eighths, on FM6's bass, PHYS' plucked string or TRIO. **Track 3, the hook:** a fixed phrase for each section on
-horns, a flute, vibes, or TRIO's flute or muted horn. **Track 4, the strings** (three rolls in four): a lush, slow line
+soul's eighths, on TRIO, a square or a triangle. **Track 3, the hook:** a fixed phrase for each section on FM6's
+horns or flute, ORACLE's FLUTE or SQUARE LEAD, or TRIO's flute or muted horn. **Track 4, the strings** (three rolls in four): a lush, slow line
 by step onto the chord's notes, a note every half or whole bar, swelling in, wide, with a slight vibrato (TRIO's
 string machine or pads, or FM6's strings); otherwise a quieter second voice answering the hook. The timing is a
 player's (a few milliseconds late now and then), on the grid otherwise: send MIDI clock to your sampler, or set its
@@ -996,7 +995,7 @@ LOOPS), a cord's depth nudged; in RND also now and then a new generator or a who
 and the guard as for a roll). FALL, LOOPS and ORBIT nudge by less. Held REC (before the roll) pauses it; any mode, works with all of them.
 
 **Kept playable.** The FM-1 crackles when it has more voices to work out than it has time for (see [How many voices
-at once](#how-many-voices-at-once)), so a roll stays inside what it can play: two of FM6, ORACLE and PHYS at most (each costs about twice TRIO),
+at once](#how-many-voices-at-once)), so a roll stays inside what it can play: FM6 and ORACLE once each at most (each costs about twice TRIO),
 the effects within a CPU budget, no UNISON, FM6 never on a fast division (1/16, 8T), the chord keys and ratchets only on slow tracks, short tails on fast
 tracks (and often MONO or LEGATO, one voice a line), shorter tails on a CHORD track, very long tails on two tracks at
 most, and POLY with two or three rhythms. The tracks' levels sit under the default (72 to 96) so four rough sounds

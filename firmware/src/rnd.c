@@ -228,11 +228,14 @@ static void rnd_take(void)
 }
 
 /* ------------------------------------------------------------ the roll: sound --- */
+/* PHYS: in no roll (heard: its sounds skewed the tracks, cheap; the engine stays to play by hand) */
+static int rnd_phys_ok(void) { return 0; }
 /* a track's knob, as a roll or DRIFT sets it. TRIO's INT2 and INT3: the nearest unison, octave or fifth (-24 -17 -12
  * -5 0 7 12 19 24), every roll and nudge (a semitone or a tritone off, heard: out of tune; DTN's cents kept) */
 static void rnd_tp(uint32_t tr, uint32_t id, int32_t v)
 {
-    if ((id == P_E0 + 1u || id == P_E0 + 2u) && trk[tr].eng_req == 6u) {
+    if (((id == P_E0 + 1u || id == P_E0 + 2u) && trk[tr].eng_req == 6u) ||
+        ((id == P_E0 + 2u || id == P_E0 + 3u) && trk[tr].eng_req == ENGI_ORACLE)) {   /* (ORACLE's TUNE A, B too) */
         int32_t o = (v + 48) / 12 * 12 - 48, r = v - o;   /* (the octave below or at v, and how far over) */
         v = o + (r < 4 ? 0 : r < 10 ? 7 : 12);      /* (0..3: the octave; 4..9: its fifth; 10, 11: the next) */
         v = v > 24 ? 19 : v;
@@ -291,7 +294,8 @@ static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, ui
     uint8_t code[NENG_SHOWN], w[NENG_SHOWN];
     uint32_t n = 0, k, full = *fm6s + *phys + *oracles >= RND_HEAVY;
     if (rnd_fall && eng_ok(6u)) return 6u;          /* (FALL: TRIO on every track) */
-    if (rnd_want_e != 0xFFu && eng_ok(rnd_want_e)) { /* (PULSE: its role's own engine) */
+    if (rnd_want_e != 0xFFu && eng_ok(rnd_want_e) && (rnd_want_e != ENGI_PHYS || rnd_phys_ok())) {   /* (a mode's
+                                                     * own engine for the role) */
         *fm6s += rnd_want_e == ENGI_FM6; *phys += rnd_want_e == ENGI_PHYS; *oracles += rnd_want_e == ENGI_ORACLE;
         return rnd_want_e;
     }
@@ -299,7 +303,7 @@ static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, ui
         uint32_t e = eng_vis(k), wt = rnd_engine_weight(e, role);
         if (!eng_ok(e) || e == ENGI_DRUM || !ENGINES[e]->npresets) continue;
         if (e == ENGI_FM6 && *fm6s) wt = 0u;
-        if (e == ENGI_PHYS && *phys) wt = 0u;
+        if (e == ENGI_PHYS && (*phys || !rnd_phys_ok())) wt = 0u;
         if (e == ENGI_ORACLE && *oracles) wt = 0u;      /* (one at most: as heavy as FM6) */
         if (full && (e == ENGI_FM6 || e == ENGI_PHYS || e == ENGI_ORACLE)) wt = 0u;
         code[n] = (uint8_t)e;
@@ -777,12 +781,15 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         static const uint8_t fp[] = {0, 8, 38, 19}, fw[] = {6, 5, 1, 1};   /* TINE EP, DX TINE, KOTO WARM, KALIMBA */
         static const uint8_t pp[] = {9, 4, 1}, pw[] = {2, 1, 1};           /* VIBES, KALIMBA, MARIMBA */
         uint32_t k = (uint32_t)rnd_rr(0, 99);
-        int ph = !*phys && eng_ok(ENGI_PHYS), fm = !*fm6s && eng_ok(ENGI_FM6);
+        int ph = !*phys && rnd_phys_ok(), fm = !*fm6s && eng_ok(ENGI_FM6), orc = !*oracles && eng_ok(ENGI_ORACLE);
         if (ph && (k < 50u || !fm)) rnd_want_e = ENGI_PHYS, rnd_want_pi = k < 92u || !fm ? 12 : rnd_pick(pp, pw, NELEM(pp));
+        else if (orc && (k < 60u || !fm)) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 9;   /* (PLUCK: Poly-Mod, ringing; PHYS'
+                                                     * piano gone) */
         else if (fm) rnd_want_e = ENGI_FM6, rnd_want_pi = k < 90u ? (rnd_pct(55) ? 0 : 8) : rnd_pick(fp, fw, NELEM(fp));
         else rnd_want_e = 6u, rnd_want_pi = 10;     /* (TRIO's SOFT LEAD) */
     } else if (role == RND_ROLE_OSTI) {             /* a low piano when one is left; else TRIO's pads plucked */
-        if (!*phys && eng_ok(ENGI_PHYS) && rnd_pct(75)) rnd_want_e = ENGI_PHYS, rnd_want_pi = 12;
+        if (!*phys && rnd_phys_ok() && rnd_pct(75)) rnd_want_e = ENGI_PHYS, rnd_want_pi = 12;
+        else if (!*oracles && eng_ok(ENGI_ORACLE) && rnd_pct(60)) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 9;   /* PLUCK */
         else if (!*fm6s && eng_ok(ENGI_FM6) && rnd_pct(75)) rnd_want_e = ENGI_FM6, rnd_want_pi = 0;
         else if (rnd_pct(30) && eng_ok(7u)) rnd_want_e = 7u, rnd_want_pi = 3;   /* (WHEEL's SOFT FLUTE, where built) */
         else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 8 : 5;        /* (SOFT PAD, WARM PAD) */
@@ -1032,7 +1039,7 @@ static void rnd_halo_tri(uint32_t tr)               /* FALL's three triangles, w
 static void rnd_halo_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     uint8_t nice = rnd_nice;
-    int ph = !*phys && eng_ok(ENGI_PHYS), fm = !*fm6s && eng_ok(ENGI_FM6);
+    int ph = !*phys && rnd_phys_ok(), fm = !*fm6s && eng_ok(ENGI_FM6);
     uint32_t e;
     if (role == RND_ROLE_CHORDS) {                  /* the halo: a warm pad */
         static const uint8_t tp[] = {5, 7, 8, 6}, tw[] = {4, 3, 3, 2};   /* WARM HOLLOW SOFT PAD, STRING MACH */
@@ -1044,8 +1051,10 @@ static void rnd_halo_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
         static const uint8_t fp[] = {30, 31, 1, 0, 33}, fw[] = {3, 3, 2, 2, 1};   /* ZEN BELL, RIN, BELL, TINE EP, FURIN */
         static const uint8_t pp[] = {9}, pw[] = {1};                              /* VIBES (BELL TREE: a glare; a bowl
                                                      * unbowed: silent) */
-        if (fm && (rnd_pct(55) || !ph)) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
+        int orc = !*oracles && eng_ok(ENGI_ORACLE);
+        if (fm && (rnd_pct(55) || (!ph && !orc))) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
         else if (ph) rnd_want_e = ENGI_PHYS, rnd_want_pi = rnd_pick(pp, pw, NELEM(pp));
+        else if (orc) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 10;   /* (POLY BELLS: PHYS' vibes gone) */
         else rnd_want_e = 6u, rnd_want_pi = 3;      /* (TRIO's RING BELL) */
     } else {                                        /* the canon: triangles or a soft pad, low (PHYS bowed: a
                                                      * hiss as often as not, measured) */
@@ -1272,7 +1281,7 @@ static int rnd_mr_micro(void)                       /* (off twelve notes: no cho
 static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     uint8_t nice = rnd_nice;
-    int ph = !*phys && eng_ok(ENGI_PHYS), fm = !*fm6s && eng_ok(ENGI_FM6), orc = !*oracles && eng_ok(ENGI_ORACLE);
+    int ph = !*phys && rnd_phys_ok(), fm = !*fm6s && eng_ok(ENGI_FM6), orc = !*oracles && eng_ok(ENGI_ORACLE);
     int sid = eng_ok(3u);
     uint32_t e, k = (uint32_t)rnd_rr(0, 99);
     if (role == RND_ROLE_CHORDS) {                  /* glass */
@@ -1932,19 +1941,18 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
 {
     uint8_t nice = rnd_nice;
     uint32_t e, k = (uint32_t)rnd_rr(0, 99);
-    int ph = !*phys && eng_ok(ENGI_PHYS), fm = !*fm6s && eng_ok(ENGI_FM6);
+    int ph = !*phys && rnd_phys_ok(), fm = !*fm6s && eng_ok(ENGI_FM6), orc = !*oracles && eng_ok(ENGI_ORACLE);
     int str = 0;
     if (role == RND_ROLE_CHORDS) {                  /* the keys: a clavinet, the electric pianos, an organ, strings */
         static const uint8_t fp[] = {13, 0, 8, 14, 6, 15}, fw[] = {6, 6, 2, 3, 2, 3};   /* CLAVINET, TINE EP, DX TINE,
                                                      * DRAWBARS, ORGAN, STRINGS */
-        if (fm && k < 88u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
+        if (fm && k < 80u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
         else if (ph && k < 94u) rnd_want_e = ENGI_PHYS, rnd_want_pi = 9;   /* VIBES */
+        else if (orc && k < 94u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(50) ? 11 : 12;   /* KEYS, CLAV */
         else rnd_want_e = 6u, rnd_want_pi = 6;      /* (TRIO's STRING MACH) */
         rnd_cr_lush = rnd_want_pi == 14u || rnd_want_pi == 6u || rnd_want_pi == 15u;   /* (held, not stabbed) */
-    } else if (role == RND_ROLE_BASS) {             /* an electric bass, near enough; or TRIO low */
-        if (fm && k < 50u) rnd_want_e = ENGI_FM6, rnd_want_pi = 10;   /* SOLID BASS */
-        else if (ph && k < 80u) rnd_want_e = ENGI_PHYS, rnd_want_pi = 2;   /* PLUCK */
-        else rnd_want_e = 6u, rnd_want_pi = 8;
+    } else if (role == RND_ROLE_BASS) {             /* TRIO's, a square or a triangle (asked: not PHYS' pluck, not FM6) */
+        rnd_want_e = 6u, rnd_want_pi = 8;
     } else if (role == RND_ROLE_COUNTER && k < 75u) {   /* the strings: lush, slow, wide */
         static const uint8_t tp[] = {6, 5, 7}, tw[] = {5, 3, 2};   /* STRING MACH, WARM PAD, HOLLOW PAD */
         str = 1;
@@ -1952,8 +1960,9 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         if (fm && k < 30u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pct(60) ? 15 : 25;   /* STRINGS, SOFT PAD */
         else rnd_want_e = 6u, rnd_want_pi = rnd_pick(tp, tw, NELEM(tp));
     } else {                                        /* the head (or a second voice): horns, a flute, vibes; TRIO's own */
-        if (fm && k < 50u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pct(55) ? 9 : 20;   /* BRASS SECT, FLUTE */
+        if (fm && k < 45u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pct(55) ? 9 : 20;   /* BRASS SECT, FLUTE */
         else if (ph && k < 70u) rnd_want_e = ENGI_PHYS, rnd_want_pi = 9;   /* VIBES */
+        else if (orc && k < 75u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(55) ? 21 : 17;   /* FLUTE, SQUARE LEAD */
         else rnd_want_e = 6u, rnd_want_pi = 10;     /* (TRIO's SOFT LEAD: made a flute or a muted horn below) */
     }
     rnd_nice = 1;
@@ -2453,9 +2462,11 @@ static uint8_t rnd_lp_phys, rnd_lp_glass;           /* the piano's track, the gl
 static void rnd_loops_voice(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     uint8_t nice = rnd_nice;
-    int piano = tr == rnd_lp_phys, ph = piano && !*phys && eng_ok(ENGI_PHYS), fm = piano && !ph && !*fm6s && eng_ok(ENGI_FM6);
-    rnd_want_e = ph ? ENGI_PHYS : fm ? ENGI_FM6 : 6u;
-    rnd_want_pi = ph ? 12u : fm ? 0u : 5u;          /* (the hammered string; TINE EP; TRIO's WARM PAD, made below) */
+    int piano = tr == rnd_lp_phys, ph = piano && !*phys && rnd_phys_ok();
+    int orc = piano && !ph && !*oracles && eng_ok(ENGI_ORACLE), fm = piano && !ph && !orc && !*fm6s && eng_ok(ENGI_FM6);
+    rnd_want_e = ph ? ENGI_PHYS : orc ? ENGI_ORACLE : fm ? ENGI_FM6 : 6u;
+    rnd_want_pi = ph ? 12u : orc ? 9u : fm ? 0u : 5u;   /* (the hammered string; ORACLE's PLUCK, ringing; TINE EP;
+                                                     * TRIO's WARM PAD, made below) */
     rnd_nice = 1;
     rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
     rnd_nice = nice;
@@ -3294,6 +3305,16 @@ static void rnd_expr_one(uint32_t tr, int32_t vel, int32_t key, int32_t sh, int3
     if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 5u, rnd_rr(2, 4));
     if (pid_get(PID_TESS(TX_TW_HUMAN), tr) < hu) rnd_tx(tr, TX_TW_HUMAN, hu);
 }
+/* ORACLE's PLUCK and POLY BELLS where PHYS' piano and vibes were (WOZZA, LOOPS, HALO, MIRROR): up, as loud as the
+ * part was (measured: 15 to 20 dB under the mix at the level PHYS' had) */
+static void rnd_orc_levels(void)
+{
+    uint32_t tr;
+    if (!rnd_wozza && !rnd_loops && !rnd_halo && !rnd_mirror) return;
+    for (tr = 0; tr < NTRK; tr++)
+        if (trk[tr].eng_req == ENGI_ORACLE && (trk[tr].preset == 9u || trk[tr].preset == 10u))
+            rnd_tp(tr, P_LEVEL, trk[tr].p[P_LEVEL] + 24);
+}
 /* the modes' expression: WOZZA soft, CRATE's keys biting, ORBIT lively, RND anywhere; FALL's and TIDE's lines only
  * (their drones, pads, kick and noise even). The others none */
 static void rnd_expression(void)
@@ -3438,6 +3459,7 @@ static void rnd_roll(void)
         else rnd_fx_dry();
         rnd_cords();
     }
+    rnd_orc_levels();
     rnd_expression();
     rnd_in_key();
     rnd_chord_prime();

@@ -6599,7 +6599,7 @@ static int test_rnd(void)
                             !f && p[P_SDIV] <= 6 && rnd_speed((uint32_t)p[P_SDIV]) != RND_FAST;
                 else if (role == RND_ROLE_TINT)
                     t_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_QUANT] == Q_CHRD && p[P_SDIV] == trk[m].p[P_SDIV] &&
-                            p[P_ATK] <= 8 && p[P_TRANS] <= 12 && (e == ENGI_FM6 || e == ENGI_PHYS || e == 6u);
+                            p[P_ATK] <= 8 && p[P_TRANS] <= 12 && (e == ENGI_FM6 || e == ENGI_ORACLE || e == 6u);
                 else if (role == RND_ROLE_CANON)
                     c_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_VOICE] == V_LEGATO && p[P_TRANS] < trk[m].p[P_TRANS] &&
                             p[P_TRANS] >= -12 && e != ENGI_PHYS;
@@ -7106,12 +7106,12 @@ static int test_rnd(void)
     }
     {                                               /* WOZZA: minimal piano and synth, slow, off the grid, worn */
         uint32_t r, tr, k, roles_ok = 1, tempo_ok = 1, key_ok = 1, bed_ok = 1, osti_ok = 1, mel_ok = 1, tex_ok = 1;
-        uint32_t wow = 1, dry = 1, cpu = 1, human = 1, seconds = 0, quiet = 0, clipped_n = 0, fm6 = 0, phys = 0;
+        uint32_t wow = 1, dry = 1, cpu = 1, human = 1, seconds = 0, quiet = 0, clipped_n = 0, fm6 = 0, phys = 0, orcs = 0;
         rnd_mode_put(RND_WOZZA);
         press(B_REC);
         bad += check("RND WOZZA: REC tapped: a roll, WOZZA and the seed said", !memcmp(ui.msg, "WOZZA ", 6));
         for (r = 0; r < 200u; r++) {
-            uint32_t n[8] = {0}, nf = 0, np = 0;
+            uint32_t n[8] = {0}, nf = 0, np = 0, no = 0;
             int32_t bpm;
             rnd_roll();
             bpm = pid_get(PID_GLOBAL(G_BPM), 0);
@@ -7125,6 +7125,7 @@ static int test_rnd(void)
                 n[role < 8u ? role : 0u]++;
                 nf += e == ENGI_FM6;
                 np += e == ENGI_PHYS;
+                no += e == ENGI_ORACLE;
                 key_ok &= p[P_SCALE] == (int16_t)k;
                 if (role == RND_ROLE_DRONE)
                     bed_ok &= m == TESS_ENG_SERIES && p[P_SGATE] == 127 && p[P_VOICE] == V_LEGATO && p[P_SDIV] >= 7 &&
@@ -7147,7 +7148,7 @@ static int test_rnd(void)
             roles_ok &= n[RND_ROLE_DRONE] == 1u && n[RND_ROLE_OSTI] == 1u && n[RND_ROLE_NOISE] <= 1u &&
                         n[RND_ROLE_MELODY] + n[RND_ROLE_NOISE] == 2u && n[RND_ROLE_MELODY] >= 1u;
             cpu &= nf <= 1u && np <= 1u && settings_budget <= RND_BUDGET;
-            fm6 += nf; phys += np;
+            fm6 += nf; phys += np; orcs += no;
             if (r % 40u == 0u) {                    /* listen: 15 s (the bed swells in) */
                 int32_t o[2 * CTL], peak = 0;
                 uint32_t b, j;
@@ -7169,7 +7170,8 @@ static int test_rnd(void)
         bad += check("RND WOZZA: ..the texture TRIO's noise, held and low", tex_ok);
         bad += check("RND WOZZA: ..the wow (a sine on the pitch, a fifth of a semitone at most), a player's timing", wow && human);
         bad += check("RND WOZZA: ..dry, the CPU rules (FM6 and PHYS once each at most, FM6 never fast)", dry && cpu);
-        bad += check("RND WOZZA: ..FM6 and PHYS both often (the struck melodies)", fm6 > 80u && phys > 60u);
+        bad += check("RND WOZZA: ..FM6 and ORACLE both often (the struck melodies: ORACLE's PLUCK), PHYS never", fm6 > 60u &&
+                     orcs > 60u && !phys);
         bad += check("RND WOZZA: ..each roll heard within 15 s, none at the rail", !quiet && !clipped_n && seconds);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
@@ -7177,7 +7179,7 @@ static int test_rnd(void)
     }
     {                                               /* every roll in tune: TRIO's intervals unisons, octaves or fifths,
                                                      * rolled and nudged by DRIFT FAST; CRATE's octaves only */
-        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0, in_key = 1, expr_ok = 1;
+        uint32_t m, r, tr, b, seen = 0, bad_iv = 0, crate_bad = 0, in_key = 1, expr_ok = 1, no_phys = 1, crate_bass = 1;
         uint8_t was = settings_rnd_drift;
         int32_t o[2 * CTL];
         settings_rnd_drift = RND_DRIFT_FAST;
@@ -7195,6 +7197,10 @@ static int test_rnd(void)
                         if (m == RND_CRATE) crate_bad += (i2 + 48) % 12 != 0 || (i3 + 48) % 12 != 0;
                     }
                 for (tr = 0; tr < NTRK; tr++) in_key &= trk[tr].p[P_QUANT] == Q_WHITE || trk[tr].p[P_QUANT] == Q_CHRD;
+                for (tr = 0; tr < NTRK; tr++) no_phys &= trk[tr].eng_req != ENGI_PHYS;
+                if (m == RND_CRATE)
+                    crate_bass &= trk[RND_CR_BASS].eng_req == 6u &&
+                                  (trk[RND_CR_BASS].p[P_E0] == 1 || trk[RND_CR_BASS].p[P_E0] == 4);   /* (PLS3, TRI3) */
                 {                                   /* expression: the tracks with VEL on their cutoff, by mode */
                     uint32_t k, on = 0, want = 0;
                     for (k = 0; k < CORD_LIVE; k++) {
@@ -7217,6 +7223,7 @@ static int test_rnd(void)
         bad += check("RND: every mode, DRIFT FAST: TRIO's INT2, INT3 unisons, octaves or fifths (CRATE's octaves)",
                      seen > 100u && !bad_iv && !crate_bad);
         bad += check("RND: ..and every track's QUANTIZE WHITE or CHRD: the scale on the white keys, to play along", in_key);
+        bad += check("RND: ..PHYS in no roll; CRATE's bass TRIO's square or triangle", no_phys && crate_bass);
         bad += check("RND: ..velocity on the cutoff: every track of WOZZA, CRATE, ORBIT and RND, FALL's melodies, TIDE's "
                      "lead; none in HALO, MIRROR, LOOPS (DRIFT FAST on)", expr_ok);
     }
