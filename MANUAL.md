@@ -811,7 +811,7 @@ further to scroll a long text, back to scroll up. Let go of ARP to close it.
 ## RND: one button, a new piece
 
 After Cyma Forma's RND synth. Set **MENU > REC BUTTON** to **RND** (or **FALL**, **TIDE**, **LOOPS**, **ORBIT**,
-**WOZZA**, **HALO**, **MIRROR**, **CRATE** or **PHASE**, below, in that order) and REC becomes a roll:
+**WOZZA**, **HALO**, **MIRROR**, **CRATE**, **STATIC** or **PHASE**, below, in that order) and REC becomes a roll:
 
 | On REC | What it does |
 |---|---|
@@ -834,7 +834,8 @@ What a roll writes, every one an ordinary setting you can then change on its pag
 - **The key**: one ROOT and SCALE for all four (KEY LINK on), a mode often, often something stranger (an EDO, just
   intonation, a gamelan or maqam scale).
 - **Effects**: none. Rolls are dry: every effect slot off and nothing sent (with effects the FM-1 ran near 70 %
-  CPU, where it starts to click). Add your own after a roll.
+  CPU, where it starts to click). Add your own after a roll. STATIC is the exception: one or two inserts (SPIT, TAPE),
+  its drive being the point.
 - **MODS**: three to nine cords, slow sources (DRIFT, the SLOTHs, OCHD, S&H, the LFO) into the sound, the effects
   and the generators' own settings. The tracks' four MOD routes are cleared.
 - **To play along**: every track's **QUANTIZE** is **WHITE**, the roll's scale on the white keys, so whatever you
@@ -979,6 +980,18 @@ player's (a few milliseconds late now and then), on the grid otherwise: send MID
 tempo to the BPM on the screen. DRIFT leaves CRATE alone: roll again for another record. No effects, as every roll.
 The screen shows **CRATE** and the seed.
 
+**STATIC.** With REC BUTTON on **STATIC**, a roll is a wall of noise as ambient, after Tim Hecker, Fennesz and Ben
+Frost: dense rather than melodic, a system overloading, with no drums. Four held layers share one slow chord
+progression, buried under them (the bed's chords, four bars each; the other three on **QUANTIZE CHRD**, so they move
+with it). **Track 1, the bed:** ORACLE's pads with a little hiss, or TRIO's widely detuned saws. **Track 2, the
+noise:** TRIO's noise through a resonant filter, whistling. **Track 3, the fizz:** TRIO's ring and sync waves, or FM6
+with its feedback up, its shape and cutoff jittering on a fast S&H. **Track 4, the drive:** stacked saws, or ORACLE with
+noise and Poly-Mod, through **SPIT**'s band-pass and soft-clip drive. Sometimes one more insert: SPIT on the noise, or
+TAPE on the bed. The piece builds up one layer after another to a wall over a minute or so, holds it with SPIT at its
+hardest, then collapses to the bed alone in a second or two, rests, and builds again. STATIC moves the layers' levels
+itself while it plays. A level you turn becomes that layer's full level. It goes on whatever **DRIFT** says (FAST
+builds and collapses twice as often). 60 to 80 BPM. The screen shows **STATIC** and the seed.
+
 **PHASE.** With REC BUTTON on **PHASE**, a roll is a phase piece after Steve Reich (Piano Phase, Clapping Music,
 Drumming). **Tracks 1 and 2** play one short, bright cell, the same sound and the same notes (a EUCLID cell of 8 to 16
 steps, nearly every step a note), panned left and right. They start in unison. After about 10 to 16 seconds track 2
@@ -1031,7 +1044,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly; **STATIC**: a wall of noise, four held layers on a buried chord progression, building to an overload and collapsing; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

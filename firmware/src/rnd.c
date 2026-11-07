@@ -25,9 +25,10 @@
  * tintinnabuli: a line, bells on its triad, a slow canon, a halo: rnd_halo_sound), RND_MIRROR MIRROR (HALO's mirror:
  * glassy, digital, its rules loosened: rnd_mirror_sound), RND_TIDE TIDE (a sub groove across the bar, FALL's leaves,
  * a triangle bed, a noise: rnd_tide_sound), RND_CRATE CRATE (crate digging: a little funk or soul record of
- * sections, without drums, to sample: rnd_crate_sound), RND_PHASE PHASE (after Steve Reich: one cell on two tracks, one
+ * sections, without drums, to sample: rnd_crate_sound), RND_STATIC STATIC (a wall of noise, ambient: it builds, overloads
+ * and collapses: rnd_static_move), RND_PHASE PHASE (after Steve Reich: one cell on two tracks, one
  * moving a step ahead every few bars: rnd_phase_move). (tessera-rnd: AMBIENT, NICE, GLITCH and PULSE gone; their codes,
- * saved, read as FALL: rnd_setting. The order the menu's: RND FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE PHASE.) Saved as RND_CODE:
+ * saved, read as FALL: rnd_setting. The order the menu's: RND FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE STATIC PHASE.) Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
  * beside them (0..7: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
@@ -35,10 +36,10 @@
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
 enum { RND_OFF, RND_FREE, RND_FALL, RND_TIDE, RND_LOOPS, RND_ORBIT, RND_WOZZA, RND_HALO, RND_MIRROR, RND_CRATE,
-       RND_PHASE, RND_MODES };
+       RND_STATIC, RND_PHASE, RND_MODES };
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
     {0x00u, 0}, {0x40u, 0}, {0x80u, 1}, {0x40u, 4}, {0x80u, 2}, {0xC0u, 1}, {0x40u, 3}, {0x80u, 3}, {0xC0u, 3},
-    {0x80u, 4}, {0x40u, 5},                         /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
+    {0x80u, 4}, {0x80u, 5}, {0x40u, 5},             /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
                                                      * 0x80 0, GLITCH 0x40 1, PULSE 0x40 2: gone) */
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
@@ -276,6 +277,7 @@ static uint8_t rnd_mirror;                         /* 1: this roll is MIRROR's *
 static uint8_t rnd_tide;                           /* 1: this roll is TIDE's */
 static uint8_t rnd_crate;                          /* 1: this roll is CRATE's */
 static uint8_t rnd_phase;                          /* 1: this roll is PHASE's */
+static uint8_t rnd_static;                         /* 1: this roll is STATIC's */
 static uint8_t rnd_wz_lead = NTRK;                 /* WOZZA: the first melody's track (a second one sparser, higher) */
 static uint8_t rnd_want_e = 0xFFu, rnd_want_pi = 0xFFu;   /* PULSE: the engine and preset its role wants (0xFF: rolled) */
 static int rnd_perc(uint32_t tr)                   /* GLITCH's glitch tracks, PULSE's percussion: each hit its attack */
@@ -2198,6 +2200,281 @@ static void rnd_roles_crate(uint8_t *role)
     role[RND_CR_COUNTER] = RND_ROLE_COUNTER;
 }
 
+/* ------------------------------------------------------------ STATIC --- */
+/* STATIC: a wall of noise as ambient, after Tim Hecker, Fennesz and Ben Frost: not slow and melodic but dense, a system
+ * overloading. Four sustained layers on one buried, slow chord progression (QUANTIZE CHRD: every layer on the bed's
+ * chord): the BED (RND_ST_BED: CHORD held, four bars a chord, breathing; ORACLE's pads or TRIO's detuned saws), the
+ * NOISE (TRIO's noise through a resonant filter, whistling), the FIZZ (TRIO's ring and sync waves, or FM6 with its
+ * feedback up, gritty; its S&H fast on the shape) and the DRIVE (stacked saws or ORACLE's noise and Poly-Mod, through
+ * SPIT's soft-clip drive). No drums. rnd_static_move builds them up, one layer after another, to a wall (SPIT's drive
+ * at its most), holds it, collapses it to the bed alone in a second or two, then builds again. Fast S&H fizzing on the
+ * cutoffs and shapes. Inserts: SPIT on the drive (and now and then the noise, or TAPE on the bed): two at most, within
+ * the effects' points (rnd_fx_points). DRIFT does not touch it (its own process; FAST builds twice as fast) */
+#define RND_ST_BED 0u
+#define RND_ST_NOISE 1u
+#define RND_ST_FIZZ 2u
+#define RND_ST_DRIVE 3u
+enum { RND_ST_BUILD, RND_ST_WALL, RND_ST_LOW };
+static struct {
+    uint8_t stage, base[NTRK], put[NTRK], spit[NTRK];
+    uint16_t x, from, to;                           /* the density 0..1000: now, this stage's start and end */
+    uint32_t t0, len;                               /* the stage's start and length, in 64ths */
+} rnd_st;
+static const uint16_t RND_ST_TH[NTRK] = {0, 100, 300, 550};   /* (where each layer comes in) */
+static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
+{
+    static const uint8_t bo[] = {1, 3, 22, 19, 2}, bow[] = {3, 2, 2, 2, 1};   /* WARM PAD SOFT STRINGS FAT POLY SWEEP PAD
+                                                     * GLASS PAD */
+    static const uint8_t fw[] = {12, 13, 14, 15, 9, 10, 11}, fww[] = {3, 3, 2, 2, 2, 2, 1};   /* RING RING3 R+S R+SP SYNC
+                                                     * SYNCP SYNC3 */
+    static const uint8_t fp[] = {4, 16, 27, 26, 9}, fpw[] = {3, 2, 2, 2, 1};   /* PAD GLASS PAD DEEP PAD SOFT SWELL BRASS
+                                                     * SECT */
+    track_t *t = &trk[tr];
+    (void)phys;
+    if (tr == RND_ST_BED) {                         /* buried: a pad, slow */
+        if (eng_ok(ENGI_ORACLE) && rnd_pct(55)) {
+            uint8_t *q;
+            engine_load_of(t, ENGI_ORACLE, rnd_pick(bo, bow, NELEM(bo)));
+            q = or_patch_of(t);
+            q[OR_ATTACK_AMP] = (uint8_t)rnd_rr(60, 96);
+            q[OR_RELEASE_AMP] = (uint8_t)rnd_rr(70, 90);
+            q[OR_RELEASE_ON] = 1;
+            q[OR_NOISE] = (uint8_t)rnd_rr(10, 50);   /* (a hiss in it) */
+            (*oracles)++;
+        } else {
+            engine_load_of(t, 6u, 15u);             /* (SWEEP PAD, made below) */
+            rnd_tp(tr, P_E0, 0);                    /* SAW3 */
+            rnd_tp(tr, P_E0 + 1u, rnd_pct(50) ? 12 : 0);
+            rnd_tp(tr, P_E0 + 2u, rnd_pct(40) ? -12 : rnd_pct(50) ? 7 : 0);
+            rnd_tp(tr, P_E0 + 3u, rnd_rr(24, 50));  /* DTN: wide */
+            rnd_tp(tr, P_E0 + 4u, 0);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(40, 62));
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 35));
+            {
+                static const int8_t env[][3] = {{P_ATK, 70, 100}, {P_DEC, 100, 127}, {P_SUS, 100, 127}, {P_REL, 70, 90}};
+                rnd_tp_rr(tr, env, NELEM(env));
+            }
+        }
+    } else if (tr == RND_ST_FIZZ && eng_ok(ENGI_FM6) && rnd_pct(25)) {   /* FM6, its feedback up: grit */
+        uint32_t k;
+        engine_load_of(t, ENGI_FM6, rnd_pick(fp, fpw, NELEM(fp)));
+        for (k = 0; k < 6u; k++) rnd_tp(tr, P_E0 + k, 0);
+        rnd_tp(tr, P_E0 + 1u, rnd_rr(3, 7));       /* FB */
+        rnd_tp(tr, P_E0 + 2u, rnd_rr(10, 30));      /* MLVL */
+        (*fm6s)++;
+    } else if (tr == RND_ST_DRIVE && !*oracles && eng_ok(ENGI_ORACLE) && rnd_pct(45)) {   /* ORACLE: noise, Poly-Mod */
+        uint8_t *q;
+        engine_load_of(t, ENGI_ORACLE, rnd_pct(50) ? 22u : 4u);   /* FAT POLY, BRASS */
+        rnd_oracle(tr, 40u);
+        q = or_patch_of(t);
+        q[OR_NOISE] = (uint8_t)rnd_rr(50, 110);
+        q[OR_RESONANCE] = (uint8_t)rnd_rr(40, 90);
+        q[OR_ATTACK_AMP] = (uint8_t)rnd_rr(40, 80);
+        q[OR_SUSTAIN_AMP] = 127;
+        q[OR_RELEASE_AMP] = (uint8_t)rnd_rr(60, 85);
+        q[OR_RELEASE_ON] = 1;
+        (*oracles)++;
+    } else {                                        /* TRIO: noise, ring and sync, stacked saws */
+        engine_load_of(t, 6u, 15u);
+        if (tr == RND_ST_NOISE) {
+            rnd_tp(tr, P_E0, rnd_pct(60) ? 8 : 7);  /* NOIS P+N */
+            rnd_tp(tr, P_E0 + 4u, rnd_pct(55) ? 1 : rnd_pct(50) ? 2 : 0);   /* BP HP LP */
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(50, 92));
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(55, 100)); /* RES: it whistles */
+        } else if (tr == RND_ST_FIZZ) {
+            rnd_tp(tr, P_E0, (int32_t)rnd_pick(fw, fww, NELEM(fw)));
+            rnd_tp(tr, P_E0 + 4u, rnd_pct(70) ? 0 : 1);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(60, 90));
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(30, 75));
+        } else {
+            rnd_tp(tr, P_E0, rnd_pct(70) ? 0 : 6);  /* SAW3 P&S */
+            rnd_tp(tr, P_E0 + 4u, 0);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(70, 100));
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(20, 60));
+        }
+        rnd_tp(tr, P_E0 + 1u, rnd_pct(50) ? 12 : 0);
+        rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? -12 : rnd_pct(50) ? 7 : 12);
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(10, 45));
+        {
+            static const int8_t env[][3] = {{P_ATK, 50, 90}, {P_DEC, 100, 127}, {P_SUS, 100, 127}, {P_REL, 60, 86}};
+            rnd_tp_rr(tr, env, NELEM(env));
+        }
+    }
+    rnd_tp_still(tr);
+    rnd_tp(tr, P_LD_PIT, 0);
+    rnd_tp(tr, P_GLIDE, tr == RND_ST_BED ? 0 : rnd_rr(30, 80));   /* (the layers slide to the next chord's notes) */
+    rnd_tp(tr, P_CHRD, 0);
+    rnd_tp(tr, P_MUTE, 0);
+    rnd_tp(tr, P_AMODE, 0);
+    rnd_tp(tr, P_VOICE, tr == RND_ST_BED ? V_POLY : V_LEGATO);
+    rnd_tp(tr, P_LRATE, tr == RND_ST_BED ? rnd_rr(10, 30) : rnd_rr(96, 122));   /* (the S&H fast: fizzing) */
+    rnd_tp(tr, P_SPRD, rnd_rr(50, 100));
+    rnd_tp(tr, P_DETUNE, 0);
+    rnd_tp(tr, P_LEVEL, tr == RND_ST_BED ? rnd_rr(72, 82) : rnd_rr(80, 92));
+}
+static void rnd_static_generators(void)
+{
+    static const uint8_t pg[] = {3, 0, 2, 6}, pw[] = {3, 2, 1, 2};   /* CIRCLE POP 2-5-1 WALK */
+    static const uint8_t dv[] = {6, 7, 8}, dw[] = {2, 3, 2};   /* 1/2 1/1 2BAR */
+    uint32_t tr, chords = 1;
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {       /* (the clean slate) */
+        rnd_generator(tr, &chords);
+        rnd_tx(tr, TX_MODE, TESS_ENG_TURING);       /* the layers: a few notes, locked, held */
+        rnd_tx(tr, TX_TUR_LEN, rnd_rr(2, 5));
+        rnd_tx(tr, TX_TUR_PROB, rnd_rr(0, 12));
+        rnd_tx(tr, TX_TUR_SPAN, rnd_rr(1, 2));
+        rnd_tx(tr, TX_EV_EVERY, 0); rnd_tx(tr, TX_EV_LOCK, 0);
+        rnd_tx(tr, TX_FM_FORM, 0);
+        rnd_tx(tr, TX_TW_BRANCH, 0); rnd_tx(tr, TX_TW_BR_TO, 0); rnd_tx(tr, TX_TW_LOGIC, 0); rnd_tx(tr, TX_TW_COND, 0);
+        rnd_tx(tr, TX_TW_SHIFT, 0); rnd_tx(tr, TX_TW_FOLLOW, 0); rnd_tx(tr, TX_TW_DROP, 0);
+        rnd_tx(tr, TX_TW_HUMAN, 0); rnd_tx(tr, TX_SUB_HUMAN, rnd_rr(0, 30));
+        rnd_tx(tr, TX_SUB_RATCH, 0);
+        rnd_tx(tr, TX_NL_MODE, 0);
+        rnd_tp(tr, P_SSWING, 0);
+        rnd_tp(tr, P_SLEN, 16);
+        rnd_tp(tr, P_SDIV, (int32_t)rnd_pick(dv, dw, NELEM(dv)));
+        rnd_tp(tr, P_SGATE, 127);
+        rnd_tp(tr, P_QUANT, Q_CHRD);                /* (onto the bed's chord) */
+    }
+    tr = RND_ST_BED;                                /* the progression, buried: four bars a chord, held */
+    rnd_tx(tr, TX_MODE, TESS_ENG_CHORD);
+    rnd_tx(tr, TX_CH_PROG, (int32_t)rnd_pick(pg, pw, NELEM(pg)));
+    rnd_tx(tr, TX_CH_BARS, 3);
+    rnd_tx(tr, TX_CH_HIT, 0);
+    rnd_tx(tr, TX_CH_OCT, 0);
+    rnd_tx(tr, TX_CH_BREATH, rnd_rr(20, 50));
+    rnd_tp(tr, P_CHRD, rnd_pct(60) ? 2 : 1);        /* DIA7, DIA3 */
+    rnd_tp(tr, P_SDIV, 0);
+    rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(60, 80));
+}
+static void rnd_static_registers(void)
+{
+    rnd_tp(RND_ST_BED, P_TRANS, rnd_pct(50) ? -12 : 0);
+    rnd_tp(RND_ST_NOISE, P_TRANS, rnd_pct(50) ? 12 : 24);
+    rnd_tp(RND_ST_FIZZ, P_TRANS, rnd_pct(50) ? 0 : 12);
+    rnd_tp(RND_ST_DRIVE, P_TRANS, rnd_pct(60) ? -12 : 0);
+    rnd_tp(RND_ST_BED, P_PAN, 0);
+    rnd_tp(RND_ST_NOISE, P_PAN, rnd_rr(-30, 30));
+    rnd_tp(RND_ST_FIZZ, P_PAN, rnd_pct(50) ? -rnd_rr(15, 35) : rnd_rr(15, 35));
+    rnd_tp(RND_ST_DRIVE, P_PAN, -trk[RND_ST_FIZZ].p[P_PAN] / 2);
+}
+static void rnd_key_static(void)
+{
+    static const uint8_t sc[] = {2, 3, 1, 9, 8}, sw[] = {3, 3, 2, 1, 1};   /* MIN DOR MAJ LYD PHRY */
+    int32_t scale = (int32_t)rnd_pick(sc, sw, NELEM(sc)), root = rnd_rr(0, 11);
+    uint32_t tr;
+    rnd_tx(0, TX_KEY_LINK, 1);
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_SCALE, scale);
+        rnd_tp(tr, P_ROOT, root);
+    }
+    scale_share(&trk[0]);
+}
+/* the effects: SPIT's drive on the drive layer always (its band-pass jumping slowly, the soft clip hard), then one of
+ * SPIT on the noise or TAPE on the bed now and then; no sends. The cords: the S&H fast on the noise's cutoff and the
+ * fizz's shape, the drive's cutoff on a slow wander */
+static void rnd_static_fx(void)
+{
+    uint32_t tr = RND_ST_DRIVE;
+    rnd_fx_dry();
+    rnd_tp(tr, P_FXTYPE, FX_SPIT);
+    rnd_tp(tr, P_FXMIX, rnd_rr(70, 110));
+    rnd_tp(tr, P_FXRATE, rnd_rr(4, 30));
+    rnd_tp(tr, P_FXCHAR, rnd_rr(70, 110));
+    if (rnd_pct(55)) {
+        tr = rnd_pct(60) ? RND_ST_NOISE : RND_ST_BED;
+        rnd_tp(tr, P_FXTYPE, tr == RND_ST_NOISE ? FX_SPIT : FX_TAPE);
+        rnd_tp(tr, P_FXMIX, rnd_rr(50, 90));
+        rnd_tp(tr, P_FXRATE, rnd_rr(10, 50));
+        rnd_tp(tr, P_FXCHAR, rnd_rr(50, 100));
+    }
+    for (tr = 0; tr < NTRK; tr++) rnd_st.spit[tr] = (uint8_t)trk[tr].p[P_FXCHAR];
+}
+static void rnd_cords_static(void)
+{
+    cord_t c[6];
+    uint32_t i, n = 0;
+    memset(c, 0, sizeof c);
+    c[n].src_trk = c[n].dst_trk = RND_ST_NOISE; c[n].src = CS_SH; c[n].dst = CD_CUTOFF; c[n].amount = (int8_t)rnd_rr(15, 35); n++;
+    c[n].src_trk = c[n].dst_trk = RND_ST_FIZZ; c[n].src = CS_SH; c[n].dst = CD_SHAPE; c[n].amount = (int8_t)rnd_rr(25, 55); n++;
+    c[n].src_trk = c[n].dst_trk = RND_ST_FIZZ; c[n].src = CS_LFO; c[n].dst = CD_CUTOFF; c[n].amount = (int8_t)rnd_rr(8, 20); n++;
+    c[n].src_trk = c[n].dst_trk = RND_ST_DRIVE; c[n].src = CS_DRIFT; c[n].dst = CD_CUTOFF;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(15, 35) : -rnd_rr(15, 35)); n++;
+    c[n].src_trk = c[n].dst_trk = RND_ST_BED; c[n].src = CS_INERTIA; c[n].dst = CD_CUTOFF; c[n].amount = (int8_t)rnd_rr(10, 25); n++;
+    for (i = 0; i < CORD_LIVE; i++) {
+        cord_t z;
+        memset(&z, 0, sizeof z);
+        cord_set(i, i < n ? &c[i] : &z);
+    }
+}
+static void rnd_roles_static(uint8_t *role)
+{
+    role[RND_ST_BED] = RND_ROLE_CHORDS;             /* (the bed's engine first, then the fizz's, the noise's, the drive's) */
+    role[RND_ST_NOISE] = RND_ROLE_NOISE;
+    role[RND_ST_FIZZ] = RND_ROLE_GLITCH;
+    role[RND_ST_DRIVE] = RND_ROLE_TINT;
+}
+/* where the piece is, in 64ths since PLAY */
+static uint32_t rnd_st_now(void)
+{
+    uint32_t beat = seq_beat_samples();
+    return ((bar_n * 4u + beat_n) << 4) + (beat ? beat_pos * 16u / beat : 0u);
+}
+/* a stage: BUILD from where the density is to the wall over 12 to 24 bars, the WALL 4 to 10, then LOW, the bed alone,
+ * 3 to 8 bars (the collapse: the layers out in a second or two); DRIFT FAST twice as fast */
+static void rnd_static_stage(uint32_t stage, uint32_t now)
+{
+    uint32_t bars = stage == RND_ST_BUILD ? (uint32_t)rnd_rr(12, 24) : stage == RND_ST_WALL ? (uint32_t)rnd_rr(4, 10) :
+                    (uint32_t)rnd_rr(3, 8);
+    if (settings_rnd_drift == 2u && bars > 3u) bars /= 2u;
+    rnd_st.stage = (uint8_t)stage;
+    rnd_st.from = rnd_st.x;
+    rnd_st.to = stage == RND_ST_LOW ? (uint16_t)rnd_rr(0, 80) : 1000u;
+    rnd_st.t0 = now;
+    rnd_st.len = bars * 64u;
+}
+static void rnd_static_start(void)
+{
+    uint32_t tr;
+    for (tr = 0; tr < NTRK; tr++) rnd_st.base[tr] = rnd_st.put[tr] = (uint8_t)trk[tr].p[P_LEVEL];
+    rnd_st.x = (uint16_t)rnd_rr(200, 500);          /* (it starts part built: a few layers in) */
+    rnd_static_stage(RND_ST_BUILD, rnd_st_now());
+}
+/* STATIC's process, every frame while it plays (rnd_drift): the density along its stage, each layer's level from it
+ * (in from its threshold over 300, 24 dB to full; the bed 8 dB), SPIT's drive with it; a level moves a step a 64th (down four in the
+ * collapse), so nothing jumps. A level the player turns becomes that layer's full one */
+static void rnd_static_move(void)
+{
+    uint32_t now = rnd_st_now(), tr, el;
+    if (now < rnd_st.t0) rnd_st.t0 = now;           /* (PLAY again: from here) */
+    el = now - rnd_st.t0;
+    if (el >= rnd_st.len) {
+        rnd_st.x = rnd_st.to;
+        rnd_static_stage(rnd_st.stage == RND_ST_BUILD ? RND_ST_WALL : rnd_st.stage == RND_ST_WALL ? RND_ST_LOW : RND_ST_BUILD, now);
+        el = 0;
+    }
+    rnd_st.x = rnd_st.stage == RND_ST_LOW ? rnd_st.to :   /* (the collapse: at once, the levels after it quickly) */
+               (uint16_t)(rnd_st.from + ((int32_t)rnd_st.to - rnd_st.from) * (int32_t)el / (int32_t)rnd_st.len);
+    for (tr = 0; tr < NTRK; tr++) {
+        track_t *t = &trk[tr];
+        int32_t g = ((int32_t)rnd_st.x - RND_ST_TH[tr]) * 1000 / 300, want, cur = t->p[P_LEVEL], step;
+        if (cur != rnd_st.put[tr]) rnd_st.base[tr] = (uint8_t)cur;   /* (the player's level: the full one now) */
+        g = g < 0 ? 0 : g > 1000 ? 1000 : g;
+        want = tr == RND_ST_BED ? rnd_st.base[tr] - (1000 - g) * 16 / 1000 :   /* (the bed: 8 dB down at most, the
+                                                     * thread left in the collapse) */
+               !g ? 0 : rnd_st.base[tr] - (1000 - g) * 48 / 1000;
+        want = want < 0 ? 0 : want;
+        step = rnd_st.stage == RND_ST_LOW ? 4 : 1;
+        if (cur < want) cur = cur + step < want ? cur + step : want;
+        else if (cur > want) cur = cur - step > want ? cur - step : want;
+        t->p[P_LEVEL] = (int16_t)cur;
+        rnd_st.put[tr] = (uint8_t)cur;
+        if (t->p[P_FXTYPE] == FX_SPIT)               /* (the drive harder towards the wall) */
+            t->p[P_FXCHAR] = (int16_t)clamp((int32_t)rnd_st.spit[tr] - 30 + 40 * (int32_t)rnd_st.x / 1000, 0, 127);
+    }
+}
+
 /* ------------------------------------------------------------ PHASE --- */
 /* PHASE: after Steve Reich's phasing (Piano Phase, Clapping Music, Drumming, Music for 18 Musicians). One short bright
  * cell, EUCLID's (its pitches its seed's, a step's each: two tracks on one seed, length and rotation play one melody),
@@ -3508,6 +3785,10 @@ static void rnd_drift(void)
         else rnd_ph.bar = bar_n;
         return;
     }
+    if (rnd_static) {                               /* (STATIC: its own, whatever DRIFT) */
+        if (rnd_snap.valid && !rnd_backed && song.playing) rnd_static_move();
+        return;
+    }
     if (!settings_rnd_drift || !rnd_snap.valid || rnd_backed || !song.playing || rnd_crate) {   /* (CRATE: a record,
                                                      * played as pressed; roll again for another) */
         rnd_drift_s.bar = bar_n;
@@ -3568,7 +3849,7 @@ static void rnd_roles(uint8_t *role, uint32_t ambient)
 /* the roll's mode as the screen says it, with the seed after */
 static const char *rnd_name(void)
 {
-    return rnd_phase ? "PHASE " : rnd_crate ? "CRATE " : rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " :
+    return rnd_static ? "STATIC " : rnd_phase ? "PHASE " : rnd_crate ? "CRATE " : rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " :
            rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " :
            "RND ";
 }
@@ -3656,7 +3937,8 @@ static void rnd_roll(void)
     rnd_tide = (uint8_t)(rnd_setting() == RND_TIDE);
     rnd_crate = (uint8_t)(rnd_setting() == RND_CRATE);
     rnd_phase = (uint8_t)(rnd_setting() == RND_PHASE);
-    if (rnd_wozza || rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase) rnd_nice = 1;   /* (WOZZA HALO MIRROR TIDE: NICE's gentle
+    rnd_static = (uint8_t)(rnd_setting() == RND_STATIC);
+    if (rnd_wozza || rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_static) rnd_nice = 1;   /* (WOZZA HALO MIRROR TIDE: NICE's gentle
                                                      * drift) */
     if (rnd_loops || rnd_orbit) rnd_nice = 1;       /* (LOOPS, ORBIT: NICE's gentle voices too) */
     rnd_roles(role, ambient && !rnd_loops && !rnd_orbit);
@@ -3668,6 +3950,7 @@ static void rnd_roll(void)
     if (rnd_tide) rnd_roles_tide(role);
     if (rnd_crate) rnd_roles_crate(role);
     if (rnd_phase) rnd_roles_phase(role);
+    if (rnd_static) rnd_roles_static(role);
     memcpy(rnd_role_of, role, sizeof rnd_role_of);
     rnd_lp_phys = rnd_lp_glass = NTRK;
     if (rnd_loops) {                                /* (LOOPS: the piano's track, the glass') */
@@ -3690,6 +3973,7 @@ static void rnd_roll(void)
                 else if (rnd_tide) rnd_tide_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else if (rnd_crate) rnd_crate_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else if (rnd_phase) rnd_phase_sound(tr, &fm6s, &phys, &oracles);
+                else if (rnd_static) rnd_static_sound(tr, &fm6s, &phys, &oracles);
                 else if (rnd_loops) rnd_loops_voice(tr, &fm6s, &phys, &oracles);
                 else rnd_sound(tr, &fm6s, &phys, &oracles, role[tr]);
     }
@@ -3701,6 +3985,7 @@ static void rnd_roll(void)
     else if (rnd_tide) rnd_tide_registers();
     else if (rnd_crate) rnd_crate_registers();
     else if (rnd_phase) ;                           /* (PHASE: after its generators, rnd_phase_registers) */
+    else if (rnd_static) rnd_static_registers();
     else rnd_registers();
     if (rnd_loops) rnd_loops_registers();           /* (LOOPS: spread wider, -24 to +24) */
     if (rnd_wozza) rnd_key_wozza();
@@ -3709,6 +3994,7 @@ static void rnd_roll(void)
     else if (rnd_tide) rnd_key_tide();
     else if (rnd_crate) rnd_key_crate();
     else if (rnd_phase) rnd_key_phase();
+    else if (rnd_static) rnd_key_static();
     else if (rnd_loops || rnd_orbit) rnd_key_loops();
     else if (ambient) rnd_key_ambient();
     else rnd_key();
@@ -3720,6 +4006,9 @@ static void rnd_roll(void)
     } else if (rnd_phase) {                         /* (its own caps: the copies one sound, as written) */
         rnd_phase_generators();
         rnd_phase_registers();
+    } else if (rnd_static) {
+        rnd_static_generators();
+        for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
     } else if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate) {
         if (rnd_halo) rnd_halo_generators(role);
         else if (rnd_mirror) rnd_mirror_generators(role);
@@ -3747,6 +4036,9 @@ static void rnd_roll(void)
         else if (rnd_mirror) rnd_cords_mirror(role);
         else if (rnd_tide) rnd_cords_tide();
         else rnd_cords_crate();                     /* (CRATE, PHASE: none) */
+    } else if (rnd_static) {                        /* (its own: SPIT's drive, the fizz) */
+        rnd_static_fx();
+        rnd_cords_static();
     } else if (rnd_wozza) {                         /* (its own effects, then its cords: one on the TAPE) */
         if (RND_FX_ROLLS) rnd_fx_wozza(role);
         else rnd_fx_dry();
@@ -3772,6 +4064,7 @@ static void rnd_roll(void)
                                                      * from where its old division left it, measured: sections apart) */
     rnd_guard_start();
     rnd_drift_start();
+    if (rnd_static) rnd_static_start();             /* (the levels as rolled: the full ones) */
 }
 
 /* the hold: before the roll / the roll again */

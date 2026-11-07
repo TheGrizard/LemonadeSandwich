@@ -6347,7 +6347,8 @@ static int test_rnd(void)
         static const struct { uint8_t m, bits, var; const char *name; } steps[] = {
             {RND_FALL, 0x80, 1, "FALL"}, {RND_TIDE, 0x40, 4, "TIDE"}, {RND_LOOPS, 0x80, 2, "LOOPS"},
             {RND_ORBIT, 0xC0, 1, "ORBIT"}, {RND_WOZZA, 0x40, 3, "WOZZA"}, {RND_HALO, 0x80, 3, "HALO"},
-            {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_CRATE, 0x80, 4, "CRATE"}, {RND_PHASE, 0x40, 5, "PHASE"}};
+            {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_CRATE, 0x80, 4, "CRATE"}, {RND_STATIC, 0x80, 5, "STATIC"},
+            {RND_PHASE, 0x40, 5, "PHASE"}};
         uint32_t steps_ok = 1, saved_ok = 1;
         hold(B_HOME); ui.menu_sel = MI_REC_BTN;
         for (k = 0; k < NELEM(steps); k++) {
@@ -6366,8 +6367,8 @@ static int test_rnd(void)
                         settings_rnd_drift == k % RND_DRIFTS && pr.lowcut >> 8 == k % RND_DRIFTS;
         }
         settings_rnd_drift = 0;
-        bad += check("RND MENU: REC BUTTON turned right from RND: FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE PHASE "
-                     "(their bits and variants)", steps_ok);
+        bad += check("RND MENU: REC BUTTON turned right from RND: FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE STATIC "
+                     "PHASE (their bits and variants)", steps_ok);
         bad += check("RND MENU: ..each saved and loaded with the settings, DRIFT beside it", saved_ok);
         turn(EN_K2, 1);
         bad += check("RND MENU: ..PHASE is the last (right again: stays)", rnd_setting() == RND_PHASE);
@@ -6946,6 +6947,87 @@ static int test_rnd(void)
             bad += check("RND CRATE: ..DRIFT FAST on: the record as it was rolled", rnd_hash_of(0) == h && rnd_drift_s.steps == s0);
             settings_rnd_drift = was;
         }
+        transport_req = 2;
+        { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
+        rnd_mode_put(RND_FREE);
+    }
+    {                                               /* STATIC: a wall of noise that builds, overloads, collapses */
+        uint32_t r, tr, k, roles = 1, tempo_ok = 1, fx_ok = 1, heavy = 1, quiet = 0, clipped_n = 0, kinds = 0, cords_ok = 1;
+        uint32_t built = 0, fell = 0, again = 0, bed_kept = 1, adopt = 1;
+        rnd_mode_put(RND_STATIC);
+        press(B_REC);
+        bad += check("RND STATIC: REC tapped: a roll, STATIC and the seed said", !memcmp(ui.msg, "STATIC ", 7));
+        for (r = 0; r < 200u; r++) {
+            uint32_t ins = 0, orc = 0, fm = 0, bpm, nc = 0;
+            rnd_roll();
+            bpm = (uint32_t)pid_get(PID_GLOBAL(G_BPM), 0);
+            tempo_ok &= bpm >= 60u && bpm <= 80u;
+            roles &= tessera.mode[RND_ST_BED] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_HIT), RND_ST_BED) == 0;
+            for (tr = 1; tr < NTRK; tr++)
+                roles &= tessera.mode[tr] == TESS_ENG_TURING && trk[tr].p[P_QUANT] == Q_CHRD && trk[tr].p[P_SGATE] == 127 &&
+                         rnd_speed((uint32_t)trk[tr].p[P_SDIV]) == RND_SLOW;
+            for (tr = 0; tr < NTRK; tr++) {
+                ins += trk[tr].p[P_FXTYPE] != FX_OFF;
+                fx_ok &= trk[tr].p[P_FXTYPE] == FX_OFF || trk[tr].p[P_FXTYPE] == FX_SPIT || trk[tr].p[P_FXTYPE] == FX_TAPE;
+                fx_ok &= !trk[tr].p[P_FXSEND] && trk[tr].p[P_FXTYPE + 4u] == FX_OFF && trk[tr].p[P_FXTYPE + 8u] == FX_OFF;
+                orc += trk[tr].eng_req == ENGI_ORACLE;
+                fm += trk[tr].eng_req == ENGI_FM6;
+                heavy &= trk[tr].eng_req != ENGI_PHYS;
+            }
+            for (k = 0; k < CORD_LIVE; k++) nc += cord_get(k)->amount != 0;
+            cords_ok &= nc >= 4u && nc <= 6u;
+            fx_ok &= trk[RND_ST_DRIVE].p[P_FXTYPE] == FX_SPIT && ins <= 2u && song.g[G_MFXTYPE] == FX_OFF;
+            heavy &= orc <= 1u && fm <= 1u;
+            kinds |= 1u << (trk[RND_ST_NOISE].p[P_E0] == 8 || trk[RND_ST_NOISE].p[P_E0] == 7 ? 0 : 3);
+            kinds |= (trk[RND_ST_FIZZ].eng_req == ENGI_FM6 ? 2u : trk[RND_ST_FIZZ].p[P_E0] >= 9 ? 4u : 8u);
+            if (r % 40u == 0u) {                    /* listen: 12 s */
+                int32_t o[2 * CTL], peak = 0;
+                uint32_t bb, j;
+                if (!song.playing) transport_req = 1;
+                for (bb = 0; bb < 12u * FS / CTL; bb++) {
+                    mix_block(o, CTL);
+                    for (j = 0; j < 2u * CTL; j++) { int32_t v = o[j] < 0 ? -o[j] : o[j]; if (v > peak) peak = v; }
+                }
+                quiet += peak < 300;
+                clipped_n += peak >= 32767;
+            }
+        }
+        bad += check("RND STATIC: 200 rolls: the bed a held CHORD on track 1; the noise, fizz, drive on 2 to 4 held, slow, on "
+                     "its chord (QUANTIZE CHRD); 60-80 BPM", roles && tempo_ok);
+        bad += check("RND STATIC: ..the noise TRIO's noise, the fizz FM6's feedback or TRIO's ring and sync; ORACLE, FM6 once "
+                     "each at most, no PHYS", (kinds & 1u) && (kinds & 2u) && (kinds & 4u) && !(kinds & 8u) && heavy);
+        bad += check("RND STATIC: ..SPIT on the drive, one more insert (SPIT, TAPE) at most, no sends; its cords (S&H fizz); "
+                     "heard within 12 s, none at the rail", fx_ok && cords_ok && !quiet && !clipped_n);
+        {                                           /* the process: built up, a wall, the collapse, built again */
+            uint8_t was = settings_rnd_drift;
+            uint32_t b, st0, n;
+            settings_rnd_drift = 0;
+            rnd_roll();
+            rnd_play_bars(1);
+            st0 = rnd_st.stage;
+            for (b = 0, n = 0; b < 140u && n < 4u; b++) {   /* (BUILD to WALL, LOW, BUILD again: 46 bars at most each) */
+                uint32_t was_stage = rnd_st.stage;
+                rnd_play_bars(1);
+                if (rnd_st.stage == was_stage) continue;
+                n++;
+                if (rnd_st.stage == RND_ST_WALL) built++;
+                if (rnd_st.stage == RND_ST_BUILD && was_stage == RND_ST_LOW) again++;
+                if (rnd_st.stage == RND_ST_LOW) {
+                    rnd_play_bars(2);               /* (the collapse: two bars on, the layers out) */
+                    fell += trk[RND_ST_FIZZ].p[P_LEVEL] < rnd_st.base[RND_ST_FIZZ] - 40 &&
+                            trk[RND_ST_DRIVE].p[P_LEVEL] < rnd_st.base[RND_ST_DRIVE] - 40;
+                    bed_kept &= trk[RND_ST_BED].p[P_LEVEL] >= rnd_st.base[RND_ST_BED] - 16;
+                }
+            }
+            (void)st0;
+            rnd_tp(RND_ST_BED, P_LEVEL, 60);        /* (the player's level: the bed's full one now) */
+            rnd_play_bars(2);
+            adopt &= rnd_st.base[RND_ST_BED] == 60u && trk[RND_ST_BED].p[P_LEVEL] <= 60 && trk[RND_ST_BED].p[P_LEVEL] >= 44;
+            settings_rnd_drift = was;
+        }
+        bad += check("RND STATIC: ..DRIFT OFF too: it builds to a wall, collapses (the fizz and the drive out, the bed kept), "
+                     "builds again", built && fell && again && bed_kept);
+        bad += check("RND STATIC: ..a level the player turns is that layer's full one", adopt);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
