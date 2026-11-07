@@ -6737,11 +6737,11 @@ static int test_rnd(void)
                 uint32_t role = rnd_role_of[tr], e = trk[tr].eng_req, g = tessera.mode[tr];
                 int32_t f = pid_get(PID_TESS(TX_TW_FOLLOW), tr);
                 n[role < 10u ? role : 0u]++;
-                sid += e == 3u;
+                sid += e == 6u || e == ENGI_ORACLE; /* (ORACLE and TRIO only, cold: no FM6, SID, PHYS) */
                 if (rnd_mr_heavy(tr)) { heavy++; cpu &= rnd_speed((uint32_t)p[P_SDIV]) != RND_FAST; }
                 if (role == RND_ROLE_CHORDS)
                     halo_ok &= (sc < 16 ? g == TESS_ENG_CHORD : g == TESS_ENG_SERIES && p[P_SGATE] == 127) &&
-                               e != ENGI_FM6 && e != ENGI_ORACLE && p[P_LEVEL] <= 118;
+                               (e == 6u || (e == ENGI_ORACLE && trk[tr].preset == 2u)) && p[P_LEVEL] <= 118;
                 else if (role == RND_ROLE_MELODY)
                     m_ok &= !f && g != TESS_ENG_CHORD && p[P_LD_PIT] == 0;
                 else if (role == RND_ROLE_TINT) {
@@ -6784,13 +6784,14 @@ static int test_rnd(void)
         bad += check("RND MIRROR: 200 rolls: the halo, the line, the mirror and the canon, one each", roles_ok);
         bad += check("RND MIRROR: ..70 to 100 BPM; off twelve notes now and then (a third of rolls or so)",
                      tempo_ok && micro > 40u && micro < 120u);
-        bad += check("RND MIRROR: ..the halo chords in twelve notes, a held cluster off them; never FM6's or ORACLE's", halo_ok);
+        bad += check("RND MIRROR: ..the halo chords in twelve notes, a held cluster off them; on ORACLE's GLASS PAD or TRIO's "
+                     "thin pulses", halo_ok);
         bad += check("RND MIRROR: ..the line its own (no FOLLOW, no wow)", m_ok);
         bad += check("RND MIRROR: ..the mirror follows it on its clock or twice as fast, onto the chord or in parallel",
                      t_ok && chordal > 30u && parallel > 30u);
         bad += check("RND MIRROR: ..the canon follows it an octave down, half as fast or across in triplets",
                      c_ok && cross > 20u);
-        bad += check("RND MIRROR: ..SID often; dry; FM6 PHYS ORACLE never fast", sid > 150u && dry && cpu);
+        bad += check("RND MIRROR: ..ORACLE and TRIO only; dry; ORACLE never fast", sid == 800u && dry && cpu);
         bad += check("RND MIRROR: ..a chordal mirror's notes on the chord (95 % and more)", !notes || on_chord * 100u >= notes * 95u);
         bad += check("RND MIRROR: ..each roll heard within 15 s, none at the rail", !quiet && !clipped_n);
         {                                           /* DRIFT FAST: its movements */

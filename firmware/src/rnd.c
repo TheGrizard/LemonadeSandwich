@@ -1290,37 +1290,25 @@ static int rnd_mr_micro(void)                       /* (off twelve notes: no cho
 }
 static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
+    /* MIRROR: HALO's opposite, cold, glassy and digital, in key (asked 2026-11-07): no warm pad; ORACLE's glass and
+     * blips, TRIO's thin, sharp waves (pulses, ring and sync on octaves and fifths) through a high-pass, struck */
     uint8_t nice = rnd_nice;
-    int ph = !*phys && rnd_phys_ok(), fm = !*fm6s && rnd_fm6_ok(), orc = !*oracles && eng_ok(ENGI_ORACLE);
-    int sid = eng_ok(3u);
+    int orc = *oracles < 2u && eng_ok(ENGI_ORACLE);
     uint32_t e, k = (uint32_t)rnd_rr(0, 99);
-    if (role == RND_ROLE_CHORDS) {                  /* glass */
-        static const uint8_t sp[] = {16, 19, 18, 17}, sw[] = {3, 3, 2, 2};   /* PWM PAD, 8580 PAD, DREAM CHIP, SID STRINGS */
-        if (sid && k < 65u) rnd_want_e = 3u, rnd_want_pi = rnd_pick(sp, sw, NELEM(sp));   /* (FM6's and ORACLE's pads:
-                                                     * a chord of them near HALO's whole cost again, measured) */
-        else rnd_want_e = 6u, rnd_want_pi = 8;      /* SOFT PAD, its wave made digital below (CHIP CHOIR: a hiss;
-                                                     * SWEEP PAD: all but silent, measured) */
-    } else if (role == RND_ROLE_MELODY) {           /* digital */
-        static const uint8_t sp[] = {22, 24, 25, 26, 20, 15}, sw[] = {3, 3, 2, 2, 2, 1};   /* C64 KEYS, ARP PLUCK, COIN
-                                                     * PLUCK, BELL RING, TRI ORGAN, 8580 LEAD */
-        static const uint8_t fp[] = {8, 29, 21, 12}, fw[] = {3, 3, 2, 2};   /* DX TINE, MALLET, STEEL DRUM, DX MARIMBA */
-        if (sid && k < 50u) rnd_want_e = 3u, rnd_want_pi = rnd_pick(sp, sw, NELEM(sp));
-        else if (fm && k < 75u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
-        else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 1 : 3;   /* ARP LEAD, RING BELL */
+    if (role == RND_ROLE_CHORDS) {                  /* glass: ORACLE's GLASS PAD, or TRIO's thin pulses, high-passed */
+        if (orc && k < 55u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 2;
+        else rnd_want_e = 6u, rnd_want_pi = 8;      /* (SOFT PAD, made thin and bright below) */
+    } else if (role == RND_ROLE_MELODY) {           /* digital: ORACLE's SEQ BLIP or SYNC LEAD, TRIO's ring and sync */
+        if (orc && k < 45u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(60) ? 20 : 5;
+        else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 1 : 3;   /* ARP LEAD, RING BELL (their waves below) */
     } else if (role == RND_ROLE_TINT) {             /* glass bells */
-        static const uint8_t fp[] = {11, 23, 33, 31, 1}, fw[] = {3, 2, 2, 2, 2};   /* BELLS, TUBULAR, FURIN, RIN, BELL */
-        if (fm && k < 45u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
-        else if (ph && k < 70u) rnd_want_e = ENGI_PHYS, rnd_want_pi = 9;   /* VIBES (BELL TREE: a hiss, measured) */
-        else if (orc && k < 82u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 10;   /* POLY BELLS */
-        else if (sid) rnd_want_e = 3u, rnd_want_pi = 26;   /* BELL RING */
-        else rnd_want_e = 6u, rnd_want_pi = 3;      /* RING BELL (no SID in the build) */
-    } else {                                        /* the canon: digital, low */
-        static const uint8_t sp[] = {20, 19, 4}, sw[] = {3, 2, 2};   /* TRI ORGAN, 8580 PAD, SUB PULSE */
-        if (sid && k < 40u) rnd_want_e = 3u, rnd_want_pi = rnd_pick(sp, sw, NELEM(sp));
-        else if (orc && k < 65u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(50) ? 14 : 19;   /* DRONE, SWEEP PAD */
-        else rnd_want_e = 6u, rnd_want_pi = 8;      /* SOFT PAD, digital below (FM6's DEEP PAD, TRIO's FIFTH DRONE
-                                                     * and SWEEP PAD: all but silent on the canon's notes, measured) */
+        if (orc && k < 60u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 10;   /* POLY BELLS */
+        else rnd_want_e = 6u, rnd_want_pi = 3;      /* RING BELL */
+    } else {                                        /* the canon: low, digital, struck (not HALO's held pad) */
+        if (orc && k < 35u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 20;   /* SEQ BLIP */
+        else rnd_want_e = 6u, rnd_want_pi = 1;      /* ARP LEAD */
     }
+    (void)fm6s; (void)phys;
     rnd_nice = 1;                                   /* (the presets' kinds kept, their knobs pushed a little: pushed
                                                      * further, SID's, FM6's and TRIO's turned to a hiss, measured) */
     rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
@@ -1342,18 +1330,24 @@ static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_
     rnd_tp(tr, P_CHRD, 0);
     rnd_tp(tr, P_DETUNE, rnd_rr(0, 30));
     rnd_tp(tr, P_SPRD, rnd_rr(80, 127));
-    if (e == 6u && role != RND_ROLE_TINT) {         /* (TRIO: SST, PPT, PLS3, the sharper waves; the filter not wide
-                                                     * open) */
-        static const uint8_t wv[] = {3, 2, 1}, ww[] = {1, 1, 1};
-        rnd_tp(tr, P_E0, rnd_pick(wv, ww, NELEM(wv)));
-        rnd_tp(tr, P_E0 + 5u, rnd_rr(60, 85));
-        rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 40));
+    if (e == 6u) {                                  /* (TRIO: thin and sharp; the glass and the canon pulses, the line
+                                                     * and the bells ring and sync too; high-passed, bright) */
+        static const uint8_t wv[] = {1, 3, 12, 9, 13, 10}, ww[] = {3, 2, 2, 2, 1, 1};   /* PLS3 SST RING SYNC RING3 SYNCP */
+        rnd_tp(tr, P_E0, role == RND_ROLE_CHORDS || role == RND_ROLE_CANON ? (rnd_pct(60) ? 1 : 3) :
+                         (int32_t)rnd_pick(wv, ww, NELEM(wv)));
+        rnd_tp(tr, P_E0 + 1u, rnd_pct(50) ? 12 : 0);
+        rnd_tp(tr, P_E0 + 2u, rnd_pct(40) ? 12 : rnd_pct(50) ? 7 : 24);
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(0, 4));        /* (DTN: still, glass) */
+        rnd_tp(tr, P_E0 + 4u, role == RND_ROLE_CANON ? 0 : rnd_pct(65) ? 2 : 1);   /* HP or BP (the canon LP) */
+        rnd_tp(tr, P_E0 + 5u, role == RND_ROLE_CANON ? rnd_rr(60, 85) : rnd_rr(30, 60));   /* (HP's cut: thin) */
+        rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 50));
+        rnd_tp(tr, P_E0 + 7u, rnd_rr(10, 40));      /* PW: narrow */
     }
     if (role == RND_ROLE_CHORDS) {
         /* (slower: a chord gone before it swells, measured) */
         {
-            static const int8_t rg[][3] = {{P_ATK, 40, 80}, {P_DEC, 100, 127}, {P_SUS, 100, 127}, {P_REL, 90, 120}};
-            rnd_tp_rr(tr, rg, NELEM(rg));
+            static const int8_t rg[][3] = {{P_ATK, 10, 40}, {P_DEC, 80, 110}, {P_SUS, 60, 100}, {P_REL, 70, 100}};
+            rnd_tp_rr(tr, rg, NELEM(rg));           /* (glass: it speaks at once, not HALO's swell) */
         }
         rnd_tp(tr, P_VOICE, V_POLY);
         rnd_tp(tr, P_LEVEL, rnd_rr(56, 70));
@@ -1361,7 +1355,7 @@ static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_
     } else if (role == RND_ROLE_MELODY) {
         static const uint8_t vv[] = {V_MONO, V_LEGATO, V_POLY}, vw[] = {4, 2, 3};
         {
-            static const int8_t rg[][3] = {{P_ATK, 0, 10}, {P_DEC, 60, 100}, {P_SUS, 20, 80}, {P_REL, 50, 90}};
+            static const int8_t rg[][3] = {{P_ATK, 0, 4}, {P_DEC, 50, 85}, {P_SUS, 0, 40}, {P_REL, 40, 80}};
             rnd_tp_rr(tr, rg, NELEM(rg));
         }
         rnd_tp(tr, P_VOICE, rnd_pick(vv, vw, NELEM(vv)));
@@ -1380,10 +1374,10 @@ static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_
         if (e == ENGI_PHYS) { rnd_tp(tr, P_E0 + 6u, 0); rnd_tp(tr, P_LEVEL, rnd_rr(84, 98)); }
     } else {
         {
-            static const int8_t rg[][3] = {{P_ATK, 30, 90}, {P_DEC, 100, 127}, {P_SUS, 90, 127}, {P_REL, 80, 115}};
-            rnd_tp_rr(tr, rg, NELEM(rg));
+            static const int8_t rg[][3] = {{P_ATK, 0, 6}, {P_DEC, 60, 95}, {P_SUS, 20, 60}, {P_REL, 50, 85}};
+            rnd_tp_rr(tr, rg, NELEM(rg));           /* (struck, not held) */
         }
-        rnd_tp(tr, P_VOICE, V_LEGATO);
+        rnd_tp(tr, P_VOICE, V_MONO);
         rnd_tp(tr, P_LEVEL, rnd_rr(68, 82));
         rnd_tp(tr, P_PAN, rnd_rr(-15, 15));
         if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 7u, rnd_rr(10, 24));

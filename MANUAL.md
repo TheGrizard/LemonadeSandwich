@@ -946,17 +946,17 @@ beside a high line or below), as Pärt's voices change places in Für Alina. DRI
 to TRIO's intervals, the halo's chords or the line's single steps. With DRIFT OFF, HALO stays as it was rolled.
 
 **MIRROR.** With REC BUTTON on **MIRROR**, a roll is HALO's mirror (Pärt's *Spiegel im Spiegel*, the mirror in the
-mirror): the same four parts, glassy and digital, the rules loosened. 70 to 100 BPM; a key in twelve notes (lydian,
+mirror): the same four parts, HALO's opposite: cold, glassy and digital (still in key), struck rather than swelling,
+the rules loosened. 70 to 100 BPM; a key in twelve notes (lydian,
 whole tone, major pentatonic, major, dorian, half-whole diminished) or, in about two rolls of five, off them (SLENDRO,
-PELOG, 19 and 22 EDO, HARM16, JI-MAJ, Bohlen-Pierce). The **halo** is glass: SID's PWM PAD, 8580 PAD, DREAM CHIP or SID
-STRINGS, or TRIO's SOFT PAD on a sharper wave; in twelve notes a CHORD track (DRONE, TWO, CIRCLE, WALK or 50S; held,
+PELOG, 19 and 22 EDO, HARM16, JI-MAJ, Bohlen-Pierce). The **halo** is glass, no warm pad: ORACLE's GLASS PAD, or TRIO's thin
+pulses through a high-pass, speaking at once; in twelve notes a CHORD track (DRONE, TWO, CIRCLE, WALK or 50S; held,
 or pulsing on the beat or off it), off them a cluster of two or three notes taking turns, held. The **line** is digital
-(SID's C64 KEYS, ARP PLUCK, COIN PLUCK, BELL RING, TRI ORGAN or 8580 LEAD; FM6's DX TINE, MALLET, STEEL DRUM or DX
-MARIMBA; TRIO on SST, PPT or PLS3), by step or not (SERIES, TURING, BOUNCE, MARKOV or AWAKE), on 1/16 to 1/4, tight.
-The **mirror** is glass bells (FM6's BELLS, TUBULAR, FURIN, RIN or BELL; ORACLE's POLY BELLS; SID's BELL
-RING) following the line: onto the halo's chord (QNT CHRD, the tintinnabuli voice) or in parallel a few degrees off
+(ORACLE's SEQ BLIP or SYNC LEAD; TRIO's pulses, ring or sync waves on octaves and fifths, high- or band-passed, short), by step or not (SERIES, TURING, BOUNCE, MARKOV or AWAKE), on 1/16 to 1/4, tight.
+The **mirror** is glass bells (ORACLE's POLY BELLS or TRIO's RING BELL) following the line: onto the halo's chord (QNT CHRD, the tintinnabuli voice) or in parallel a few degrees off
 (TWEAK SHIFT; always, off twelve notes), on the line's clock or twice as fast, now and then stuttering (ratchets). The
-**canon** is the line again an octave down (SID, ORACLE or TRIO), half as fast or across it in triplets. No wow: the
+**canon** is the line again an octave down, struck (ORACLE's SEQ BLIP or a TRIO pulse), half as fast or across it in
+triplets. No wow: the
 shapes shimmer instead (the LFO on SHAPE, now and then in S&H steps), S&H cords step the line's shape, an LFO moves the
 mirror's place. With **DRIFT** on, MIRROR moves on HALO's clock: the line's pace a step (the mirror on its clock, the
 canon at half), the canon across the line or back, the mirror onto the chord or into parallel (another parallel, off
