@@ -64,6 +64,10 @@
 #ifndef MELODEE_PHYS
 #define MELODEE_PHYS 1           /* PHYS (eng_phys.c), back 2026-10-18 after TRIO; out of device builds 2026-10-21 (build.py) */
 #endif
+#ifndef MELODEE_DRUM
+#define MELODEE_DRUM 1           /* DRUM (eng_drum.c): out of the LEMONADE SANDWICH device build 2026-11-07 (build.py; the
+                                  * drums are another machine's): its tracks load FM's first voice, its grid never shows */
+#endif
 #ifndef MELODEE_LOOK
 #define MELODEE_LOOK 1           /* 1: Mono (ui_mono.c), what ships and the host tests build; 0: the detailed look,
                                   * no longer kept up (2026-10-31; branch detailed-look) */
@@ -76,7 +80,7 @@
 #ifndef MELODEE_PLAITS
 #define MELODEE_PLAITS 0         /* MACRO (eng_macro.c): Plaits' synthesis, C++ (build.py); the prototype: off by default */
 #endif
-#define ENG_BUILT(e) ((e) == 3u ? MELODEE_SID : (e) == 9u ? PHYS_ON : (e) == 12u ? MELODEE_FM6 : (e) == 15u ? 0 : (e) == 19u ? MELODEE_ORACLE : \
+#define ENG_BUILT(e) ((e) == 3u ? MELODEE_SID : (e) == 9u ? PHYS_ON : (e) == 10u ? MELODEE_DRUM : (e) == 12u ? MELODEE_FM6 : (e) == 15u ? 0 : (e) == 19u ? MELODEE_ORACLE : \
                       (e) == 21u ? MELODEE_PLAITS : 1)   /* SID PHYS FM6 CZ-1 ORACLE MACRO (PHYS: left out, not retired,
                                                    * since 2026-10-21: its tracks load FM's first voice) */
 #define TRIO_ON (MELODEE_TRIO || MELODEE_LEGACY_EXTRAS)
@@ -97,7 +101,7 @@
 #define USER_NONE 256u
 #define ENGI_ANALOG 0u           /* retired in 1.2: never selectable (eng_ok), its stored sounds play silent */
 #define ENGI_DIGITAL 1u          /* retired: never selectable (eng_ok), its stored sounds play silent */
-#define NENG_SHOWN (NENGINES - 10u - !MELODEE_ORACLE - !MELODEE_SLICE - (MELODEE_LEGACY_EXTRAS ? 1u : 6u - MELODEE_TRIO - MELODEE_PHYS) - !MELODEE_SID - !MELODEE_FM6 - \
+#define NENG_SHOWN (NENGINES - 10u - !MELODEE_ORACLE - !MELODEE_SLICE - (MELODEE_LEGACY_EXTRAS ? 1u : 6u - MELODEE_TRIO - MELODEE_PHYS) - !MELODEE_SID - !MELODEE_FM6 - !MELODEE_DRUM - \
                     !MELODEE_PLAITS)   /* the engines one can pick: PRESETS, the EDIT
                                                 * layer, the editor, in the display order of engines.c ENGINE_ORDER */
 #define ENGI_SLICE 13u           /* reserved without MELODEE_SLICE: never selectable (eng_ok) */

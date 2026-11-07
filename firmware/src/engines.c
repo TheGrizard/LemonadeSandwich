@@ -117,7 +117,11 @@ static const engine_t *const ENGINES[NENGINES] = {
 #else
     &ENG_RETIRED,                /* 9: retired PHYS; stored ID reserved */
 #endif
+#if MELODEE_DRUM
     &ENG_DRUM,                   /* 10 (ENGI_DRUM) */
+#else
+    &ENG_RETIRED,                /* 10: DRUM left out of the build; stored ID reserved */
+#endif
 #if MELODEE_LEGACY_EXTRAS
     &ENG_NOISE,                  /* 11 */
 #else
@@ -200,7 +204,9 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
 #if MELODEE_SLICE
     13,                          /* SLICE */
 #endif
+#if MELODEE_DRUM
     10,                          /* DRUM */
+#endif
 };
 
 /* Retired synth records (ANALOG and DIGITAL since 2.0 too) retain their stored identity and render silence.
@@ -264,7 +270,11 @@ static const uint8_t TRK_DEF[NPART][2] = {
 #else
     {ENGI_FM6, 11},                                 /* FM6 BELLS (without SID; was KALIMBA) */
 #endif
+#if MELODEE_DRUM
     {ENGI_DRUM, 0}};                                /* DRUM KIT */
+#else
+    {ENGI_FM6, 6}};                                 /* FM6 ORGAN, a bass (without DRUM) */
+#endif
 /* the power-on presets when project format 1 was written (project.c PROJ_DEF_SOUND): fixed, whatever TRK_DEF becomes */
 static const uint8_t TRK_DEF_V1[NPART] = {4, 4, 0, 0};
 #if TRK_START_TESS

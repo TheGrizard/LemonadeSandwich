@@ -127,7 +127,7 @@ static uint32_t voice_units(const track_t *t)
 {
     const engine_t *e = ENGINES[t->engine];
 #if MELODEE_ADMISSION
-    if(e==&ENG_FM6 || e==&ENG_SID || e==&ENG_DRUM)return 2u;
+    if(e==&ENG_FM6 || e==&ENG_SID || (MELODEE_DRUM&&e==&ENG_DRUM))return 2u;
 #endif
     return e->units ? e->units(t) : trk_nvoice(t) > NPOLY ? 1u : 2u;
 }
@@ -725,7 +725,7 @@ static void engine_batch_kernel(const void *data,int32_t *pcm)
     const engine_batch_t *j=data;int16_t params[P_COUNT];
     for(uint32_t k=0;k<8u;k++)params[P_E0+k]=j->engine_params[k];
     for(uint32_t k=0;k<DV_NLANE;k++)params[P_LN0+k]=j->lane_params[k];
-    if(j->engine==&ENG_DRUM){dr_scratch_t scratch;drum_render_into(j->track,j->voice,pcm,j->n,&j->modulation,&scratch,params);}
+    if(MELODEE_DRUM&&j->engine==&ENG_DRUM){dr_scratch_t scratch;drum_render_into(j->track,j->voice,pcm,j->n,&j->modulation,&scratch,params);}
     else if(MELODEE_SID&&j->engine==&ENG_SID)sid_render_into(j->track,j->voice,pcm,j->n,&j->modulation,params);
     else j->engine->render(j->track,j->voice,pcm,j->n,&j->modulation);
 }
@@ -733,7 +733,7 @@ static void engine_batch_kernel(const void *data,int32_t *pcm)
 static inline void engine_join(void) {}
 static void engine_render(track_t *t,voice_t *v,const engine_t *e,int32_t *out,uint32_t n,const vmod_t *m)
 {
-    if(audio_batch_active && ((MELODEE_SID&&e==&ENG_SID) || e==&ENG_DRUM)){
+    if(audio_batch_active && ((MELODEE_SID&&e==&ENG_SID) || (MELODEE_DRUM&&e==&ENG_DRUM))){
         engine_batch_t j;j.track=t;j.voice=v;j.engine=e;j.modulation=*m;j.n=n;
         for(uint32_t k=0;k<8u;k++)j.engine_params[k]=t->p[P_E0+k];
         for(uint32_t k=0;k<DV_NLANE;k++)j.lane_params[k]=t->p[P_LN0+k];
@@ -753,7 +753,7 @@ static __attribute__((noinline)) uint32_t track_render_audio(track_t *t, int32_t
     int32_t tune, tune_fine;
     int32_t bend, bend16, bend_fine;
     uint32_t ti = (uint32_t)(t - trk);
-    if (ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM) {
+    if (MELODEE_DRUM && ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM) {
         midi_bend_q8[ti] = midi_bend_target[ti] = 0;
     } else {
         int32_t d = midi_bend_target[ti] - midi_bend_q8[ti];

@@ -4,7 +4,8 @@
  * (2026-10-21, FM back) SID, PHYS, CZ-1 and ORACLE off. Never offered; a project's track of one loads the fallback's
  * first voice (SID's INIT, or FM's) with its common settings; the power-on sounds are built ones; the parts play. Built
  * with -DMELODEE_FM6=0 -DMELODEE_CZ=0 -DMELODEE_ORACLE=0, and with -DMELODEE_SID=0 -DMELODEE_PHYS=0 -DMELODEE_CZ=0
- * -DMELODEE_ORACLE=0 (run_tests.sh). */
+ * -DMELODEE_ORACLE=0 (run_tests.sh); and so with DRUM off too (-DMELODEE_DRUM=0, the device's, 2026-11-07): a DRUM track
+ * loads FM's first voice, no drum grid. */
 static unsigned char host_samples[3][0x14000];
 #define SMP_USER_XIP(k) host_samples[k]
 #define main hostsim_main
@@ -55,10 +56,12 @@ int main(void)
     static const uint32_t GONE[3] = {MELODEE_FM6 ? ENGI_SID : 12u, MELODEE_FM6 ? ENGI_PHYS : 15u, 19u};
     uint32_t k, shown = 0, ok = 1;
     for (k = 0; k < NENGINES; k++) shown += eng_ok(k);
-    check(MELODEE_FM6 ? "SID, PHYS, CZ-1 and ORACLE never offered; FM6, TRIO and DRUM are" :
+    check(!MELODEE_DRUM ? "SID, PHYS, DRUM, CZ-1 and ORACLE never offered; FM6 and TRIO are" :
+          MELODEE_FM6 ? "SID, PHYS, CZ-1 and ORACLE never offered; FM6, TRIO and DRUM are" :
                         "FM6, CZ-1 and ORACLE never offered; SID, TRIO, PHYS and DRUM are",
           !eng_ok(GONE[0]) && !eng_ok(GONE[1]) && !eng_ok(15) && !eng_ok(19) && eng_ok(ENGI_FALLBACK) && eng_ok(6) &&
-          eng_ok(ENGI_PHYS) == !MELODEE_FM6 && eng_ok(ENGI_DRUM) && shown == NENG_SHOWN && NENG_SHOWN == 4u - MELODEE_FM6);
+          eng_ok(ENGI_PHYS) == !MELODEE_FM6 && eng_ok(ENGI_DRUM) == MELODEE_DRUM && shown == NENG_SHOWN &&
+          NENG_SHOWN == 4u - MELODEE_FM6 - !MELODEE_DRUM);
     for (k = 0; k < NENG_SHOWN; k++) ok &= ENG_BUILT(eng_vis(k));
     for (k = 0; k < NPART; k++) ok &= ENG_BUILT(TRK_DEF[k][0]) && eng_ok(TRK_DEF[k][0]);
     check("the engine list and the power-on sounds: built engines only", ok);
@@ -73,7 +76,12 @@ int main(void)
         p.t[k].p[P_E0] = 99;
         p.t[k].p[P_E0 + 3u] = -40;
     }
-#if !MELODEE_SID_KIT
+#if !MELODEE_DRUM
+    p.t[3].engine = ENGI_DRUM;                    /* (and a DRUM track: DRUM left out too) */
+    p.t[3].preset = 2;
+    p.t[3].p[P_ATK] = 33;
+    p.t[3].p[P_E0] = 5;
+#elif !MELODEE_SID_KIT
     p.t[3].p[P_E0] = DK_SID;                      /* (and a DRUM track saved with KIT SID) */
 #endif
     p.sum = proj_sum(&p);
@@ -85,8 +93,16 @@ int main(void)
     }
     check(MELODEE_FM6 ? "a project's SID, PHYS, ORACLE tracks: FM6's first voice, its common settings kept (ATTACK)" :
                         "a project's FM6, CZ-1, ORACLE tracks: SID INIT, its common settings kept (ATTACK)", ok);
+#if MELODEE_DRUM
     check("...the other track as saved (DRUM)", trk[3].eng_req == ENGI_DRUM);
-#if !MELODEE_SID_KIT
+#else
+    for (k = 0, ok = trk[3].eng_req == ENGI_FALLBACK && trk[3].preset == 0 && trk[3].p[P_ATK] == 33 && !drum_track(&trk[3]); k < 8u; k++)
+        ok &= trk[3].p[P_E0 + k] == ENGINES[ENGI_FALLBACK]->edit[k].def;
+    check("...its DRUM track: FM6's first voice, ATTACK kept, no drum grid", ok);
+    proj_legacy_perc(&trk[2]);
+    check("...an old project's GM kit: FM6's first voice too", trk[2].eng_req == ENGI_FALLBACK && !drum_track(&trk[2]));
+#endif
+#if !MELODEE_SID_KIT && MELODEE_DRUM
     for (k = 0, ok = ENG_DRUM.edit[0].max == DK_909; k < ENG_DRUM.npresets; k++)
         ok &= ENG_DRUM.presets[k].e[0] != DK_SID;
     check("SID KIT left out: KIT goes to 909, no SID preset; a saved KIT SID loads as the 909", ok && trk[3].p[P_E0] == DK_909);

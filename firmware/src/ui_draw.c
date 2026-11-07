@@ -186,7 +186,7 @@ static void head_chip_text(char *b)
         b[10] = (char)('1' + ui.ptc_dst % NPAT);
     } else if (ui.home) {                               /* Stage: the engine (a kit: its name, "909 KIT") */
         if (browse_pending()) { uint32_t kk, s = browse_shown(&kk); e = src_engine(s, kk); }
-        if (ENGINES[eng_idx(e)] == &ENG_DRUM && !browse_pending()) sound_name(TSEL, b);
+        if (MELODEE_DRUM && ENGINES[eng_idx(e)] == &ENG_DRUM && !browse_pending()) sound_name(TSEL, b);
         else str_cpy(b, ENGINES[eng_idx(e)]->name, 16);
     } else if (sec_map_on()) {                          /* the map: the engine */
         str_cpy(b, ENGINES[e]->name, 16);

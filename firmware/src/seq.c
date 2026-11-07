@@ -49,7 +49,7 @@ static volatile uint8_t midi_hint;       /* MIDI IN played track n - 1, which is
 static uint32_t trk_index(const track_t *t) { return (uint32_t)(t - trk); }
 
 
-static int drum_track(const track_t *t) { return ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM; }
+static int drum_track(const track_t *t) { return MELODEE_DRUM && ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM; }
 static void midi_out_key(const track_t *t, uint32_t note, uint32_t vel);   /* midi_out.c */
 static void midi_out_start(void);
 static void midi_out_stop(void);

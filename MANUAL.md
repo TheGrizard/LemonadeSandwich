@@ -66,7 +66,7 @@ the left knob, with MENU > TRACK KNOB set to LEFT), and **SELECT** turns the pag
 page, the tempo). When a section has more pages than the footer's tabs show, the header gives the page's place (4/10:
 SEQ counts GEN's pages and the sequencer's together, the way the button goes through them) and arrows at the footer's
 ends say more pages lie that way. The four sounds a new project starts with are an ambient set: **GLASS PAD**
-and **BELLS** on FM6, **STRING MACH** on TRIO, and the **808 KIT** on DRUM. (Track 2 is a TRIO pad so that
+and **BELLS** and **ORGAN** (a bass) on FM6, and **STRING MACH** on TRIO. (Track 2 is a TRIO pad so that
 generators on both pads stay within what the FM-1 can play: see [How many voices at once](#how-many-voices-at-once).) A new project has no mods, so nothing moves until
 you patch it.
 
@@ -138,7 +138,7 @@ key skips it.
 
 ## Sounds
 
-Tessera has four engines on the device:
+LEMONADE SANDWICH has four engines on the device (DRUM is out: drums come from another machine):
 
 | Engine | What it is |
 |---|---|
@@ -146,15 +146,14 @@ Tessera has four engines on the device:
 | **ORACLE** | Two oscillators, POLY MOD and a four-pole low-pass filter: a classic polyphonic analogue voice. Warm pads, brass, sync leads, basses, plucks. 24 sounds of its own; the sound is kept in the project. |
 | **TRIO** | Three oscillators: WAVE, INT2, INT3 (intervals) and DETUNE. Basses and leads. |
 | **PHYS** | Physical models: MODAL (bars, bells, plates), STRNG (a plucked or bowed string), MEMB (drum heads) and SYMP (a string with three more ringing along). Bells, mallets, plucks, bowed pads and drones; 17 sounds. |
-| **DRUM** | Drum kits: **808** and **909**. Eight lanes: BD, SD, CP, CH, OH, TM, RS, CB. The 808 has six tom pitches. |
 
-<p align="center"><img src="assets/gallery/edit_fm6.png" alt="FM6 ALGO page" width="240"> <img src="assets/gallery/fm6_eg.png" alt="FM6 operator envelope" width="240"> <img src="assets/gallery/drum.png" alt="DRUM steps" width="240"></p>
+<p align="center"><img src="assets/gallery/edit_fm6.png" alt="FM6 ALGO page" width="240"> <img src="assets/gallery/fm6_eg.png" alt="FM6 operator envelope" width="240"></p>
 
 **PHYS** is back. Its knobs each cover only their musical range now, with wide sweet spots: STRC keeps
 MODAL's overtones in tune from 16 to 48, a chime's near 84 and a marimba's at the top (the picture names where it
 is); a dull, short or bowed sound is as loud as a bright one. An old project's PHYS track (one not saved again
 since 2.0, which turned it into FM6) plays PHYS again, a little differently towards the ends of the knobs. **SID** is no longer in the device build, and neither is CZ-1: a track saved
-with SID loads FM6's INIT. DRUM's SID KIT
+with SID loads FM6's INIT, and so does a track saved with **DRUM**, which is out of the device build too (no drum grid). DRUM's SID KIT
 and SID DIGI are out too (2.2, for flash room): a track saved with KIT SID loads as the 909. FM6 and TRIO presets have
 releases that ring out, so short sequenced notes are not cut off. The slow pads (GLASS PAD, SOFT PAD, DEEP PAD, PAD,
 STRINGS) swell in slowly: they speak on long notes and drones, and stay quiet on short steps.
