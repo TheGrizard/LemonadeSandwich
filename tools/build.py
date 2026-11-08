@@ -269,17 +269,33 @@ def build_plaits(flags):
     return objs
 
 
+def build_braids(flags):
+    """LEMONADE SANDWICH: MACRO's C++ with Braids (firmware/third_party/mi/braids, its lean set, and
+    firmware/src/braids_glue.cc) for the AC79, as build_plaits: no exceptions, RTTI or C++ library"""
+    mi = FW / "third_party" / "mi"
+    inc = "/opt/jieli/pi32v2/include" if use_docker() else str(toolchain() / "pi32v2" / "include")
+    cxx = [f for f in flags if f.startswith(("-m", "-f", "-O", "-D")) and f != "-fno-builtin"] + [
+        "-x", "c++", "-std=c++11", "-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics", "-w", "-DBRAIDS_LEAN",
+        "-include", "stdio.h", "-I", mi / "shim", "-isystem", inc, "-I", mi, "-I", FW / "src"]
+    srcs = sorted([*(mi / "braids").glob("*.cc"), mi / "stmlib" / "utils" / "random.cc", FW / "src" / "braids_glue.cc"])
+    out = OUT / "mi"
+    out.mkdir(parents=True, exist_ok=True)
+    objs = [out / (str(f.relative_to(SRC)).replace("/", "_")[:-3] + ".o") for f in srcs]
+    tc_all(*[("cc", *cxx, "-c", f, "-o", o) for f, o in zip(srcs, objs)])
+    return objs
+
+
 def build_app(stub):
     subprocess.run([sys.executable, SRC / "tools/gen_909_tables.py", GEN / "x0x_drum_tables.h"], check=True)
     flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
     os.environ.setdefault("MELODEE_HELP_PACKED", "1")   # melodee-tess: the help texts byte-pair coded (tools/gen_help.py)
-    for flag, v in (("MELODEE_FM6", "0"), ("MELODEE_SID", "0"), ("MELODEE_SID_KIT", "0"), ("MELODEE_PHYS", "1"), ("MELODEE_DRUM", "0"), ("MELODEE_PLAITS", "1")):
+    for flag, v in (("MELODEE_FM6", "0"), ("MELODEE_SID", "0"), ("MELODEE_SID_KIT", "0"), ("MELODEE_PHYS", "1"), ("MELODEE_DRUM", "0"), ("MELODEE_PLAITS", "0"), ("MELODEE_BRAIDS", "1")):
         os.environ.setdefault(flag, v)   # melodee-tess: FM back, SID out (2026-10-21; PHYS too until it came back 2026-10-31), DRUM's SID KIT out (2026-10-28), CZ-1 and Prophet stores and MACRO out, TRIO in; set =1 / =0
                                          # to build the old set (the host tests keep all engines: firmware/src/core.h)
     os.environ.setdefault("MELODEE_LOOK", "1")   # melodee-tess: the Mono look, what 3.0 ships (2026-10-30); =0 the detailed
                                                  # look (the host tests keep it: firmware/src/core.h)
     for flag in ("MELODEE_HELP_PACKED", "MELODEE_FLASH", "MELODEE_OTA", "MELODEE_OTA_DRYRUN", "MELODEE_OTA_RAMONLY", "MELODEE_CDC",
-                 "MELODEE_UART", "MELODEE_USB_AUDIO", "MELODEE_USB_HOST", "MELODEE_ICONS", "MELODEE_FM6", "MELODEE_SID", "MELODEE_SID_KIT", "MELODEE_PLAITS", "MELODEE_TRIO", "MELODEE_PHYS", "MELODEE_DRUM", "MELODEE_LOOK",
+                 "MELODEE_UART", "MELODEE_USB_AUDIO", "MELODEE_USB_HOST", "MELODEE_ICONS", "MELODEE_FM6", "MELODEE_SID", "MELODEE_SID_KIT", "MELODEE_PLAITS", "MELODEE_BRAIDS", "MELODEE_TRIO", "MELODEE_PHYS", "MELODEE_DRUM", "MELODEE_LOOK",
                  "MELODEE_BENCH_SILENT", "MELODEE_FX_PROFILE", "MELODEE_AUDIO_PROFILE", "MELODEE_BATCH_AUDIO", "MELODEE_ADMISSION", "MELODEE_AUDIO_BENCH", "MELODEE_DUAL_CORE", "MELODEE_CACHE_RAM", "MELODEE_CORE1_TEST", "MELODEE_RAM_AUDIO", "MELODEE_HW_EQ"):
         v = os.environ.get(flag)    # unset: the default in firmware/src/melodee.c
         if v in ("0", "1"):
@@ -314,7 +330,8 @@ def build_app(stub):
         raise SystemExit("resident audio requires MELODEE_SIZE=1 for the verified IR placement pass")
     elf = OUT / "melodee.elf"
     extra_ld = ["--defsym=AUDIO_RESIDENT=1"] if os.environ.get("MELODEE_RAM_AUDIO") == "1" else []
-    plaits = build_plaits(flags) if os.environ.get("MELODEE_PLAITS") == "1" else []
+    plaits = build_plaits(flags) if os.environ.get("MELODEE_PLAITS") == "1" else \
+        build_braids(flags) if os.environ.get("MELODEE_BRAIDS") == "1" else []
     tc("pi32v2/bin/ld", "--gc-sections", *extra_ld, "-T", FW / "app.ld", OUT / "crt0.o", OUT / "fm1_vec.o", OUT / "fm1_isr.o",
        OUT / "melodee.o", *plaits, "-o", elf)
     for sect in ("text.bin", "data.bin", "ramtext.bin", "dsptext.bin", "dsptables.bin", "audiotext.bin"):

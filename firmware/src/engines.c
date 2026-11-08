@@ -36,7 +36,11 @@ static const engine_t ENG_RETIRED = {         /* 13 without MELODEE_SLICE: reser
 /* Each track owns only its selected engine's working state. Simple engines
  * use voice_t alone. State is released after the old engine's switch fade. */
 #include "resources.c"
+#if MELODEE_BRAIDS
+#include "eng_braids.c"         /* MACRO: Braids' synthesis (MELODEE_BRAIDS; braids_glue.cc, third_party/mi/braids) */
+#else
 #include "eng_macro.c"          /* MACRO: Plaits' synthesis (MELODEE_PLAITS; macro_glue.cc, third_party/mi) */
+#endif
 static uint32_t eng_state_size(uint32_t e)
 {
     switch (e) {
@@ -47,8 +51,9 @@ static uint32_t eng_state_size(uint32_t e)
     case 7: return sizeof(drw_part_t);
 #endif
     case 3: return sizeof(sid_part_t);              /* SID (eng_sid.c) */
-#if MELODEE_PLAITS
-    case ENGI_MACRO: return mc_bytes();             /* MACRO: Plaits' voice and its working memory (eng_macro.c) */
+#if MACRO_ON
+    case ENGI_MACRO: return mc_bytes();             /* MACRO: Plaits' voice and its working memory (eng_macro.c), or
+                                                     * Braids' four oscillators (eng_braids.c) */
 #endif
     case ENGI_DRUM: return sizeof(drum909_part_t);
     case ENGI_FM6: return sizeof(fm6_part_t);
@@ -146,8 +151,8 @@ static const engine_t *const ENGINES[NENGINES] = {
     &ENG_RETIRED,                /* 19: ORACLE left out of the build; stored ID reserved */
 #endif
     &ENG_RETIRED,                /* 20: reserved (USER_NATIVE_P5, the browser's Prophet user bank) */
-#if MELODEE_PLAITS
-    &ENG_MACRO,                  /* 21: MACRO, Plaits' synthesis (Tessera) */
+#if MACRO_ON
+    &ENG_MACRO,                  /* 21: MACRO, Plaits' or Braids' synthesis (Tessera) */
 #else
     &ENG_RETIRED,                /* 21: MACRO left out of the build; stored ID reserved */
 #endif
@@ -198,7 +203,7 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
     9,                           /* PHYS */
 #endif
 #endif
-#if MELODEE_PLAITS
+#if MACRO_ON
     ENGI_MACRO,                  /* MACRO */
 #endif
 #if MELODEE_SLICE

@@ -240,6 +240,22 @@ macro_tests() {                                  # MACRO (eng_macro.c): Plaits' 
         c++ -o "$OUT/macro_test" "$OUT/macro_test.o" $_objs -lm || { fail "compile tests/macro_test.c (MACRO)"; return 1; }
     step "MACRO: Plaits' models play, pitch, HIT, every knob, arena memory, cost against SID" "$OUT/macro_test"
 }
+braids_tests() {                                 # MACRO with Braids (eng_braids.c): Braids' C++ for this computer
+    M=firmware/third_party/mi
+    if ! command -v c++ >/dev/null 2>&1; then echo "== BRAIDS: skipped (no c++)"; return; fi
+    step "BRAIDS: its tables at 44.1 kHz, as tools/braids_44k.py writes them" python3 tools/braids_44k.py --check
+    mkdir -p "$OUT/br"
+    _objs=
+    for _f in $M/braids/*.cc $M/stmlib/utils/random.cc firmware/src/braids_glue.cc; do
+        _o=$OUT/br/$(echo "$_f" | tr / _).o
+        c++ -O2 -std=c++11 -fno-exceptions -fno-rtti -fno-threadsafe-statics -w -DMACRO_HOST -DBRAIDS_LEAN \
+            -I$M -Ifirmware/src -c "$_f" -o "$_o" || { fail "compile $_f (BRAIDS)"; return 1; }
+        _objs="$_objs $_o"
+    done
+    $CC -O2 $FW -DMELODEE_BRAIDS=1 -c tests/braids_test.c -o "$OUT/braids_test.o" &&
+        c++ -o "$OUT/braids_test" "$OUT/braids_test.o" $_objs -lm || { fail "compile tests/braids_test.c (BRAIDS)"; return 1; }
+    step "BRAIDS: its models and presets play, pitch, four voices, every knob, cost against SID" "$OUT/braids_test"
+}
 phys_ref() {
     D=${DAISYSP:-vendor/DaisySP}/Source
     if [ ! -d "$D/PhysicalModeling" ] || ! command -v c++ >/dev/null 2>&1; then
@@ -400,6 +416,7 @@ if sound && [ $TABLES = 1 ]; then
     t "native fp32: FM6 against an independent reference, exact pitch" synth_fpu_test \
         -O2 $FW
     job macro_tests
+    job braids_tests
     t "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" mod_test \
         -DMELODEE_LEGACY_EXTRAS=1 -O2 $FW -- "$OUT/mod_test" build/mod_demo
     t "matrix S&H / SLEW / DEPTH, SPREAD: off = bit-identical, stereo sides and routing" mod_spread_test -O2 $FW

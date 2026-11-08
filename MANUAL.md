@@ -138,15 +138,18 @@ key skips it.
 
 ## Sounds
 
-LEMONADE SANDWICH has four engines on the device: ORACLE, TRIO, PHYS and **MACRO** (Mutable Instruments Plaits'
-synthesis, by Emilie Gillet, MIT licence: not her product). FM6 is out (its tines and bells sounded cheap), and so is
-DRUM (drums come from another machine). MACRO's MODEL picks one of seven: **NOISE** (filtered noise; HARM the filter's
-type, TIMBR its cutoff, MORPH its resonance), **DUST** (particles through resonant filters; HARM their spread, TIMBR
-their density, MORPH the filter or a reverb), **CLOUD** (a swarm of grains; HARM their spread, TIMBR their density,
-MORPH their length), **STRNG** (the string machine; HARM its chord: low, octaves and fifths), **PHASE** (phase
-distortion), **SHAPE** (a waveshaper) and **FM** (two operators). HIT ON strikes it (Plaits' low-pass gate, DECAY
-and COLOR); OFF holds it under the track's envelope. One voice a track, and a heavy one: a MACRO voice costs as much
-as two to four ORACLE voices (DUST and FM the most), so use it for held textures and lines, a track or two. FM6 is described below
+LEMONADE SANDWICH has four engines on the device: ORACLE, TRIO, PHYS and **MACRO**: Mutable Instruments Braids'
+macro-oscillator, by Emilie Gillet (MIT licence; not her product). FM6 is out (its tines and bells sounded cheap), and
+so is DRUM (drums come from another machine). MACRO is cheap: Braids works in whole numbers, so a voice costs a third
+to a half of an ORACLE voice, and a track plays four. Its **MODEL** picks one of 19: **CSAW**, **FOLD** (a wavefolder),
+**SWARM** (seven detuned saws), **TOY**; the voices **VOSIM**, **VOWEL** (a note strikes a consonant) and **VFOF**;
+**FM**, **FBFM** (feedback FM) and **WTFM** (chaotic FM); the wavetables **WTBL**, **WMAP** and **WLINE**; and the
+noises **NOISE** (filtered), **TWINQ** (two resonant peaks), **CLKN** (clocked, digital), **CLOUD** (granular),
+**DUST** (particles) and **QPSK** (modem data). **TIMBR** and **COLOR** are Braids' two knobs, each model's own
+(MODS' SHAPE moves TIMBR); **TONE** is a low-pass after it (the filter envelope and CUTOFF cords move it); **BITS** and
+**RATE** crush it, as Braids' own settings did; **STRIK** ON strikes the model at each note (VOWEL's consonant, the
+grains restarted); **DRIVE** soft-clips it. The track's envelope shapes every note. (Plaits, MACRO's first engine,
+is kept in the source but out of the build: on the FM-1 a Plaits voice cost two to four ORACLE voices.) FM6 is described below
 for the builds that keep it.
 
 | Engine | What it is |

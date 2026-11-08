@@ -26,3 +26,16 @@ Changes (each marked `melodee-tess` in the code):
   (2026-10-17): no denormals in dying notes (the AC79's FPU is slow on them; Plaits' Cortex-M4 flushes them): the
   resonator's mode states are flushed, a -400 dB square wave rides into the gate's, the string's and its exciter's
   filters.
+
+## Braids (LEMONADE SANDWICH, 2026-11-08)
+
+`braids/`: Mutable Instruments Braids' macro-oscillator (MIT, Emilie Gillet; eurorack repository, `braids/`):
+`macro_oscillator`, `analog_oscillator`, `digital_oscillator`, `resources`, `excitation.h`, `svf.h`,
+`parameter_interpolation.h`, `settings.h`, unchanged but for:
+
+- `resources.cc`: its tables that depend on the sample rate (the pitch, the SVF, the grains' rate) at 44.1 kHz, not
+  96 kHz: `tools/braids_44k.py` writes them with Braids' own formulas (`--check` in the tests).
+- `digital_oscillator.cc` VOWEL: the formant increments x 96 / 44.1, the formants where they were.
+- `BRAIDS_LEAN` (the device's): the physical models, drums, comb, Z filters, harmonics, paraphonic, ring, Morse
+  and all analog models but CSAW and FOLD are not linked (the filtered noise or CSAW in their table places, never
+  chosen: `firmware/src/braids_glue.cc`), and the delay lines they needed (16 KB an oscillator) are gone: 688 bytes.

@@ -80,8 +80,16 @@
 #ifndef MELODEE_PLAITS
 #define MELODEE_PLAITS 0         /* MACRO (eng_macro.c): Plaits' synthesis, C++ (build.py); the prototype: off by default */
 #endif
+#ifndef MELODEE_BRAIDS
+#define MELODEE_BRAIDS 0         /* MACRO (eng_braids.c): Braids' synthesis, C++ (build.py); LEMONADE SANDWICH's device build
+                                  * (2026-11-08: Plaits too heavy on the AC79); off by default */
+#endif
+#define MACRO_ON (MELODEE_PLAITS || MELODEE_BRAIDS)
+#if MELODEE_PLAITS && MELODEE_BRAIDS
+#error "MELODEE_PLAITS or MELODEE_BRAIDS: one MACRO engine"
+#endif
 #define ENG_BUILT(e) ((e) == 3u ? MELODEE_SID : (e) == 9u ? PHYS_ON : (e) == 10u ? MELODEE_DRUM : (e) == 12u ? MELODEE_FM6 : (e) == 15u ? 0 : (e) == 19u ? MELODEE_ORACLE : \
-                      (e) == 21u ? MELODEE_PLAITS : 1)   /* SID PHYS FM6 CZ-1 ORACLE MACRO (PHYS: left out, not retired,
+                      (e) == 21u ? MACRO_ON : 1)   /* SID PHYS FM6 CZ-1 ORACLE MACRO (PHYS: left out, not retired,
                                                    * since 2026-10-21: its tracks load FM's first voice) */
 #define TRIO_ON (MELODEE_TRIO || MELODEE_LEGACY_EXTRAS)
 #define PHYS_ON (MELODEE_PHYS || MELODEE_LEGACY_EXTRAS)
@@ -104,7 +112,7 @@
 #define ENGI_ANALOG 0u           /* retired in 1.2: never selectable (eng_ok), its stored sounds play silent */
 #define ENGI_DIGITAL 1u          /* retired: never selectable (eng_ok), its stored sounds play silent */
 #define NENG_SHOWN (NENGINES - 10u - !MELODEE_ORACLE - !MELODEE_SLICE - (MELODEE_LEGACY_EXTRAS ? 1u : 6u - MELODEE_TRIO - MELODEE_PHYS) - !MELODEE_SID - !MELODEE_FM6 - !MELODEE_DRUM - \
-                    !MELODEE_PLAITS)   /* the engines one can pick: PRESETS, the EDIT
+                    !MACRO_ON)   /* the engines one can pick: PRESETS, the EDIT
                                                 * layer, the editor, in the display order of engines.c ENGINE_ORDER */
 #define ENGI_SLICE 13u           /* reserved without MELODEE_SLICE: never selectable (eng_ok) */
 #ifdef SMP_USER_SLOTS

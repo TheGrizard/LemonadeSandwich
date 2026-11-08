@@ -40,6 +40,8 @@ static const char *const PRESET_CAT[NENGINES] = {
 #endif
 #if MELODEE_PLAITS
     [21] = "OBPLKEBGUEE",                          /* MACRO (eng_macro.c MC_PRESETS) */
+#elif MELODEE_BRAIDS
+    [21] = "OLPOLLPEBFLPPFFFPFF",                  /* MACRO (eng_braids.c MC_PRESETS: INIT CSAW .. QPSK DATA) */
 #endif
 };
 static uint32_t cat_of_engine(uint32_t e) { return e == ENGI_DRUM ? CAT_DRUM : e == 11u ? CAT_FX : CAT_OTHER; }
