@@ -28,18 +28,18 @@
  * sections, without drums, to sample: rnd_crate_sound), RND_STATIC STATIC (a wall of noise, ambient: it builds, overloads
  * and collapses: rnd_static_move), RND_PHASE PHASE (after Steve Reich: one cell on two tracks, one
  * moving a step ahead every few bars: rnd_phase_move). (tessera-rnd: AMBIENT, NICE, GLITCH and PULSE gone; their codes,
- * saved, read as FALL: rnd_setting. The order the menu's: RND FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE STATIC PHASE.) Saved as RND_CODE:
+ * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE STATIC RND.) Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
  * beside them (0..7: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
  * (settings_rnd_drift: the same word's bits 8 and 9; rnd_drift) */
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
-enum { RND_OFF, RND_FREE, RND_FALL, RND_TIDE, RND_LOOPS, RND_ORBIT, RND_WOZZA, RND_HALO, RND_MIRROR, RND_CRATE,
-       RND_STATIC, RND_PHASE, RND_MODES };
+enum { RND_OFF, RND_FALL, RND_TIDE, RND_WOZZA, RND_ORBIT, RND_LOOPS, RND_HALO, RND_MIRROR, RND_PHASE, RND_CRATE,
+       RND_STATIC, RND_FREE, RND_MODES };           /* (the menu's order, asked 2026-11-08; the codes each mode's own) */
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
-    {0x00u, 0}, {0x40u, 0}, {0x80u, 1}, {0x40u, 4}, {0x80u, 2}, {0xC0u, 1}, {0x40u, 3}, {0x80u, 3}, {0xC0u, 3},
-    {0x80u, 4}, {0x80u, 5}, {0x40u, 5},             /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
+    {0x00u, 0}, {0x80u, 1}, {0x40u, 4}, {0x40u, 3}, {0xC0u, 1}, {0x80u, 2}, {0x80u, 3}, {0xC0u, 3}, {0x40u, 5},
+    {0x80u, 4}, {0x80u, 5}, {0x40u, 0},             /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
                                                      * 0x80 0, GLITCH 0x40 1, PULSE 0x40 2: gone) */
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }

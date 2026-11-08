@@ -6210,8 +6210,9 @@ static int test_rnd(void)
     press(B_REC);
     bad += check("RND: ..REC tapped: the track armed (as upstream)", (song.rec & 1u) != 0u);
     press(B_REC);
-    hold(B_HOME); ui.menu_sel = MI_REC_BTN; turn(EN_K2, 1);
-    bad += check("RND: MENU > REC BUTTON turned right: RND, kept in the settings (favorites byte 24, bit 6)",
+    hold(B_HOME); ui.menu_sel = MI_REC_BTN;
+    for (i = 0; i < RND_FREE; i++) turn(EN_K2, 1);   /* (RND the last: FALL first, asked 2026-11-08) */
+    bad += check("RND: MENU > REC BUTTON turned right to the end: RND, kept in the settings (favorites byte 24, bit 6)",
                  rnd_mode() && (favorites.factory[15][24] & 0x40u) && !(favorites.factory[15][24] & 0x30u));
     hold(B_HOME);
     ui.home = 1; ui.force = 1; frame();
@@ -6345,11 +6346,12 @@ static int test_rnd(void)
     {                                               /* MENU > REC BUTTON: the modes in turn, saved and loaded */
         uint32_t k;
         static const struct { uint8_t m, bits, var; const char *name; } steps[] = {
-            {RND_FALL, 0x80, 1, "FALL"}, {RND_TIDE, 0x40, 4, "TIDE"}, {RND_LOOPS, 0x80, 2, "LOOPS"},
-            {RND_ORBIT, 0xC0, 1, "ORBIT"}, {RND_WOZZA, 0x40, 3, "WOZZA"}, {RND_HALO, 0x80, 3, "HALO"},
-            {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_CRATE, 0x80, 4, "CRATE"}, {RND_STATIC, 0x80, 5, "STATIC"},
-            {RND_PHASE, 0x40, 5, "PHASE"}};
+            {RND_FALL, 0x80, 1, "FALL"}, {RND_TIDE, 0x40, 4, "TIDE"}, {RND_WOZZA, 0x40, 3, "WOZZA"},
+            {RND_ORBIT, 0xC0, 1, "ORBIT"}, {RND_LOOPS, 0x80, 2, "LOOPS"}, {RND_HALO, 0x80, 3, "HALO"},
+            {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_PHASE, 0x40, 5, "PHASE"}, {RND_CRATE, 0x80, 4, "CRATE"},
+            {RND_STATIC, 0x80, 5, "STATIC"}, {RND_FREE, 0x40, 0, "RND"}};
         uint32_t steps_ok = 1, saved_ok = 1;
+        rnd_mode_put(RND_OFF);
         hold(B_HOME); ui.menu_sel = MI_REC_BTN;
         for (k = 0; k < NELEM(steps); k++) {
             persist_t pr;
@@ -6367,15 +6369,15 @@ static int test_rnd(void)
                         settings_rnd_drift == k % RND_DRIFTS && pr.lowcut >> 8 == k % RND_DRIFTS;
         }
         settings_rnd_drift = 0;
-        bad += check("RND MENU: REC BUTTON turned right from RND: FALL TIDE LOOPS ORBIT WOZZA HALO MIRROR CRATE STATIC "
-                     "PHASE (their bits and variants)", steps_ok);
+        bad += check("RND MENU: REC BUTTON turned right from RECORD: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE "
+                     "STATIC RND (their bits and variants)", steps_ok);
         bad += check("RND MENU: ..each saved and loaded with the settings, DRIFT beside it", saved_ok);
         turn(EN_K2, 1);
-        bad += check("RND MENU: ..PHASE is the last (right again: stays)", rnd_setting() == RND_PHASE);
+        bad += check("RND MENU: ..RND is the last (right again: stays)", rnd_setting() == RND_FREE);
         for (k = 0; k < NELEM(steps) - 1u; k++) turn(EN_K2, -1);
         bad += check("RND MENU: ..left back to FALL", rnd_setting() == RND_FALL && settings_rnd_variant == 1u);
         turn(EN_K2, -1);
-        bad += check("RND MENU: ..left again: RND", rnd_setting() == RND_FREE);
+        bad += check("RND MENU: ..left again: RECORD", rnd_setting() == RND_OFF && !rnd_mode());
         hold(B_HOME);
         {                                           /* AMBIENT, NICE, GLITCH, PULSE gone: saved before, FALL now */
             static const uint8_t gone[][2] = {{0xC0, 0}, {0x80, 0}, {0x40, 1}, {0x40, 2}, {0xC0, 2}};
@@ -7368,7 +7370,7 @@ static int test_rnd(void)
         uint8_t was = settings_rnd_drift;
         int32_t o[2 * CTL];
         settings_rnd_drift = RND_DRIFT_FAST;
-        for (m = RND_FREE; m < RND_MODES; m++) {
+        for (m = RND_FALL; m < RND_MODES; m++) {
             rnd_mode_put(m);
             for (r = 0; r < 12u; r++) {
                 rnd_roll();
