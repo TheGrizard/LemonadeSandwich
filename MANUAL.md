@@ -138,8 +138,15 @@ key skips it.
 
 ## Sounds
 
-LEMONADE SANDWICH has three engines on the device: ORACLE, TRIO and PHYS. FM6 is out (its tines and bells sounded
-cheap; Plaits models are to take its room), and so is DRUM (drums come from another machine). FM6 is described below
+LEMONADE SANDWICH has four engines on the device: ORACLE, TRIO, PHYS and **MACRO** (Mutable Instruments Plaits'
+synthesis, by Emilie Gillet, MIT licence: not her product). FM6 is out (its tines and bells sounded cheap), and so is
+DRUM (drums come from another machine). MACRO's MODEL picks one of seven: **NOISE** (filtered noise; HARM the filter's
+type, TIMBR its cutoff, MORPH its resonance), **DUST** (particles through resonant filters; HARM their spread, TIMBR
+their density, MORPH the filter or a reverb), **CLOUD** (a swarm of grains; HARM their spread, TIMBR their density,
+MORPH their length), **STRNG** (the string machine; HARM its chord: low, octaves and fifths), **PHASE** (phase
+distortion), **SHAPE** (a waveshaper) and **FM** (two operators). HIT ON strikes it (Plaits' low-pass gate, DECAY
+and COLOR); OFF holds it under the track's envelope. One voice a track, and a heavy one: a MACRO voice costs as much
+as two to four ORACLE voices (DUST and FM the most), so use it for held textures and lines, a track or two. FM6 is described below
 for the builds that keep it.
 
 | Engine | What it is |

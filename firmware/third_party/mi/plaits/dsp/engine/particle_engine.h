@@ -35,7 +35,11 @@
 
 namespace plaits {
 
+#ifdef PLAITS_LEAN  // melodee-tess: half the particles (their cost on the AC79; the density the same)
+const int kNumParticles = 3;
+#else
 const int kNumParticles = 6;
+#endif
 
 class ParticleEngine : public Engine {
  public:

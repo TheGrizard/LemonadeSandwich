@@ -64,6 +64,51 @@
 
 #include "plaits/dsp/fx/low_pass_gate.h"
 
+// melodee-tess: the models built, each by name (PLAITS_LEAN: LEMONADE SANDWICH's set, 2026-11-07: phase distortion,
+// waveshaping, 2-op FM, swarm (the granular cloud), filtered noise, particles and the string machine; README.md).
+// A model left out keeps its number: virtual analog stands in, never chosen (eng_macro.c MC_MODEL)
+#ifdef PLAITS_LEAN
+#define PLAITS_E_VCF 0
+#define PLAITS_E_PD 1
+#define PLAITS_E_SIXOP 0
+#define PLAITS_E_TERRAIN 0
+#define PLAITS_E_SMACH 1
+#define PLAITS_E_CHIP 0
+#define PLAITS_E_WSHAPE 1
+#define PLAITS_E_FM 1
+#define PLAITS_E_GRAIN 0
+#define PLAITS_E_ADDITIVE 0
+#define PLAITS_E_WTABLE 0
+#define PLAITS_E_CHORD 0
+#define PLAITS_E_SPEECH 0
+#define PLAITS_E_SWARM 1
+#define PLAITS_E_NOISE 1
+#define PLAITS_E_PARTICLE 1
+#define PLAITS_E_STRING 0
+#define PLAITS_E_MODAL 0
+#define PLAITS_E_DRUMS 0
+#else
+#define PLAITS_E_VCF 1
+#define PLAITS_E_PD 1
+#define PLAITS_E_SIXOP 1
+#define PLAITS_E_TERRAIN 1
+#define PLAITS_E_SMACH 1
+#define PLAITS_E_CHIP 1
+#define PLAITS_E_WSHAPE 1
+#define PLAITS_E_FM 1
+#define PLAITS_E_GRAIN 1
+#define PLAITS_E_ADDITIVE 1
+#define PLAITS_E_WTABLE 1
+#define PLAITS_E_CHORD 1
+#define PLAITS_E_SPEECH 1
+#define PLAITS_E_SWARM 1
+#define PLAITS_E_NOISE 1
+#define PLAITS_E_PARTICLE 1
+#define PLAITS_E_STRING 1
+#define PLAITS_E_MODAL 1
+#define PLAITS_E_DRUMS 1
+#endif
+
 namespace plaits {
 
 const int kMaxEngines = 24;
@@ -202,40 +247,64 @@ class Voice {
     return value;
   }
 
-  VirtualAnalogEngine virtual_analog_engine_;
-#ifndef PLAITS_LEAN
+  VirtualAnalogEngine virtual_analog_engine_;  // (melodee-tess: always, the stand-in in a left-out model's place)
+#if PLAITS_E_WSHAPE
   WaveshapingEngine waveshaping_engine_;
 #endif
+#if PLAITS_E_FM
   FMEngine fm_engine_;
-#ifndef PLAITS_LEAN
+#endif
+#if PLAITS_E_GRAIN
   GrainEngine grain_engine_;
 #endif
+#if PLAITS_E_ADDITIVE
   AdditiveEngine additive_engine_;
-#ifndef PLAITS_LEAN  // melodee-tess: the lean set (README.md) leaves these out
+#endif
+#if PLAITS_E_WTABLE
   WavetableEngine wavetable_engine_;
+#endif
+#if PLAITS_E_CHORD
   ChordEngine chord_engine_;
+#endif
+#if PLAITS_E_SPEECH
   SpeechEngine speech_engine_;
 #endif
-
-#ifndef PLAITS_LEAN
+#if PLAITS_E_SWARM
   SwarmEngine swarm_engine_;
+#endif
+#if PLAITS_E_NOISE
   NoiseEngine noise_engine_;
+#endif
+#if PLAITS_E_PARTICLE
   ParticleEngine particle_engine_;
 #endif
+#if PLAITS_E_STRING
   StringEngine string_engine_;
+#endif
+#if PLAITS_E_MODAL
   ModalEngine modal_engine_;
-#ifndef PLAITS_LEAN
+#endif
+#if PLAITS_E_DRUMS
   BassDrumEngine bass_drum_engine_;
   SnareDrumEngine snare_drum_engine_;
   HiHatEngine hi_hat_engine_;
 #endif
-  
+#if PLAITS_E_VCF
   VirtualAnalogVCFEngine virtual_analog_vcf_engine_;
+#endif
+#if PLAITS_E_PD
   PhaseDistortionEngine phase_distortion_engine_;
-#ifndef PLAITS_LEAN
+#endif
+#if PLAITS_E_SIXOP
   SixOpEngine six_op_engine_;
+#endif
+#if PLAITS_E_TERRAIN
   WaveTerrainEngine wave_terrain_engine_;
+#endif
+#if PLAITS_E_SMACH
   StringMachineEngine string_machine_engine_;
+#endif
+#if PLAITS_E_CHIP
   ChiptuneEngine chiptune_engine_;
 #endif
 

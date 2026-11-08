@@ -72,10 +72,12 @@ int main(void)
           mc_bytes() < 40000u);
 
     models = (uint32_t)ENGINES[ENGI_MACRO]->edit[0].max + 1u;
-    for (k = 0, ok = 1; k < sizeof MC_MODEL; k++)      /* (Plaits' 6, 7, 14: string machine, chiptune, chords) */
-        ok &= MC_MODEL[k] != 6u && MC_MODEL[k] != 7u && MC_MODEL[k] != 14u;
-    check("no chord model: each note plays one pitch (2026-10-17)", ok && models == sizeof MC_MODEL);
-    for (k = 0; k < models; k++) {                    /* every model, from INIT VA's settings, struck and held */
+    for (k = 0, ok = 1; k < sizeof MC_MODEL; k++)      /* (LEMONADE SANDWICH's: not VA, its VCF, 6-op, chiptune, chords,
+                                                       * drums, string, modal, additive, grain) */
+        ok &= MC_MODEL[k] != 0u && MC_MODEL[k] != 8u && MC_MODEL[k] != 2u && MC_MODEL[k] != 7u && MC_MODEL[k] != 14u &&
+              MC_MODEL[k] < 19u && MC_MODEL[k] != 11u && MC_MODEL[k] != 12u;
+    check("the models: noise, dust, cloud, string machine, phase, shape, FM (no VA, no 6-op)", ok && models == 7u);
+    for (k = 0; k < models; k++) {                    /* every model, from INIT PHASE's settings, struck and held */
         sound(0);
         trk[0].p[P_E0] = (int16_t)k;
         trk[0].p[P_E6] = 1;
@@ -86,21 +88,21 @@ int main(void)
     }
     check("every model plays: sound, finite, within full scale", ok);
 
-    sound(0);                                         /* INIT VA: HIT OFF, held: a tone at its pitch */
+    sound(0);                                         /* INIT PHASE: HIT OFF, held, no distortion: a sine at its pitch */
     ok = play(57, 1.5, 1.4, &peak, &rms, &zc, &tail);
-    printf("    INIT VA, A3 held: %.1f crossings a second (220 Hz wanted)\n", zc);
-    check("a held VA note at its pitch (A3: 220 Hz within 3 %)", ok && zc > 213.4 && zc < 226.6);
+    printf("    INIT PHASE, A3 held: %.1f crossings a second (220 Hz wanted)\n", zc);
+    check("a held PHASE note at its pitch (A3: 220 Hz within 3 %)", ok && zc > 213.4 && zc < 226.6);
     sound(0);
     ok = play(69, 1.5, 1.4, &peak, &rms, &zc, &tail);
     check("...an octave and more up (A4: 440 Hz within 3 %)", ok && zc > 426.8 && zc < 453.2);
 
-    sound(8);                                         /* PLUCK: HIT ON, struck: it dies away though held */
+    sound(10);                                        /* PD KEYS: HIT ON, struck: it dies away though held */
     trk[0].p[P_E4] = 30;                              /* (a short DECAY) */
     ok = play(60, 2.0, 1.9, &peak, &rms, &zc, &tail);
-    check("HIT ON (PLUCK, DECAY short): struck, it dies away though the key is held", ok && rms > 50.0 && tail < 0.05 * peak);
+    check("HIT ON (PD KEYS, DECAY short): struck, it dies away though the key is held", ok && rms > 50.0 && tail < 0.05 * peak);
     sound(0);
     ok = play(60, 2.0, 1.9, &peak, &rms, &zc, &tail);
-    check("HIT OFF (INIT VA): it sounds as long as the key is held", ok && tail > 0.2 * rms);
+    check("HIT OFF (INIT PHASE): it sounds as long as the key is held", ok && tail > 0.2 * rms);
 
     sound(0);                                         /* the settings reach the sound: each moved, the sound differs */
     play(60, 0.5, 0.45, &peak, &base, &zc, &tail);
@@ -108,10 +110,10 @@ int main(void)
         double r1, r2;
         if (k == 6u) continue;                        /* (HIT: above) */
         sound(0);
-        trk[0].p[P_E0 + k] = (int16_t)(k == 0u ? 6 : k == 7u ? 127 : 10);
+        trk[0].p[P_E0 + k] = (int16_t)(k == 0u ? 6 : k == 7u ? 127 : k == 2u ? 0 : 10);
         play(60, 0.5, 0.45, &peak, &r1, &zc, &tail);
         sound(0);
-        trk[0].p[P_E0 + k] = (int16_t)(k == 0u ? 4 : 120);
+        trk[0].p[P_E0 + k] = (int16_t)(k == 0u ? 5 : 120);
         play(60, 0.5, 0.45, &peak, &r2, &zc, &tail);
         if (r1 == r2) { ok = 0; printf("    E%u: no change\n", k + 1u); }
     }
@@ -121,12 +123,12 @@ int main(void)
                                                        * FTZ): struck every 70 ms, a model at the settings that had them
                                                        * against a held VA note */
         static const struct { uint8_t m, g; float h, t, mo, lim; } c[] = {
-            {2, 0, 0.5f, 0.5f, 0.5f, 0.0f},           /* (VA held: the measure) */
-            {2, 1, 0.0f, 0.0f, 1.0f, 2.5f},           /* VA HIT ON: the gate's tail */
-            {5, 1, 0.5f, 0.5f, 0.5f, 6.0f},           /* PLUCK (2.7x VA without denormals) */
-            {5, 0, 0.0f, 0.25f, 0.5f, 6.0f},
-            {6, 0, 0.5f, 0.0f, 0.0f, 5.0f},           /* BELL (2.1x VA) */
-            {6, 1, 0.25f, 0.0f, 0.0f, 5.0f},
+            {4, 0, 0.5f, 0.5f, 0.5f, 0.0f},           /* (PHASE held: the measure) */
+            {4, 1, 0.0f, 0.0f, 1.0f, 2.5f},           /* PHASE HIT ON: the gate's tail */
+            {1, 0, 0.2f, 0.1f, 0.3f, 5.0f},           /* DUST sparse: its filters ring down between grains (2x) */
+            {1, 1, 0.5f, 0.3f, 0.9f, 5.0f},
+            {2, 0, 0.5f, 0.2f, 0.9f, 4.0f},           /* CLOUD: its grains' envelopes */
+            {0, 1, 0.5f, 0.5f, 0.9f, 4.0f},           /* NOISE struck */
         };
         static uint32_t mem[(40000 + 3) / 4];
         mg_params_t q;
@@ -156,11 +158,11 @@ int main(void)
             if (!j) base = best;
             else if (best > c[j].lim * base) {
                 ok = 0;
-                printf("    %s (%s): %.1f x a held VA note\n", N_MC_MODEL[c[j].m], c[j].g ? "HIT ON" : "HIT OFF",
+                printf("    %s (%s): %.1f x a held PHASE note\n", N_MC_MODEL[c[j].m], c[j].g ? "HIT ON" : "HIT OFF",
                        best / base);
             }
         }
-        check("no denormal tails: VA (HIT ON), PLUCK and BELL struck again and again stay near their cost", ok);
+        check("no denormal tails: PHASE (HIT ON), DUST, CLOUD, NOISE struck again and again stay near their cost", ok);
     }
     {                                                 /* the cost against SID's, one note, on this computer */
         double t0, mc, sid, idle;
@@ -183,7 +185,7 @@ int main(void)
         t0 = now_s();
         for (f = 0; f < 4u * FS; f += CTL) mix_block(o, CTL);
         sid = now_s() - t0 - idle;
-        printf("macro: cost on this computer, one note: MACRO (VA) %.0f ns a sample, SID %.0f (%.1f x; a report)\n",
+        printf("macro: cost on this computer, one note: MACRO (PHASE) %.0f ns a sample, SID %.0f (%.1f x; a report)\n",
                mc * 1e9 / (4.0 * FS), sid * 1e9 / (4.0 * FS), sid > 0 ? mc / sid : 0);
     }
     printf(bad ? "macro: %d FAILED\n" : "macro: all passed\n", bad);

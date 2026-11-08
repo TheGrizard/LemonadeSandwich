@@ -42,6 +42,7 @@ class Particle {
 
   inline void Init() {
     pre_gain_ = 0.0f;
+    dn_ = 1e-20f;
     filter_.Init();
   }
   
@@ -76,13 +77,15 @@ class Particle {
         }
       }
       *aux++ += s;
-      *out++ += filter_.Process<stmlib::FILTER_MODE_BAND_PASS>(pre_gain_ * s);
+      dn_ = -dn_;  // melodee-tess: a -400 dB square wave into the filter: no denormals as it rings down (the AC79's FPU)
+      *out++ += filter_.Process<stmlib::FILTER_MODE_BAND_PASS>(pre_gain_ * s + dn_);
       u = stmlib::Random::GetFloat();
     }
   }
  
  private:
   float pre_gain_;
+  float dn_;
   stmlib::Svf filter_;
   
   DISALLOW_COPY_AND_ASSIGN(Particle);

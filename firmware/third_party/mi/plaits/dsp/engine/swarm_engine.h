@@ -41,7 +41,11 @@
 
 namespace plaits {
 
+#ifdef PLAITS_LEAN  // melodee-tess: half the swarm (its cost on the AC79; the grains' density the same)
+const int kNumSwarmVoices = 4;
+#else
 const int kNumSwarmVoices = 8;
+#endif
 
 class GrainEnvelope {
  public:
@@ -108,6 +112,7 @@ class GrainEnvelope {
       filter_coefficient_ = 0.5f;
     }
     filter_coefficient_ *= 0.95f;
+    if (filter_coefficient_ < 1e-12f) filter_coefficient_ = 0.0f;  // melodee-tess: no denormals (the AC79's FPU)
     
     previous_size_ratio_ = size_ratio;
     ONE_POLE(amplitude_, target_amplitude, 0.5f - filter_coefficient_);

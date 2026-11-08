@@ -10,11 +10,13 @@
 #if MELODEE_PLAITS
 #include "macro_glue.h"
 
-/* the models one can pick: Plaits' engine numbers (voice.cc's order), named in five letters. 2026-10-17: the chord
- * models (STRING MACHINE, CHIPTUNE: HARM picks a chord), the harsh ones (waveshaper, grains, swarm, noise, particles)
- * and the drums (the DRUM engine has its own) are out */
-static const uint8_t MC_MODEL[] = {0, 1, 8, 10, 12, 19, 20};
-static const char *const N_MC_MODEL[] = {"VCF", "PHASE", "VA", "FM", "HARM", "PLUCK", "BELL"};
+/* the models one can pick: Plaits' engine numbers (voice.cc's order), named in five letters. LEMONADE SANDWICH's set
+ * (2026-11-07, voice.h PLAITS_E_): the textures (filtered noise, particles, the swarm: a granular cloud), the string
+ * machine (HARM picks its chord: low, octaves and fifths), phase distortion, the waveshaper, 2-op FM. VA and its
+ * filter (ORACLE does them), the 6-op FM (FM6 gone), the additive, string, modal, grain, chord, chiptune and drum
+ * models are out; the wavetable, wave terrain and speech (their tables, 60 KB and more) wait for room */
+static const uint8_t MC_MODEL[] = {17, 18, 16, 6, 1, 9, 10};
+static const char *const N_MC_MODEL[] = {"NOISE", "DUST", "CLOUD", "STRNG", "PHASE", "SHAPE", "FM"};
 _Static_assert(sizeof MC_MODEL == NELEM(N_MC_MODEL), "MC_MODEL / N_MC_MODEL");
 static const char *const N_MC_HIT[] = {"OFF", "ON"};
 #define MC_MAGIC 0x4F52434Du                            /* "MCRO": the part's voice made (the arena gives zeros) */
@@ -62,24 +64,29 @@ static void mc_render(struct track *t, voice_t *v, int32_t *out, uint32_t n, con
 }
 
 /* the voice budget units of a model: VA's 4 measured on the device (one to two Prophet voices), the others by their
- * cost against VA on the host (2026-10-17: FM 3.3x, PLUCK 2.7x, HARM and BELL 2.1x, VCF and PHASE 1.2x) */
-static const uint8_t MC_UNITS[] = {5, 5, 4, 13, 8, 11, 8};
+ * cost against VA on the host (2026-10-17: FM 3.3x; 2026-11-07, the particles and the swarm halved, voice.h: NOISE
+ * 1.5x, DUST 2.3x, CLOUD 1.5x, STRNG 1.7x, PHASE 1.3x, SHAPE 1.1x) */
+static const uint8_t MC_UNITS[] = {6, 9, 6, 7, 5, 4, 13};
 _Static_assert(sizeof MC_UNITS == sizeof MC_MODEL, "MC_UNITS / MC_MODEL");
 static uint32_t mc_units(const struct track *t) { return MC_UNITS[clamp(t->p[P_E0], 0, (int32_t)sizeof MC_MODEL - 1)]; }
 
 #define MCP(n, mo, ha, ti, mr, de, co, hit, ax, a, d, s, r) {n, {mo, ha, ti, mr, de, co, hit, ax}, {a, d, s, r}, 0, 1}
-static const preset_t MC_PRESETS[] = {
-    MCP("INIT VA",      2, 64, 64, 64, 64, 64, 0,  0,   0, 64, 127, 30),
-    MCP("VCF BASS",     0, 30, 70, 40, 40, 90, 1,  0,   0, 64, 127, 20),
-    MCP("VA PAD",       2, 70, 40, 70, 64, 64, 0,  0,  60, 64, 127, 80),
-    MCP("SAW LEAD",     2, 66, 90, 100, 64, 64, 0, 0,   0, 64, 127, 25),
-    MCP("PHASE KEYS",   1, 50, 60, 50, 60, 70, 1,  0,   0, 64, 127, 40),
-    MCP("FM BELL",      3, 80, 60, 30, 80, 40, 1,  0,   0, 64, 127, 60),
-    MCP("FM BASS",      3, 20, 50, 40, 50, 90, 1,  0,   0, 64, 127, 20),
-    MCP("ORGAN HARM",   4, 40, 64, 64, 64, 64, 0,  0,   0, 64, 127, 30),
-    MCP("PLUCK",        5, 64, 70, 50, 70, 64, 1,  0,   0, 64, 127, 60),
-    MCP("MALLET",       6, 50, 64, 60, 70, 64, 1,  0,   0, 64, 127, 70),
-    MCP("SOFT BELL",    6, 30, 40, 50, 90, 64, 1,  0,   0, 64, 127, 80),
+static const preset_t MC_PRESETS[] = {      /* (model: 0 NOISE 1 DUST 2 CLOUD 3 STRNG 4 PHASE 5 SHAPE 6 FM) */
+    MCP("INIT PHASE",   4, 64,  0, 64, 64, 64, 0,  0,   0, 64, 127, 30),   /* (a sine held: the tests' pitch) */
+    MCP("WIND",         0, 64, 60, 70, 64, 64, 0,  0,  70, 64, 127, 90),
+    MCP("HISS BED",     0, 105, 95, 25, 64, 64, 0, 0,  60, 64, 127, 80),
+    MCP("WHISTLE",      0, 64, 50, 118, 64, 64, 0, 0,  50, 64, 127, 70),
+    MCP("DUST",         1, 20, 28, 30, 64, 64, 0,  0,  10, 64, 127, 60),
+    MCP("RAIN GLASS",   1, 70, 55, 92, 64, 64, 0,  0,  10, 64, 127, 70),
+    MCP("SWARM PAD",    2, 40, 72, 85, 64, 64, 0,  0,  80, 64, 127, 90),
+    MCP("GRIT CLOUD",   2, 100, 35, 20, 64, 64, 0, 0,  40, 64, 127, 70),
+    MCP("STRING MACH",  3,  0, 50, 55, 64, 64, 0,  0,  60, 64, 127, 80),   /* (HARM 0: octaves) */
+    MCP("ENSEMBLE",     3,  8, 85, 30, 64, 64, 0,  0,  70, 64, 127, 85),   /* (HARM 8: fifths) */
+    MCP("PD KEYS",      4, 50, 60, 50, 60, 70, 1,  0,   0, 64, 127, 40),
+    MCP("CZ BASS",      4, 30, 80, 20, 64, 64, 0,  0,   0, 64, 127, 20),
+    MCP("FOLD LEAD",    5, 60, 70, 50, 64, 64, 0,  0,   4, 64, 127, 35),
+    MCP("FM BELL",      6, 80, 60, 30, 80, 40, 1,  0,   0, 64, 127, 60),
+    MCP("FM GROWL",     6, 20, 90, 60, 64, 64, 0,  0,   0, 64, 127, 25),
 };
 #undef MCP
 
@@ -87,7 +94,7 @@ static const engine_t ENG_MACRO = {
     .name = "MACRO",
     .page_title = {"MACRO", "GATE"},
     .edit = {
-        {"MODEL", F_ENUM, 0, (int16_t)(sizeof MC_MODEL - 1), 2, N_MC_MODEL, 0},
+        {"MODEL", F_ENUM, 0, (int16_t)(sizeof MC_MODEL - 1), 4, N_MC_MODEL, 0},
         {"HARM", F_PCT, 0, 127, 64, 0, 0},
         {"TIMBR", F_PCT, 0, 127, 64, 0, 0},
         {"MORPH", F_PCT, 0, 127, 64, 0, 0},

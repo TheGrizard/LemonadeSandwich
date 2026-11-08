@@ -37,66 +37,108 @@ using namespace stmlib;
 void Voice::Init(BufferAllocator* allocator) {
   engines_.Init();
 
+  // melodee-tess: each model by its PLAITS_E_ switch (voice.h); a left-out one's place virtual analog's
+#if PLAITS_E_VCF
   engines_.RegisterInstance(&virtual_analog_vcf_engine_, false, 1.0f, 1.0f);
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_PD
   engines_.RegisterInstance(&phase_distortion_engine_, false, 0.7f, 0.7f);
-#ifndef PLAITS_LEAN
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_SIXOP
   engines_.RegisterInstance(&six_op_engine_, true, 1.0f, 1.0f);
   engines_.RegisterInstance(&six_op_engine_, true, 1.0f, 1.0f);
   engines_.RegisterInstance(&six_op_engine_, true, 1.0f, 1.0f);
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_TERRAIN
   engines_.RegisterInstance(&wave_terrain_engine_, false, 0.7f, 0.7f);
-#else  // melodee-tess: their places kept (the numbers below are Plaits'), never chosen (eng_macro.c)
-  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
-  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
-  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
-#ifndef PLAITS_LEAN
+#if PLAITS_E_SMACH
   engines_.RegisterInstance(&string_machine_engine_, false, 0.8f, 0.8f);
-  engines_.RegisterInstance(&chiptune_engine_, false, 0.5f, 0.5f);
-#else  // melodee-tess (2026-10-17): STRING MACHINE and CHIPTUNE out (their chords)
-  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
-  
+#if PLAITS_E_CHIP
+  engines_.RegisterInstance(&chiptune_engine_, false, 0.5f, 0.5f);
+#else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
-#ifndef PLAITS_LEAN
+#endif
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#if PLAITS_E_WSHAPE
   engines_.RegisterInstance(&waveshaping_engine_, false, 0.7f, 0.6f);
 #else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
+#if PLAITS_E_FM
   engines_.RegisterInstance(&fm_engine_, false, 0.6f, 0.6f);
-#ifndef PLAITS_LEAN
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_GRAIN
   engines_.RegisterInstance(&grain_engine_, false, 0.7f, 0.6f);
 #else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
+#if PLAITS_E_ADDITIVE
   engines_.RegisterInstance(&additive_engine_, false, 0.8f, 0.8f);
-#ifndef PLAITS_LEAN
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_WTABLE
   engines_.RegisterInstance(&wavetable_engine_, false, 0.6f, 0.6f);
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_CHORD
   engines_.RegisterInstance(&chord_engine_, false, 0.8f, 0.8f);
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_SPEECH
   engines_.RegisterInstance(&speech_engine_, false, -0.7f, 0.8f);
 #else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
-  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
-  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
 
-#ifndef PLAITS_LEAN
+#if PLAITS_E_SWARM
   engines_.RegisterInstance(&swarm_engine_, false, -3.0f, 1.0f);
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_NOISE
   engines_.RegisterInstance(&noise_engine_, false, -1.0f, -1.0f);
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_PARTICLE
   engines_.RegisterInstance(&particle_engine_, false, -2.0f, 1.0f);
 #else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
-  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_STRING
+  engines_.RegisterInstance(&string_engine_, true, -1.0f, 0.8f);
+#else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
 #endif
-  engines_.RegisterInstance(&string_engine_, true, -1.0f, 0.8f);
+#if PLAITS_E_MODAL
   engines_.RegisterInstance(&modal_engine_, true, -1.0f, 0.8f);
-#ifndef PLAITS_LEAN
+#else
+  engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
+#endif
+#if PLAITS_E_DRUMS
   engines_.RegisterInstance(&bass_drum_engine_, true, 0.8f, 0.8f);
   engines_.RegisterInstance(&snare_drum_engine_, true, 0.8f, 0.8f);
   engines_.RegisterInstance(&hi_hat_engine_, true, 0.8f, 0.8f);
-#else  // (the DRUM engine has its own)
+#else
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
   engines_.RegisterInstance(&virtual_analog_engine_, false, 0.8f, 0.8f);
@@ -166,7 +208,7 @@ void Voice::Render(
   if (engine_index != previous_engine_index_ || reload_user_data_) {
     UserData user_data;
     const uint8_t* data = user_data.ptr(engine_index);
-#ifndef PLAITS_LEAN
+#if PLAITS_E_SIXOP
     if (!data && engine_index >= 2 && engine_index <= 4) {
       data = fm_patches_table[engine_index - 2];
     }
@@ -210,7 +252,7 @@ void Voice::Render(
 
   float internal_envelope_amplitude = 1.0f;
   float internal_envelope_amplitude_timbre = 1.0f;
-#ifndef PLAITS_LEAN
+#if PLAITS_E_SPEECH
   if (engine_index == 15) {
     internal_envelope_amplitude = 2.0f - p.harmonics * 6.0f;
     CONSTRAIN(internal_envelope_amplitude, 0.0f, 1.0f);
@@ -220,7 +262,9 @@ void Voice::Render(
     speech_engine_.set_speed( 
         !modulations.trigger_patched || modulations.morph_patched ?
             0.0f : patch.morph_modulation_amount);
-  } else
+  }
+#endif
+#if PLAITS_E_CHIP
   if (engine_index == 7) {
     if (modulations.trigger_patched && !modulations.timbre_patched) {
       // Disable internal envelope on TIMBRE, and enable the envelope generator

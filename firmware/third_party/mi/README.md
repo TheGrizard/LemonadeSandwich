@@ -14,10 +14,14 @@ Changes (each marked `melodee-tess` in the code):
 - `plaits/dsp/fx/diffuser.h`: its LFO by that rate.
 - `plaits/dsp/dsp.h`: `PLAITS_SAMPLE_RATE_EXACT` tunes by the true rate (Plaits' own corrects for its chip's
   47,872 Hz); `PLAITS_BLOCK_SIZE` (16 on the FM-1: two renders a block of 32).
-- `plaits/dsp/voice.h`, `voice.cc`: `PLAITS_LEAN` leaves out the wavetable, chords, wave terrain, speech and
-  6-OP models (their 85 KB of tables), and since 2026-10-17 also the string machine and chiptune (they play chords),
-  the waveshaper, grains, swarm, noise, particles and the three drums; the seven left (VA-VCF, phase distortion, VA,
-  FM, additive, string, modal) keep Plaits' own numbers.
+- `plaits/dsp/voice.h`, `voice.cc`: each model has a `PLAITS_E_` switch. `PLAITS_LEAN` builds LEMONADE SANDWICH's
+  set (2026-11-07): phase distortion, string machine, waveshaping, 2-op FM, swarm, filtered noise and particles.
+  The rest are left out (the wavetable, wave terrain, speech and 6-OP models for their tables); a left-out model's
+  number is kept, virtual analog standing in. Each model keeps Plaits' own number.
+- `plaits/dsp/engine/particle_engine.h`, `swarm_engine.h`: with `PLAITS_LEAN`, 3 particles and 4 swarm voices, not
+  6 and 8 (their cost on the AC79).
+- `plaits/dsp/noise/particle.h`, `engine/swarm_engine.h`: no denormals (a -400 dB square wave into the particles'
+  filters; the grains' envelope coefficient flushed to zero).
 - `plaits/dsp/fx/low_pass_gate.h`, `physical_modelling/resonator.h`, `string.cc`, `string.h`, `string_voice.cc`
   (2026-10-17): no denormals in dying notes (the AC79's FPU is slow on them; Plaits' Cortex-M4 flushes them): the
   resonator's mode states are flushed, a -400 dB square wave rides into the gate's, the string's and its exciter's
