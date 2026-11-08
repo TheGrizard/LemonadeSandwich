@@ -32,7 +32,7 @@ extern "C" void bg_render(void *mem, int32_t shape, int32_t pitch, int32_t timbr
 #ifdef BRAIDS_LEAN
     static const uint64_t kept =                            // (the models built: digital_oscillator.cc BRAIDS_X)
         1ull << 0 | 1ull << 3 | 1ull << 14 | 1ull << 16 | 1ull << 21 | 1ull << 22 | 1ull << 23 | 1ull << 25 |
-        1ull << 26 | 1ull << 27 | 1ull << 37 | 1ull << 38 | 1ull << 39 | 1ull << 41 | 1ull << 42 | 1ull << 43 |
+        1ull << 26 | 1ull << 27 | 1ull << 41 | 1ull << 42 | 1ull << 43 |
         1ull << 44 | 1ull << 45 | 1ull << 46;
     if (shape < 0 || shape >= braids::MACRO_OSC_SHAPE_LAST || !(kept >> shape & 1u))
         shape = braids::MACRO_OSC_SHAPE_FILTERED_NOISE;

@@ -141,10 +141,9 @@ key skips it.
 LEMONADE SANDWICH has four engines on the device: ORACLE, TRIO, PHYS and **MACRO**: Mutable Instruments Braids'
 macro-oscillator, by Emilie Gillet (MIT licence; not her product). FM6 is out (its tines and bells sounded cheap), and
 so is DRUM (drums come from another machine). MACRO is cheap: Braids works in whole numbers, so a voice costs a third
-to a half of an ORACLE voice, and a track plays four. Its **MODEL** picks one of 19: **CSAW**, **FOLD** (a wavefolder),
+to a half of an ORACLE voice, and a track plays four. Its **MODEL** picks one of 16: **CSAW**, **FOLD** (a wavefolder),
 **SWARM** (seven detuned saws), **TOY**; the voices **VOSIM**, **VOWEL** (a note strikes a consonant) and **VFOF**;
-**FM**, **FBFM** (feedback FM) and **WTFM** (chaotic FM); the wavetables **WTBL**, **WMAP** and **WLINE**; and the
-noises **NOISE** (filtered), **TWINQ** (two resonant peaks), **CLKN** (clocked, digital), **CLOUD** (granular),
+**FM**, **FBFM** (feedback FM) and **WTFM** (chaotic FM); and the noises **NOISE** (filtered), **TWINQ** (two resonant peaks), **CLKN** (clocked, digital), **CLOUD** (granular),
 **DUST** (particles) and **QPSK** (modem data). **TIMBR** and **COLOR** are Braids' two knobs, each model's own
 (MODS' SHAPE moves TIMBR); **TONE** is a low-pass after it (the filter envelope and CUTOFF cords move it); **BITS** and
 **RATE** crush it, as Braids' own settings did; **STRIK** ON strikes the model at each note (VOWEL's consonant, the

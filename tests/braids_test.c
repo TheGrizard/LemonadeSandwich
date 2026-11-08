@@ -67,7 +67,7 @@ int main(void)
 {
     uint32_t k, ok = 1, models;
     double peak, rms, zc, tail, base;
-    check("MACRO offered, at engine 21, with Braids' presets", eng_ok(ENGI_MACRO) && ENGINES[ENGI_MACRO]->npresets == 19u);
+    check("MACRO offered, at engine 21, with Braids' presets", eng_ok(ENGI_MACRO) && ENGINES[ENGI_MACRO]->npresets == 16u);
     check("its memory: four oscillators a part (no delay lines: BRAIDS_LEAN), from the audio arena",
           bg_size() < 1024u && mc_bytes() < 4096u && ENGINES[ENGI_MACRO]->poly == 4u);
     models = (uint32_t)ENGINES[ENGI_MACRO]->edit[0].max + 1u;
@@ -79,8 +79,8 @@ int main(void)
             printf("    model %u (%s): peak %.0f rms %.0f\n", k, ENGINES[ENGI_MACRO]->edit[0].names[k], peak, rms);
         }
     }
-    check("every model plays (19: textures, voices, FM, wavetables, CSAW FOLD SWARM TOY): sound, finite, in range",
-          ok && models == 19u);
+    check("every model plays (16: textures, voices, FM, CSAW FOLD SWARM TOY): sound, finite, in range",
+          ok && models == 16u);
     for (k = 0, ok = 1; k < NELEM(MC_PRESETS); k++) {
         sound(k);
         if (!play(60, 0.8, 0.5, &peak, &rms, &zc, &tail) || rms < 50.0 || peak > 0.95 * 2147483647.0) {
@@ -119,11 +119,11 @@ int main(void)
     for (k = 0, ok = 1; k < 8u; k++) {
         double r1, r2;
         if (k == 6u) continue;                        /* (STRIK: the struck models) */
-        sound(k == 1u || k == 2u ? 13 : 0);           /* (TIMBR and COLOR on WIND: a filter's frequency and its Q) */
+        sound(k == 1u || k == 2u ? 10 : 0);           /* (TIMBR and COLOR on WIND: a filter's frequency and its Q) */
         trk[0].p[P_E0 + k] = (int16_t)(k == 0u ? 7 : k == 3u ? 20 : k == 4u ? 6 : k == 5u ? 6 : 10);
         play(60, 0.5, 0.45, &peak, &r1, &zc, &tail);
-        sound(k == 1u || k == 2u ? 13 : 0);
-        trk[0].p[P_E0 + k] = (int16_t)(k == 0u ? 13 : k == 3u ? 127 : k == 4u ? 0 : k == 5u ? 0 : 120);
+        sound(k == 1u || k == 2u ? 10 : 0);
+        trk[0].p[P_E0 + k] = (int16_t)(k == 0u ? 10 : k == 3u ? 127 : k == 4u ? 0 : k == 5u ? 0 : 120);
         play(60, 0.5, 0.45, &peak, &r2, &zc, &tail);
         if (fabs(r1 - r2) < 1e-6 * (r1 + r2)) { ok = 0; printf("    E%u: no change\n", k + 1u); }
     }

@@ -3,8 +3,7 @@
 /* MACRO with Braids (LEMONADE SANDWICH, 2026-11-08): Mutable Instruments Braids' macro-oscillator by Emilie Gillet
  * (firmware/third_party/mi/braids, MIT; braids_glue.cc; at 44.1 kHz: tools/braids_44k.py) as an engine, in Plaits'
  * place (eng_macro.c: too heavy on the AC79, its floating point; Braids is integer throughout, a voice a third to a
- * half of an ORACLE voice). MODEL: the models kept (BRAIDS_LEAN: textures, voices, FM, wavetables, CSAW, FOLD, the
- * swarm, TOY); TIMBR and COLOR: Braids' two (the voice's SHAPE moves TIMBR); TONE: a low-pass after it (the voice's
+ * half of an ORACLE voice). MODEL: the models kept (BRAIDS_LEAN: textures, voices, FM, CSAW, FOLD, the swarm, TOY); TIMBR and COLOR: Braids' two (the voice's SHAPE moves TIMBR); TONE: a low-pass after it (the voice's
  * CUTOFF moves it); BITS, RATE: Braids' own bit and rate reduction; STRIK: a note strikes it (VOWEL's consonant, the
  * grains and FM restarted); DRIVE: a soft clip. The track's ADSR shapes it. Four voices a part, each a Braids
  * oscillator (688 bytes) from the audio arena. MELODEE_BRAIDS 0: none of it. */
@@ -13,18 +12,17 @@
 #include "braids_glue.h"
 
 /* the models one can pick: Braids' shapes (settings.h MacroOscillatorShape), in four or five letters, grouped:
- * analog, voices, FM, wavetables, noise. Its gain to an even level (measured on the host: RMS at TIMBR and COLOR
+ * analog, voices, FM, noise (the wavetables out: their 33 KB past the flash, 2026-11-08). Its gain to an even level (measured on the host: RMS at TIMBR and COLOR
  * half way, to about 9000; the impulsive ones twice at most) and its voice budget units (its cost against Plaits'
  * VA, 4 units: 1 at most a quarter of it, else 2) */
 static const struct { uint8_t shape, gain_q4, units; } BR_MODEL[] = {
     {0, 10, 1},  {3, 10, 2},  {14, 27, 2}, {16, 9, 1},     /* CSAW FOLD SWARM TOY */
     {21, 8, 1},  {22, 13, 1}, {23, 24, 2},                  /* VOSIM VOWEL VFOF */
     {25, 6, 1},  {26, 6, 2},  {27, 6, 2},                   /* FM FBFM WTFM */
-    {37, 8, 1},  {38, 8, 2},  {39, 17, 2},                  /* WTBL WMAP WLINE */
     {41, 32, 2}, {42, 19, 1}, {43, 8, 1}, {44, 28, 2}, {45, 32, 1}, {46, 6, 1},   /* NOISE TWINQ CLKN CLOUD DUST QPSK */
 };
 static const char *const N_BR_MODEL[] = {"CSAW", "FOLD", "SWARM", "TOY", "VOSIM", "VOWEL", "VFOF", "FM", "FBFM",
-                                         "WTFM", "WTBL", "WMAP", "WLINE", "NOISE", "TWINQ", "CLKN", "CLOUD", "DUST",
+                                         "WTFM", "NOISE", "TWINQ", "CLKN", "CLOUD", "DUST",
                                          "QPSK"};
 _Static_assert(NELEM(BR_MODEL) == NELEM(N_BR_MODEL), "BR_MODEL / N_BR_MODEL");
 static const char *const N_BR_BITS[] = {"16", "12", "10", "8", "6", "4", "3"};
@@ -99,28 +97,25 @@ static void br_render(struct track *t, voice_t *v, int32_t *out, uint32_t n, con
 static uint32_t mc_units(const struct track *t) { return BR_MODEL[br_model(t)].units; }
 
 #define BRP(n, mo, ti, co, to, a, d, s, r, mono) {n, {mo, ti, co, to, 0, 0, 1, 0}, {a, d, s, r}, 0, mono}
-static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the rest POLY; model: 0 CSAW 1 FOLD 2 SWARM 3 TOY 4 VOSIM 5 VOWEL 6 VFOF 7 FM 8 FBFM
-                                             * 9 WTFM 10 WTBL 11 WMAP 12 WLINE 13 NOISE 14 TWINQ 15 CLKN 16 CLOUD
-                                             * 17 DUST 18 QPSK) */
-    BRP("INIT CSAW",    0, 64, 64, 127,  0, 64, 127, 30, 0),   /* (the tests' pitch: a saw held) */
-    BRP("FOLD LEAD",    1, 70, 40, 110,  2, 64, 110, 35, 1),
-    BRP("SAW SWARM",    2, 80, 60, 90,  40, 64, 127, 70, 0),
-    BRP("TOY BOX",      3, 40, 60, 110,  0, 50, 60, 40, 0),
-    BRP("VOSIM VOX",    4, 50, 60, 110,  4, 64, 110, 40, 1),
-    BRP("VOWEL AH",     5, 30, 64, 120,  2, 64, 110, 40, 1),
-    BRP("CHOIR FOF",    6, 40, 60, 115, 60, 64, 127, 80, 0),
-    BRP("FM BELL",      7, 70, 40, 120,  0, 60, 0, 60, 0),
-    BRP("FB GROWL",     8, 80, 70, 100,  0, 64, 110, 30, 1),
-    BRP("CHAOS FM",     9, 60, 90, 110,  0, 64, 110, 40, 1),
-    BRP("WAVE TABLE",  10, 50, 50, 115, 10, 64, 120, 50, 0),
-    BRP("WAVE MAP",    11, 60, 60, 110, 40, 64, 127, 70, 0),
-    BRP("WAVE LINE",   12, 40, 70, 110, 40, 64, 127, 70, 0),
-    BRP("WIND",        13, 50, 70, 120, 70, 64, 127, 90, 0),
-    BRP("TWIN PEAKS",  14, 60, 50, 120, 50, 64, 127, 80, 0),
-    BRP("BIT NOISE",   15, 50, 30, 110, 20, 64, 120, 50, 0),
-    BRP("GRAIN CLOUD", 16, 60, 60, 120, 60, 64, 127, 85, 0),
-    BRP("DUST",        17, 30, 60, 120, 10, 64, 127, 70, 0),
-    BRP("QPSK DATA",   18, 50, 50, 100,  0, 64, 110, 30, 0),
+static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the rest POLY; model: 0 CSAW 1 FOLD
+                                             * 2 SWARM 3 TOY 4 VOSIM 5 VOWEL 6 VFOF 7 FM 8 FBFM 9 WTFM 10 NOISE
+                                             * 11 TWINQ 12 CLKN 13 CLOUD 14 DUST 15 QPSK) */
+    BRP("INIT CSAW",     0,  64,  64, 127,   0,  64, 127,  30, 0),   /* (the tests' pitch: a saw held) */
+    BRP("FOLD LEAD",     1,  70,  40, 110,   2,  64, 110,  35, 1),
+    BRP("SAW SWARM",     2,  80,  60,  90,  40,  64, 127,  70, 0),
+    BRP("TOY BOX",       3,  40,  60, 110,   0,  50,  60,  40, 0),
+    BRP("VOSIM VOX",     4,  50,  60, 110,   4,  64, 110,  40, 1),
+    BRP("VOWEL AH",      5,  30,  64, 120,   2,  64, 110,  40, 1),
+    BRP("CHOIR FOF",     6,  40,  60, 115,  60,  64, 127,  80, 0),
+    BRP("FM BELL",       7,  70,  40, 120,   0,  60,   0,  60, 0),
+    BRP("FB GROWL",      8,  80,  70, 100,   0,  64, 110,  30, 1),
+    BRP("CHAOS FM",      9,  60,  90, 110,   0,  64, 110,  40, 1),
+    BRP("WIND",         10,  50,  70, 120,  70,  64, 127,  90, 0),
+    BRP("TWIN PEAKS",   11,  60,  50, 120,  50,  64, 127,  80, 0),
+    BRP("BIT NOISE",    12,  50,  30, 110,  20,  64, 120,  50, 0),
+    BRP("GRAIN CLOUD",  13,  60,  60, 120,  60,  64, 127,  85, 0),
+    BRP("DUST",         14,  30,  60, 120,  10,  64, 127,  70, 0),
+    BRP("QPSK DATA",    15,  50,  50, 100,   0,  64, 110,  30, 0),
 };
 #undef BRP
 
