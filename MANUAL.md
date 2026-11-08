@@ -895,13 +895,14 @@ chords), its rhythm mostly across the bar (EUCLID on 5, 7, 9, 10, 11 or 13 steps
 8T) and now and then four on the floor. It is a soft, low boom: TRIO's triangles filtered to near a sine, a breath of
 attack (no click), the pitch falling a little or not at all, a long decay. **Track 2, the melody:** FALL's leaves
 (BOUNCE) or now and then a line by step (SERIES, as HALO's), in the middle or an octave up, onto the chord's notes now
-and then (QNT CHRD), dark. Half the rolls it is soft and struck (TRIO's triangles, sine and triangle, PPT); half a
+and then (QNT CHRD), dark. Three rolls in four it is on ORACLE (SQUARE LEAD, FLUTE, SYNC LEAD, KEYS or VOX, its own
+envelopes made to match), else TRIO. Half the rolls it is soft and struck (TRIO's triangles, sine and triangle, PPT); half a
 filtered lead (a saw, pulse, triangle or sine and triangle, the filter low with a little resonance, gliding), mostly
 runs by step on 1/8 or 1/4: each note held two steps (four for the leaves), so notes that come close tie and glide
 (LEGATO) and a phrase runs on until two rests let it breathe (about three notes in four tied); each phrase's first note
 swells in softly. The LFO moves its filter, the LFO and the note's height move its place in the stereo, a slow wanderer
 its colour. **Track 3, the bed:** TRIO's triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK, two or four
-bars a chord), in the middle, under the melody. **Track 4, the texture:** TRIO's noise mostly, now and then a pulse
+bars a chord), in the middle, under the melody. **Track 4, the texture:** half the rolls MACRO's WIND, DUST or TWIN PEAKS; else TRIO's noise mostly, now and then a pulse
 with noise, a saw or a triangle (in octaves, beating slowly), through its low-pass or band-pass with the cutoff low (a
 band-pass rings a little), held, soft; its colour, its place in the stereo and even its LFO's pace wander on slow
 random walks (the LFO very slow, a sine or S&H steps). With **DRIFT** on, TIDE moves on HALO's clock: the groove anew
