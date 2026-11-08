@@ -1010,11 +1010,13 @@ saws. **Track 2, the noise:** never a rest (SERIES), held, on the bed's chord (*
 CLOUD, WIND, TWIN PEAKS, DUST, BIT NOISE or QPSK most rolls, else TRIO's noise through a resonant filter, whistling.
 It plays from the start and never drops out, at most 4 dB down. **Track 3, the fizz:** off the chord, wandering
 (TURING), fast and stuttering (1/16, 1/8 or 8T): TRIO's ring and sync waves, or MACRO's swarm, growl, chaos FM, bit
-noise or data, its shape and cutoff jittering on a fast S&H. **Track 4, the drive:** off the chord too, wandering,
-held: stacked saws, pulses and noise, or ORACLE with its noise up and Poly-Mod, through **SPIT**'s band-pass and
-soft-clip drive. Always one more insert: SPIT on the noise mostly, or TAPE on the bed. The piece starts most of the way
-built, builds to a wall in 8 to 16 bars, holds it 6 to 14 with SPIT at its hardest, then drops to the bed and the
-noise (the fizz now and then) for 2 to 5 bars, and builds again. STATIC moves the layers' levels itself while it plays.
+noise or data, its shape and cutoff jittering on a fast S&H, through **SPIT**'s band-pass and soft-clip drive.
+**Track 4, the bass:** low and brooding, C1 to C3, a note a bar or two on the bed's chord, never a rest (SERIES): a
+Reese most rolls (TRIO's three saws in unison, detuned so they beat slowly, low-passed, its filter wandering a little),
+or ORACLE's dark drone (two saws, closed, a growl of noise). Always one more insert: SPIT on the noise mostly, or TAPE
+on the bed. The piece starts most of the way
+built, builds to a wall in 8 to 16 bars, holds it 6 to 14 with SPIT at its hardest, then drops to the bed, the bass and
+the noise for 2 to 5 bars, and builds again. STATIC moves the layers' levels itself while it plays.
 A level you turn becomes that layer's full level. It goes on whatever **DRIFT** says (FAST builds and drops twice as
 often). 60 to 80 BPM. The screen shows **STATIC** and the seed.
 

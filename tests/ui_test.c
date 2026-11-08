@@ -6972,8 +6972,8 @@ static int test_rnd(void)
             roles &= tessera.mode[RND_ST_BED] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_HIT), RND_ST_BED) == 0;
             for (tr = 1; tr < NTRK; tr++)           /* (the noise on the chord, held; the fizz and the drive off it,
                                                      * atonal: the fizz stuttering, fast) */
-                roles &= tessera.mode[tr] == (tr == RND_ST_NOISE ? TESS_ENG_SERIES : TESS_ENG_TURING) &&
-                         trk[tr].p[P_QUANT] == (tr == RND_ST_NOISE ? Q_CHRD : Q_WHITE) &&
+                roles &= tessera.mode[tr] == (tr == RND_ST_FIZZ ? TESS_ENG_TURING : TESS_ENG_SERIES) &&
+                         trk[tr].p[P_QUANT] == (tr == RND_ST_FIZZ ? Q_WHITE : Q_CHRD) &&
                          (tr == RND_ST_FIZZ ? rnd_speed((uint32_t)trk[tr].p[P_SDIV]) != RND_SLOW :
                                               trk[tr].p[P_SGATE] == 127 && rnd_speed((uint32_t)trk[tr].p[P_SDIV]) == RND_SLOW);
             for (tr = 0; tr < NTRK; tr++) {
@@ -6986,7 +6986,8 @@ static int test_rnd(void)
             }
             for (k = 0; k < CORD_LIVE; k++) nc += cord_get(k)->amount != 0;
             cords_ok &= nc >= 4u && nc <= 6u;
-            fx_ok &= trk[RND_ST_DRIVE].p[P_FXTYPE] == FX_SPIT && ins <= 2u && song.g[G_MFXTYPE] == FX_OFF;
+            fx_ok &= trk[RND_ST_FIZZ].p[P_FXTYPE] == FX_SPIT && trk[RND_ST_DRIVE].p[P_FXTYPE] == FX_OFF && ins <= 2u &&
+                     song.g[G_MFXTYPE] == FX_OFF;   /* (SPIT on the fizz, never the bass: its low end) */
             heavy &= orc <= 1u && !fm;
             kinds |= 1u << (trk[RND_ST_NOISE].p[P_E0] == 8 || trk[RND_ST_NOISE].p[P_E0] == 7 ? 0 : 3);
             kinds |= (trk[RND_ST_FIZZ].eng_req == ENGI_FM6 ? 2u : trk[RND_ST_FIZZ].p[P_E0] >= 9 ? 4u : 8u);
@@ -7002,11 +7003,11 @@ static int test_rnd(void)
                 clipped_n += peak >= 32767;
             }
         }
-        bad += check("RND STATIC: 200 rolls: the bed a held CHORD on track 1; the noise held, slow, never a rest (SERIES), on "
-                     "its chord (QUANTIZE CHRD); the fizz fast, the drive held, off it (WHITE); 60-80 BPM", roles && tempo_ok);
+        bad += check("RND STATIC: 200 rolls: the bed a held CHORD on track 1; the noise and the bass held, slow, never a rest "
+                     "(SERIES), on its chord (QUANTIZE CHRD); the fizz fast, off it (WHITE); 60-80 BPM", roles && tempo_ok);
         bad += check("RND STATIC: ..the noise TRIO's noise, the fizz TRIO's ring and sync; ORACLE once at most, no FM6, no "
                      "PHYS", (kinds & 1u) && !(kinds & 2u) && (kinds & 4u) && !(kinds & 8u) && heavy);
-        bad += check("RND STATIC: ..SPIT on the drive, one more insert (SPIT, TAPE) at most, no sends; its cords (S&H fizz); "
+        bad += check("RND STATIC: ..SPIT on the fizz, one more insert (SPIT, TAPE) at most, no sends; its cords (S&H fizz); "
                      "heard within 12 s, none at the rail", fx_ok && cords_ok && !quiet && !clipped_n);
         {                                           /* the process: built up, a wall, the collapse, built again */
             uint8_t was = settings_rnd_drift;
@@ -7024,9 +7025,11 @@ static int test_rnd(void)
                 if (rnd_st.stage == RND_ST_BUILD && was_stage == RND_ST_LOW) again++;
                 if (rnd_st.stage == RND_ST_LOW) {
                     rnd_play_bars(2);               /* (the collapse: two bars on, the layers out) */
-                    fell += trk[RND_ST_FIZZ].p[P_LEVEL] < rnd_st.base[RND_ST_FIZZ] - 40 &&
-                            trk[RND_ST_DRIVE].p[P_LEVEL] < rnd_st.base[RND_ST_DRIVE] - 40;
-                    bed_kept &= trk[RND_ST_BED].p[P_LEVEL] >= rnd_st.base[RND_ST_BED] - 16;
+                    fell += trk[RND_ST_FIZZ].p[P_LEVEL] < rnd_st.base[RND_ST_FIZZ] - 40;
+                    bed_kept &= trk[RND_ST_BED].p[P_LEVEL] >= rnd_st.base[RND_ST_BED] - 16 &&   /* (the bed, the bass and
+                                                     * the noise kept) */
+                                trk[RND_ST_DRIVE].p[P_LEVEL] >= rnd_st.base[RND_ST_DRIVE] - 16 &&
+                                trk[RND_ST_NOISE].p[P_LEVEL] >= rnd_st.base[RND_ST_NOISE] - 16;
                 }
             }
             (void)st0;
@@ -7035,7 +7038,7 @@ static int test_rnd(void)
             adopt &= rnd_st.base[RND_ST_BED] == 60u && trk[RND_ST_BED].p[P_LEVEL] <= 60 && trk[RND_ST_BED].p[P_LEVEL] >= 44;
             settings_rnd_drift = was;
         }
-        bad += check("RND STATIC: ..DRIFT OFF too: it builds to a wall, collapses (the fizz and the drive out, the bed kept), "
+        bad += check("RND STATIC: ..DRIFT OFF too: it builds to a wall, drops back (the fizz out; the bed, the bass, the noise kept), "
                      "builds again", built && fell && again && bed_kept);
         bad += check("RND STATIC: ..a level the player turns is that layer's full one", adopt);
         transport_req = 2;

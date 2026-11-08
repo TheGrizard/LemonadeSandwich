@@ -2309,15 +2309,17 @@ static void rnd_roles_crate(uint8_t *role)
 }
 
 /* ------------------------------------------------------------ STATIC --- */
-/* STATIC: a wall of noise as ambient, after Tim Hecker, Fennesz and Ben Frost: not slow and melodic but dense, a system
- * overloading. Four sustained layers on one buried, slow chord progression (QUANTIZE CHRD: every layer on the bed's
- * chord): the BED (RND_ST_BED: CHORD held, four bars a chord, breathing; ORACLE's pads or TRIO's detuned saws), the
- * NOISE (TRIO's noise through a resonant filter, whistling), the FIZZ (TRIO's ring and sync waves, or FM6 with its
- * feedback up, gritty; its S&H fast on the shape) and the DRIVE (stacked saws or ORACLE's noise and Poly-Mod, through
- * SPIT's soft-clip drive). No drums. rnd_static_move builds them up, one layer after another, to a wall (SPIT's drive
- * at its most), holds it, collapses it to the bed alone in a second or two, then builds again. Fast S&H fizzing on the
- * cutoffs and shapes. Inserts: SPIT on the drive (and now and then the noise, or TAPE on the bed): two at most, within
- * the effects' points (rnd_fx_points). DRIFT does not touch it (its own process; FAST builds twice as fast) */
+/* STATIC: a wall of noise as ambient, after Tim Hecker, Fennesz and Ben Frost: not slow and melodic but dense and
+ * atonal (the key chromatic, whole tone, diminished, locrian, 13 EDO or Bohlen-Pierce), a system overloading. Four
+ * sustained layers: the BED (RND_ST_BED: CHORD held, four bars a chord, clusters on those scales, breathing; ORACLE's
+ * pads or TRIO's detuned saws), the NOISE (never a rest, on the bed's chord: MACRO's noises or TRIO's noise through a
+ * resonant filter, whistling), the FIZZ (off the chord, wandering, stuttering fast: TRIO's ring and sync waves or
+ * MACRO's grit, through SPIT's soft-clip drive; its S&H fast on the shape) and the BASS (RND_ST_DRIVE, asked
+ * 2026-11-08: a low brooding Reese, TRIO's saws in unison slowly beating, low-passed, C1 to C3; or ORACLE's dark
+ * drone; the chord's notes a bar or two each, never a rest). No drums. rnd_static_move builds the noise and the fizz up
+ * over the bed and the bass to a wall (SPIT's drive at its most), holds it, drops back to the bed, the bass and the
+ * noise, then builds again. Inserts: SPIT on the fizz, and SPIT on the noise or TAPE on the bed: two, within the
+ * effects' points (rnd_fx_points). DRIFT does not touch it (its own process; FAST builds twice as fast) */
 #define RND_ST_BED 0u
 #define RND_ST_NOISE 1u
 #define RND_ST_FIZZ 2u
@@ -2328,7 +2330,7 @@ static struct {
     uint16_t x, from, to;                           /* the density 0..1000: now, this stage's start and end */
     uint32_t t0, len;                               /* the stage's start and length, in 64ths */
 } rnd_st;
-static const uint16_t RND_ST_TH[NTRK] = {0, 0, 220, 420};   /* (where each layer comes in: the noise with the bed, from
+static const uint16_t RND_ST_TH[NTRK] = {0, 0, 220, 0};   /* (where each layer comes in: the noise with the bed, from
                                                      * the start, asked 2026-11-08: more noise throughout) */
 static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
@@ -2388,20 +2390,24 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
         rnd_tp(tr, P_E0 + 1u, rnd_rr(3, 7));       /* FB */
         rnd_tp(tr, P_E0 + 2u, rnd_rr(10, 30));      /* MLVL */
         (*fm6s)++;
-    } else if (tr == RND_ST_DRIVE && !*oracles && eng_ok(ENGI_ORACLE) && rnd_pct(45)) {   /* ORACLE: noise, Poly-Mod */
+    } else if (tr == RND_ST_DRIVE && !*oracles && eng_ok(ENGI_ORACLE) && rnd_pct(35)) {   /* the bass: ORACLE, a dark
+                                                     * drone (its saws low, closed, a growl of noise) */
         uint8_t *q;
         uint8_t tune[3];
-        engine_load_of(t, ENGI_ORACLE, rnd_pct(50) ? 22u : 4u);   /* FAT POLY, BRASS */
+        engine_load_of(t, ENGI_ORACLE, rnd_pct(50) ? 22u : 1u);   /* FAT POLY, WARM PAD */
         q = or_patch_of(t);
         tune[0] = q[OR_FREQ_A]; tune[1] = q[OR_FREQ_B]; tune[2] = q[OR_FINE_B];
-        rnd_oracle(tr, 40u);
+        rnd_oracle(tr, 25u);
         q[OR_FREQ_A] = tune[0]; q[OR_FREQ_B] = tune[1]; q[OR_FINE_B] = tune[2];   /* (in tune: the preset's) */
+        q[OR_SAW_A] = q[OR_SAW_B] = 1;
+        q[OR_LEVEL_A] = q[OR_LEVEL_B] = 110;
         q[OR_GLIDE] = 0;
-        q[OR_NOISE] = (uint8_t)rnd_rr(80, 127);
-        q[OR_RESONANCE] = (uint8_t)rnd_rr(40, 90);
-        q[OR_ATTACK_AMP] = (uint8_t)rnd_rr(40, 80);
+        q[OR_NOISE] = (uint8_t)rnd_rr(10, 40);
+        q[OR_CUTOFF] = (uint8_t)rnd_rr(28, 48);
+        q[OR_RESONANCE] = (uint8_t)rnd_rr(20, 60);
+        q[OR_ATTACK_AMP] = (uint8_t)rnd_rr(60, 90);
         q[OR_SUSTAIN_AMP] = 127;
-        q[OR_RELEASE_AMP] = (uint8_t)rnd_rr(60, 85);
+        q[OR_RELEASE_AMP] = (uint8_t)rnd_rr(70, 90);
         q[OR_RELEASE_ON] = 1;
         (*oracles)++;
     } else {                                        /* TRIO: noise, ring and sync, stacked saws */
@@ -2416,15 +2422,17 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
             rnd_tp(tr, P_E0 + 4u, rnd_pct(70) ? 0 : 1);
             rnd_tp(tr, P_E0 + 5u, rnd_rr(60, 90));
             rnd_tp(tr, P_E0 + 6u, rnd_rr(30, 75));
-        } else {
-            rnd_tp(tr, P_E0, rnd_pct(50) ? 0 : rnd_pct(50) ? 7 : 6);   /* SAW3 P+N P&S (the noise in the drive too) */
+        } else {                                    /* the bass: a Reese (asked 2026-11-08), saws in unison, slowly
+                                                     * beating against each other, an octave up now and then, low-passed */
+            rnd_tp(tr, P_E0, 0);                    /* SAW3 */
             rnd_tp(tr, P_E0 + 4u, 0);
-            rnd_tp(tr, P_E0 + 5u, rnd_rr(70, 100));
-            rnd_tp(tr, P_E0 + 6u, rnd_rr(20, 60));
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(30, 52));
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 40));
         }
-        rnd_tp(tr, P_E0 + 1u, rnd_pct(50) ? 12 : 0);
-        rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? -12 : rnd_pct(50) ? 7 : 12);
-        rnd_tp(tr, P_E0 + 3u, rnd_rr(10, 45));
+        rnd_tp(tr, P_E0 + 1u, tr == RND_ST_DRIVE ? 0 : rnd_pct(50) ? 12 : 0);
+        rnd_tp(tr, P_E0 + 2u, tr == RND_ST_DRIVE ? (rnd_pct(50) ? 12 : 0) : rnd_pct(50) ? -12 : rnd_pct(50) ? 7 : 12);   /* (the
+                                                     * bass: no sub, it is low already; an octave up for its edge) */
+        rnd_tp(tr, P_E0 + 3u, tr == RND_ST_DRIVE ? rnd_rr(16, 40) : rnd_rr(10, 45));   /* (DTN: the Reese's beating) */
         {
             static const int8_t env[][3] = {{P_ATK, 50, 90}, {P_DEC, 100, 127}, {P_SUS, 100, 127}, {P_REL, 60, 86}};
             rnd_tp_rr(tr, env, NELEM(env));
@@ -2440,7 +2448,15 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
     rnd_tp(tr, P_LRATE, tr == RND_ST_BED ? rnd_rr(10, 30) : rnd_rr(96, 122));   /* (the S&H fast: fizzing) */
     rnd_tp(tr, P_SPRD, rnd_rr(50, 100));
     rnd_tp(tr, P_DETUNE, 0);
-    rnd_tp(tr, P_LEVEL, tr == RND_ST_BED ? rnd_rr(84, 94) : tr == RND_ST_NOISE ? rnd_rr(100, 110) : rnd_rr(92, 104));   /* (6 dB
+    if (tr == RND_ST_DRIVE) {                       /* (the bass: centred, narrow, slow in) */
+        rnd_tp(tr, P_SPRD, rnd_rr(0, 25));
+        rnd_tp(tr, P_ATK, rnd_rr(40, 75));
+        rnd_tp(tr, P_SUS, 127);
+        rnd_tp(tr, P_REL, rnd_rr(60, 85));
+    }
+    rnd_tp(tr, P_LEVEL, tr == RND_ST_BED ? rnd_rr(84, 94) : tr == RND_ST_NOISE ? rnd_rr(100, 110) :
+                        tr == RND_ST_DRIVE ? rnd_rr(82, 94) : rnd_rr(92, 104));   /* (the bass 5 dB under the others:
+                                                     * 9 over the bed, measured) */   /* (6 dB
                                                      * up, 2026-11-08: a wall, 9 dB under CRATE before) */
     rnd_mc_level(tr);
 }
@@ -2485,17 +2501,23 @@ static void rnd_static_generators(void)
     rnd_tx(tr, TX_SR_INTV, rnd_rr(1, 3));
     rnd_tx(tr, TX_SR_LOOP, rnd_rr(2, 4));
     rnd_tp(tr, P_SDIV, rnd_pct(50) ? 7 : 8);        /* 1/1 2BAR */
-    for (tr = RND_ST_FIZZ; tr <= RND_ST_DRIVE; tr++) {   /* the fizz and the drive: off the chord, wandering (atonal) */
-        static const uint8_t fd[] = {2, 1, 4}, fdw[] = {3, 2, 2};   /* 1/16 1/8 8T: the fizz stuttering */
+    tr = RND_ST_FIZZ;                               /* the fizz: off the chord, wandering (atonal), stuttering */
+    {
+        static const uint8_t fd[] = {2, 1, 4}, fdw[] = {3, 2, 2};   /* 1/16 1/8 8T */
         rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
         rnd_tx(tr, TX_TUR_PROB, rnd_rr(30, 70));
         rnd_tx(tr, TX_TUR_SPAN, rnd_rr(2, 3));
         rnd_tx(tr, TX_TUR_LEN, rnd_rr(5, 11));
-        if (tr == RND_ST_FIZZ) {
-            rnd_tp(tr, P_SDIV, (int32_t)rnd_pick(fd, fdw, NELEM(fd)));
-            rnd_tp(tr, P_SGATE, rnd_rr(30, 110));
-        }
+        rnd_tp(tr, P_SDIV, (int32_t)rnd_pick(fd, fdw, NELEM(fd)));
+        rnd_tp(tr, P_SGATE, rnd_rr(30, 110));
     }
+    tr = RND_ST_DRIVE;                              /* the bass: low, brooding, the bed's chord's notes, never a rest,
+                                                     * a note a bar or two */
+    rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
+    rnd_tx(tr, TX_SR_START, rnd_rr(0, 40));
+    rnd_tx(tr, TX_SR_INTV, rnd_rr(1, 2));
+    rnd_tx(tr, TX_SR_LOOP, rnd_rr(2, 4));
+    rnd_tp(tr, P_SDIV, rnd_pct(60) ? 7 : 8);        /* 1/1 2BAR */
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(60, 80));
 }
 static void rnd_static_registers(void)
@@ -2503,11 +2525,12 @@ static void rnd_static_registers(void)
     rnd_tp(RND_ST_BED, P_TRANS, rnd_pct(50) ? -12 : 0);
     rnd_tp(RND_ST_NOISE, P_TRANS, rnd_pct(50) ? 12 : 24);
     rnd_tp(RND_ST_FIZZ, P_TRANS, rnd_pct(50) ? 0 : 12);
-    rnd_tp(RND_ST_DRIVE, P_TRANS, rnd_pct(60) ? -12 : 0);
+    rnd_tp(RND_ST_DRIVE, P_TRANS, -24);             /* (the bass: SERIES' C3 and two octaves above, two down: C1 to C3,
+                                                     * 33 to 130 Hz) */
     rnd_tp(RND_ST_BED, P_PAN, 0);
     rnd_tp(RND_ST_NOISE, P_PAN, rnd_rr(-30, 30));
     rnd_tp(RND_ST_FIZZ, P_PAN, rnd_pct(50) ? -rnd_rr(15, 35) : rnd_rr(15, 35));
-    rnd_tp(RND_ST_DRIVE, P_PAN, -trk[RND_ST_FIZZ].p[P_PAN] / 2);
+    rnd_tp(RND_ST_DRIVE, P_PAN, 0);
 }
 static void rnd_key_static(void)
 {
@@ -2527,7 +2550,7 @@ static void rnd_key_static(void)
  * fizz's shape, the drive's cutoff on a slow wander */
 static void rnd_static_fx(void)
 {
-    uint32_t tr = RND_ST_DRIVE;
+    uint32_t tr = RND_ST_FIZZ;                      /* (SPIT on the fizz: its band-pass took the bass's low end) */
     rnd_fx_dry();
     rnd_tp(tr, P_FXTYPE, FX_SPIT);
     rnd_tp(tr, P_FXMIX, rnd_rr(70, 110));
@@ -2551,7 +2574,7 @@ static void rnd_cords_static(void)
     c[n].src_trk = c[n].dst_trk = RND_ST_FIZZ; c[n].src = CS_SH; c[n].dst = CD_SHAPE; c[n].amount = (int8_t)rnd_rr(25, 55); n++;
     c[n].src_trk = c[n].dst_trk = RND_ST_FIZZ; c[n].src = CS_LFO; c[n].dst = CD_CUTOFF; c[n].amount = (int8_t)rnd_rr(8, 20); n++;
     c[n].src_trk = c[n].dst_trk = RND_ST_DRIVE; c[n].src = CS_DRIFT; c[n].dst = CD_CUTOFF;
-    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(15, 35) : -rnd_rr(15, 35)); n++;
+    c[n].amount = (int8_t)(rnd_pct(50) ? rnd_rr(8, 20) : -rnd_rr(8, 20)); n++;   /* (the bass's filter wandering, a little) */
     c[n].src_trk = c[n].dst_trk = RND_ST_BED; c[n].src = CS_INERTIA; c[n].dst = CD_CUTOFF; c[n].amount = (int8_t)rnd_rr(10, 25); n++;
     for (i = 0; i < CORD_LIVE; i++) {
         cord_t z;
@@ -2613,8 +2636,8 @@ static void rnd_static_move(void)
         int32_t g = ((int32_t)rnd_st.x - RND_ST_TH[tr]) * 1000 / 300, want, cur = t->p[P_LEVEL], step;
         if (cur != rnd_st.put[tr]) rnd_st.base[tr] = (uint8_t)cur;   /* (the player's level: the full one now) */
         g = g < 0 ? 0 : g > 1000 ? 1000 : g;
-        want = tr == RND_ST_BED ? rnd_st.base[tr] - (1000 - g) * 16 / 1000 :   /* (the bed: 8 dB down at most, the
-                                                     * thread left in the collapse) */
+        want = tr == RND_ST_BED || tr == RND_ST_DRIVE ? rnd_st.base[tr] - (1000 - g) * 16 / 1000 :   /* (the bed, the
+                                                     * bass: 8 dB down at most, the thread left in the collapse) */
                tr == RND_ST_NOISE ? rnd_st.base[tr] - (1000 - (int32_t)rnd_st.x) * 16 / 1000 :   /* (the noise: never out,
                                                      * 8 dB down at most) */
                !g ? 0 : rnd_st.base[tr] - (1000 - g) * 48 / 1000;
