@@ -2595,12 +2595,12 @@ static uint32_t rnd_st_now(void)
     uint32_t beat = seq_beat_samples();
     return ((bar_n * 4u + beat_n) << 4) + (beat ? beat_pos * 16u / beat : 0u);
 }
-/* a stage: BUILD from where the density is to the wall over 12 to 24 bars, the WALL 4 to 10, then LOW, the bed alone,
- * 3 to 8 bars (the collapse: the layers out in a second or two); DRIFT FAST twice as fast */
+/* a stage: BUILD from where the density is to the wall over 8 to 16 bars, the WALL 6 to 14, then LOW, the bed, the bass and
+ * the noise, 3 to 6 bars (the drop: the fizz out in a second or two); DRIFT FAST twice as fast */
 static void rnd_static_stage(uint32_t stage, uint32_t now)
 {
     uint32_t bars = stage == RND_ST_BUILD ? (uint32_t)rnd_rr(8, 16) : stage == RND_ST_WALL ? (uint32_t)rnd_rr(6, 14) :
-                    (uint32_t)rnd_rr(2, 5);
+                    (uint32_t)rnd_rr(3, 6);
     if (settings_rnd_drift == 2u && bars > 3u) bars /= 2u;
     rnd_st.stage = (uint8_t)stage;
     rnd_st.from = rnd_st.x;

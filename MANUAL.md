@@ -1016,7 +1016,7 @@ Reese most rolls (TRIO's three saws in unison, detuned so they beat slowly, low-
 or ORACLE's dark drone (two saws, closed, a growl of noise). Always one more insert: SPIT on the noise mostly, or TAPE
 on the bed. The piece starts most of the way
 built, builds to a wall in 8 to 16 bars, holds it 6 to 14 with SPIT at its hardest, then drops to the bed, the bass and
-the noise for 2 to 5 bars, and builds again. STATIC moves the layers' levels itself while it plays.
+the noise for 3 to 6 bars, and builds again. STATIC moves the layers' levels itself while it plays.
 A level you turn becomes that layer's full level. It goes on whatever **DRIFT** says (FAST builds and drops twice as
 often). 60 to 80 BPM. The screen shows **STATIC** and the seed.
 
