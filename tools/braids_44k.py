@@ -9,34 +9,31 @@ the sample rate made again, in resources.cc, with the formulas of Braids' own re
 
   python3 tools/braids_44k.py            write them
   python3 tools/braids_44k.py --check    fail if resources.cc differs from what this writes (tests/run_tests.sh)"""
+import math
 import re
 import sys
 from pathlib import Path
-
-import numpy
 
 RES = Path(__file__).resolve().parent.parent / "firmware/third_party/mi/braids/resources.cc"
 SR, SR_BRAIDS = 44100.0, 96000.0
 
 
 def tables():
+    """(plain Python, not numpy as Braids' own script: the CI's Python has none)"""
     t = {}
     excursion = 65536 * 65536.0
-    notes = numpy.arange(128 * 128.0, (128 + 12) * 128.0 + 16, 16)
-    pitches = 440.0 * 2 ** ((notes - 69 * 128) / (128 * 12))
-    t["lut_oscillator_increments"] = (excursion / SR * pitches).astype(int)
-    t["lut_oscillator_delays"] = (SR / pitches * 65536 * 4096).astype(int)
-    cutoff = 440.0 * 2 ** ((numpy.arange(0, 257) - 69) / 12.0)
-    f = cutoff / SR
-    f[f > 1 / 8.0] = 1 / 8.0
-    f = 2 * numpy.sin(numpy.pi * f)
-    resonance = numpy.arange(0, 257) / 260.0
-    damp = numpy.minimum(2 * (1 - resonance ** 0.25), numpy.minimum(2, 2 / f - f * 0.5))
-    t["lut_svf_cutoff"] = (f * 32767.0).astype(int)
-    t["lut_svf_damp"] = (damp * 32767.0).astype(int)
-    t["lut_svf_scale"] = (((damp / 2) ** 0.5) * 32767.0).astype(int)
-    rate = 2 ** (numpy.arange(0, 257) / 64.0) * (1 << 14) / 8 * (SR_BRAIDS / SR)
-    t["lut_granular_envelope_rate"] = numpy.minimum(rate, 65535).astype(int)
+    notes = [128 * 128.0 + 16 * i for i in range((12 * 128 + 16) // 16)]
+    pitches = [440.0 * 2 ** ((n - 69 * 128) / (128 * 12)) for n in notes]
+    t["lut_oscillator_increments"] = [int(excursion / SR * p) for p in pitches]
+    t["lut_oscillator_delays"] = [int(SR / p * 65536 * 4096) for p in pitches]
+    f = [min(440.0 * 2 ** ((i - 69) / 12.0) / SR, 1 / 8.0) for i in range(257)]
+    f = [2 * math.sin(math.pi * x) for x in f]
+    damp = [min(2 * (1 - (i / 260.0) ** 0.25), min(2, 2 / x - x * 0.5)) for i, x in enumerate(f)]
+    t["lut_svf_cutoff"] = [int(x * 32767.0) for x in f]
+    t["lut_svf_damp"] = [int(d * 32767.0) for d in damp]
+    t["lut_svf_scale"] = [int(((d / 2) ** 0.5) * 32767.0) for d in damp]
+    t["lut_granular_envelope_rate"] = [int(min(2 ** (i / 64.0) * (1 << 14) / 8 * (SR_BRAIDS / SR), 65535))
+                                       for i in range(257)]
     return t
 
 
