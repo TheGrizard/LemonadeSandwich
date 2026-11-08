@@ -2526,7 +2526,7 @@ void DigitalOscillator::RenderYourAlgo(
 
 /* static */
 // melodee-tess: BRAIDS_LEAN (LEMONADE SANDWICH, 2026-11-08): the models left out (physical, drums, the comb, the
-// Z filters, harmonics, the wavetables (their 33 KB: past the flash), paraphonic, ring, the Morse code) never chosen (braids_glue.cc), their code not linked: the
+// Z filters, harmonics, paraphonic, ring, the Morse code) never chosen (braids_glue.cc), their code not linked: the
 // filtered noise in their places
 #ifdef BRAIDS_LEAN
 #define BRAIDS_X(f) &DigitalOscillator::RenderFilteredNoise
@@ -2558,9 +2558,9 @@ DigitalOscillator::RenderFn DigitalOscillator::fn_table_[] = {
   BRAIDS_X(&DigitalOscillator::RenderKick),
   BRAIDS_X(&DigitalOscillator::RenderCymbal),
   BRAIDS_X(&DigitalOscillator::RenderSnare),
-  BRAIDS_X(&DigitalOscillator::RenderWavetables),
-  BRAIDS_X(&DigitalOscillator::RenderWaveMap),
-  BRAIDS_X(&DigitalOscillator::RenderWaveLine),
+  &DigitalOscillator::RenderWavetables,
+  &DigitalOscillator::RenderWaveMap,
+  &DigitalOscillator::RenderWaveLine,
   BRAIDS_X(&DigitalOscillator::RenderWaveParaphonic),
   &DigitalOscillator::RenderFilteredNoise,
   &DigitalOscillator::RenderTwinPeaksNoise,

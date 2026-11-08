@@ -67,7 +67,7 @@ int main(void)
 {
     uint32_t k, ok = 1, models;
     double peak, rms, zc, tail, base;
-    check("MACRO offered, at engine 21, with Braids' presets", eng_ok(ENGI_MACRO) && ENGINES[ENGI_MACRO]->npresets == 16u);
+    check("MACRO offered, at engine 21, with Braids' presets", eng_ok(ENGI_MACRO) && ENGINES[ENGI_MACRO]->npresets == 19u);
     check("its memory: four oscillators a part (no delay lines: BRAIDS_LEAN), from the audio arena",
           bg_size() < 1024u && mc_bytes() < 4096u && ENGINES[ENGI_MACRO]->poly == 4u);
     models = (uint32_t)ENGINES[ENGI_MACRO]->edit[0].max + 1u;
@@ -79,8 +79,8 @@ int main(void)
             printf("    model %u (%s): peak %.0f rms %.0f\n", k, ENGINES[ENGI_MACRO]->edit[0].names[k], peak, rms);
         }
     }
-    check("every model plays (16: textures, voices, FM, CSAW FOLD SWARM TOY): sound, finite, in range",
-          ok && models == 16u);
+    check("every model plays (19: textures, voices, FM, wavetables, CSAW FOLD SWARM TOY): sound, finite, in range",
+          ok && models == 19u);
     for (k = 0, ok = 1; k < NELEM(MC_PRESETS); k++) {
         sound(k);
         if (!play(60, 0.8, 0.5, &peak, &rms, &zc, &tail) || rms < 50.0 || peak > 0.95 * 2147483647.0) {

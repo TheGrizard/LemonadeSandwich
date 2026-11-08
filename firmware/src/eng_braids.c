@@ -12,7 +12,7 @@
 #include "braids_glue.h"
 
 /* the models one can pick: Braids' shapes (settings.h MacroOscillatorShape), in four or five letters, grouped:
- * analog, voices, FM, noise (the wavetables out: their 33 KB past the flash, 2026-11-08). Its gain to an even level
+ * analog, voices, FM, noise, then the wavetables (their 33 KB table in once PHYS was out, 2026-11-08). Its gain to an even level
  * (measured on the host: the RMS over TIMBR and COLOR 0..127 and five octaves, to about 9000; 4x at most, DUST's
  * 2.5x: its grains' peaks) and its voice budget units (its cost against Plaits'
  * VA, 4 units: 1 at most a quarter of it, else 2) */
@@ -21,10 +21,11 @@ static const struct { uint8_t shape, gain_q4, units; } BR_MODEL[] = {
     {21, 7, 1},  {22, 13, 1}, {23, 28, 2},                  /* VOSIM VOWEL VFOF */
     {25, 6, 1},  {26, 6, 2},  {27, 6, 2},                   /* FM FBFM WTFM */
     {41, 21, 2}, {42, 16, 1}, {43, 8, 1}, {44, 24, 2}, {45, 40, 1}, {46, 6, 1},   /* NOISE TWINQ CLKN CLOUD DUST QPSK */
+    {37, 9, 1},  {38, 9, 2},  {39, 9, 2},                   /* WTBL WMAP WLINE (back: PHYS out, room for their table) */
 };
 static const char *const N_BR_MODEL[] = {"CSAW", "FOLD", "SWARM", "TOY", "VOSIM", "VOWEL", "VFOF", "FM", "FBFM",
                                          "WTFM", "NOISE", "TWINQ", "CLKN", "CLOUD", "DUST",
-                                         "QPSK"};
+                                         "QPSK", "WTBL", "WMAP", "WLINE"};
 _Static_assert(NELEM(BR_MODEL) == NELEM(N_BR_MODEL), "BR_MODEL / N_BR_MODEL");
 static const uint16_t BR_TONE[128] = {   /* TONE's one-pole, Q15: 80 Hz x 2^(TONE/16), 1 - e^(-2 pi f / 44100); 127 open */
       371,   388,   405,   423,   441,   461,   481,   502,   524,   547,   571,   596,
@@ -113,7 +114,8 @@ static uint32_t mc_units(const struct track *t) { return BR_MODEL[br_model(t)].u
 #define BRP(n, mo, ti, co, to, a, d, s, r, mono) {n, {mo, ti, co, to, 0, 0, 1, 0}, {a, d, s, r}, 0, mono}
 static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the rest POLY; model: 0 CSAW 1 FOLD
                                              * 2 SWARM 3 TOY 4 VOSIM 5 VOWEL 6 VFOF 7 FM 8 FBFM 9 WTFM 10 NOISE
-                                             * 11 TWINQ 12 CLKN 13 CLOUD 14 DUST 15 QPSK) */
+                                             * 11 TWINQ 12 CLKN 13 CLOUD 14 DUST 15 QPSK 16 WTBL 17 WMAP
+                                             * 18 WLINE) */
     BRP("INIT CSAW",     0,  64,  64, 127,   0,  64, 127,  30, 0),   /* (the tests' pitch: a saw held) */
     BRP("FOLD LEAD",     1,  70,  40, 110,   2,  64, 110,  35, 1),
     BRP("SAW SWARM",     2,  80,  60,  90,  40,  64, 127,  70, 0),
@@ -130,6 +132,9 @@ static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the r
     BRP("GRAIN CLOUD",  13,  60,  60, 120,  60,  64, 127,  85, 0),
     BRP("DUST",         14,  30,  60, 120,  10,  64, 127,  70, 0),
     BRP("QPSK DATA",    15,  50,  50, 100,   0,  64, 110,  30, 0),
+    BRP("WAVE TABLE",   16,  50,  50, 115,  10,  64, 120,  50, 0),
+    BRP("WAVE MAP",     17,  60,  60, 110,  40,  64, 127,  70, 0),
+    BRP("WAVE LINE",    18,  40,  70, 110,  40,  64, 127,  70, 0),
 };
 #undef BRP
 

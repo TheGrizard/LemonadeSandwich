@@ -36,6 +36,6 @@ Changes (each marked `melodee-tess` in the code):
 - `resources.cc`: its tables that depend on the sample rate (the pitch, the SVF, the grains' rate) at 44.1 kHz, not
   96 kHz: `tools/braids_44k.py` writes them with Braids' own formulas (`--check` in the tests).
 - `digital_oscillator.cc` VOWEL: the formant increments x 96 / 44.1, the formants where they were.
-- `BRAIDS_LEAN` (the device's): the physical models, drums, comb, Z filters, harmonics, wavetables, paraphonic, ring, Morse
+- `BRAIDS_LEAN` (the device's): the physical models, drums, comb, Z filters, harmonics, paraphonic, ring, Morse
   and all analog models but CSAW and FOLD are not linked (the filtered noise or CSAW in their table places, never
   chosen: `firmware/src/braids_glue.cc`), and the delay lines they needed (16 KB an oscillator) are gone: 688 bytes.
