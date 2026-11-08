@@ -382,10 +382,11 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
     engine_load_of(t, e, rnd_want_pi < en->npresets && e == rnd_want_e ? rnd_want_pi
                                                                      : (uint32_t)rnd_rr(0, (int32_t)en->npresets - 1));
     if (rnd_orbit) rnd_want_e = rnd_want_pi = 0xFFu;
-    if ((e == 6u && t->preset == 3u) || (e == ENGI_ORACLE && t->preset == 10u))   /* (no bells anywhere, asked
-                                                     * 2026-11-08: TRIO's RING BELL, ORACLE's POLY BELLS out of every
-                                                     * pick: their neighbours, a lead) */
-        engine_load_of(t, e, e == 6u ? 1u : 11u);
+    if ((e == 6u && t->preset == 3u) || (e == ENGI_ORACLE && t->preset == 10u) ||
+        (e == ENGI_MACRO && (t->preset == 7u || t->preset == 3u)))   /* (no bells anywhere, asked 2026-11-08: TRIO's
+                                                     * RING BELL, ORACLE's POLY BELLS, MACRO's FM BELL out of every pick;
+                                                     * MACRO's TOY BOX too, chip-like: a lead, the keys, a wavetable) */
+        engine_load_of(t, e, e == 6u ? 1u : e == ENGI_ORACLE ? 11u : t->preset == 7u ? 16u : 17u);
     for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
         const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + k), tr);
         if (!d || d->max <= d->min) continue;
