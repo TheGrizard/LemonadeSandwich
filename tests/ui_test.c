@@ -6970,9 +6970,12 @@ static int test_rnd(void)
             bpm = (uint32_t)pid_get(PID_GLOBAL(G_BPM), 0);
             tempo_ok &= bpm >= 60u && bpm <= 80u;
             roles &= tessera.mode[RND_ST_BED] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_HIT), RND_ST_BED) == 0;
-            for (tr = 1; tr < NTRK; tr++)
-                roles &= tessera.mode[tr] == TESS_ENG_TURING && trk[tr].p[P_QUANT] == Q_CHRD && trk[tr].p[P_SGATE] == 127 &&
-                         rnd_speed((uint32_t)trk[tr].p[P_SDIV]) == RND_SLOW;
+            for (tr = 1; tr < NTRK; tr++)           /* (the noise on the chord, held; the fizz and the drive off it,
+                                                     * atonal: the fizz stuttering, fast) */
+                roles &= tessera.mode[tr] == (tr == RND_ST_NOISE ? TESS_ENG_SERIES : TESS_ENG_TURING) &&
+                         trk[tr].p[P_QUANT] == (tr == RND_ST_NOISE ? Q_CHRD : Q_WHITE) &&
+                         (tr == RND_ST_FIZZ ? rnd_speed((uint32_t)trk[tr].p[P_SDIV]) != RND_SLOW :
+                                              trk[tr].p[P_SGATE] == 127 && rnd_speed((uint32_t)trk[tr].p[P_SDIV]) == RND_SLOW);
             for (tr = 0; tr < NTRK; tr++) {
                 ins += trk[tr].p[P_FXTYPE] != FX_OFF;
                 fx_ok &= trk[tr].p[P_FXTYPE] == FX_OFF || trk[tr].p[P_FXTYPE] == FX_SPIT || trk[tr].p[P_FXTYPE] == FX_TAPE;
@@ -6999,8 +7002,8 @@ static int test_rnd(void)
                 clipped_n += peak >= 32767;
             }
         }
-        bad += check("RND STATIC: 200 rolls: the bed a held CHORD on track 1; the noise, fizz, drive on 2 to 4 held, slow, on "
-                     "its chord (QUANTIZE CHRD); 60-80 BPM", roles && tempo_ok);
+        bad += check("RND STATIC: 200 rolls: the bed a held CHORD on track 1; the noise held, slow, never a rest (SERIES), on "
+                     "its chord (QUANTIZE CHRD); the fizz fast, the drive held, off it (WHITE); 60-80 BPM", roles && tempo_ok);
         bad += check("RND STATIC: ..the noise TRIO's noise, the fizz TRIO's ring and sync; ORACLE once at most, no FM6, no "
                      "PHYS", (kinds & 1u) && !(kinds & 2u) && (kinds & 4u) && !(kinds & 8u) && heavy);
         bad += check("RND STATIC: ..SPIT on the drive, one more insert (SPIT, TAPE) at most, no sends; its cords (S&H fizz); "

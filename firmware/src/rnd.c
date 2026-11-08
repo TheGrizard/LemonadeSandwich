@@ -2328,7 +2328,8 @@ static struct {
     uint16_t x, from, to;                           /* the density 0..1000: now, this stage's start and end */
     uint32_t t0, len;                               /* the stage's start and length, in 64ths */
 } rnd_st;
-static const uint16_t RND_ST_TH[NTRK] = {0, 100, 300, 550};   /* (where each layer comes in) */
+static const uint16_t RND_ST_TH[NTRK] = {0, 0, 220, 420};   /* (where each layer comes in: the noise with the bed, from
+                                                     * the start, asked 2026-11-08: more noise throughout) */
 static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     static const uint8_t bo[] = {1, 3, 22, 19, 2}, bow[] = {3, 2, 2, 2, 1};   /* WARM PAD SOFT STRINGS FAT POLY SWEEP PAD
@@ -2347,7 +2348,7 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
             q[OR_ATTACK_AMP] = (uint8_t)rnd_rr(60, 96);
             q[OR_RELEASE_AMP] = (uint8_t)rnd_rr(70, 90);
             q[OR_RELEASE_ON] = 1;
-            q[OR_NOISE] = (uint8_t)rnd_rr(10, 50);   /* (a hiss in it) */
+            q[OR_NOISE] = (uint8_t)rnd_rr(40, 90);   /* (a hiss in it, up: noise throughout) */
             (*oracles)++;
         } else {
             engine_load_of(t, 6u, 15u);             /* (SWEEP PAD, made below) */
@@ -2366,7 +2367,8 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
     } else if ((tr == RND_ST_NOISE && rnd_mc_ok() && rnd_pct(70)) || (tr == RND_ST_FIZZ && rnd_mc_ok() && rnd_pct(40))) {
         static const uint8_t np[] = {13, 10, 11, 14, 12, 15}, nw[] = {3, 2, 2, 2, 1, 1};   /* GRAIN CLOUD WIND TWIN PEAKS
                                                      * DUST BIT NOISE QPSK DATA */
-        static const uint8_t zp[] = {2, 8, 9}, zw[] = {2, 2, 1};   /* SAW SWARM FB GROWL CHAOS FM */
+        static const uint8_t zp[] = {2, 8, 9, 12, 15}, zw[] = {2, 2, 1, 2, 1};   /* SAW SWARM FB GROWL CHAOS FM BIT NOISE
+                                                     * QPSK DATA */
         engine_load_of(t, ENGI_MACRO, tr == RND_ST_NOISE ? rnd_pick(np, nw, NELEM(np)) : rnd_pick(zp, zw, NELEM(zp)));
         rnd_tp(tr, P_E0 + 1u, clamp(t->p[P_E0 + 1u] + rnd_rr(-20, 20), 0, 127));   /* TIMBR, COLOR: near the preset's */
         rnd_tp(tr, P_E0 + 2u, clamp(t->p[P_E0 + 2u] + rnd_rr(-20, 20), 0, 127));
@@ -2395,7 +2397,7 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
         rnd_oracle(tr, 40u);
         q[OR_FREQ_A] = tune[0]; q[OR_FREQ_B] = tune[1]; q[OR_FINE_B] = tune[2];   /* (in tune: the preset's) */
         q[OR_GLIDE] = 0;
-        q[OR_NOISE] = (uint8_t)rnd_rr(50, 110);
+        q[OR_NOISE] = (uint8_t)rnd_rr(80, 127);
         q[OR_RESONANCE] = (uint8_t)rnd_rr(40, 90);
         q[OR_ATTACK_AMP] = (uint8_t)rnd_rr(40, 80);
         q[OR_SUSTAIN_AMP] = 127;
@@ -2415,7 +2417,7 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
             rnd_tp(tr, P_E0 + 5u, rnd_rr(60, 90));
             rnd_tp(tr, P_E0 + 6u, rnd_rr(30, 75));
         } else {
-            rnd_tp(tr, P_E0, rnd_pct(70) ? 0 : 6);  /* SAW3 P&S */
+            rnd_tp(tr, P_E0, rnd_pct(50) ? 0 : rnd_pct(50) ? 7 : 6);   /* SAW3 P+N P&S (the noise in the drive too) */
             rnd_tp(tr, P_E0 + 4u, 0);
             rnd_tp(tr, P_E0 + 5u, rnd_rr(70, 100));
             rnd_tp(tr, P_E0 + 6u, rnd_rr(20, 60));
@@ -2438,7 +2440,8 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
     rnd_tp(tr, P_LRATE, tr == RND_ST_BED ? rnd_rr(10, 30) : rnd_rr(96, 122));   /* (the S&H fast: fizzing) */
     rnd_tp(tr, P_SPRD, rnd_rr(50, 100));
     rnd_tp(tr, P_DETUNE, 0);
-    rnd_tp(tr, P_LEVEL, tr == RND_ST_BED ? rnd_rr(72, 82) : rnd_rr(80, 92));
+    rnd_tp(tr, P_LEVEL, tr == RND_ST_BED ? rnd_rr(84, 94) : tr == RND_ST_NOISE ? rnd_rr(100, 110) : rnd_rr(92, 104));   /* (6 dB
+                                                     * up, 2026-11-08: a wall, 9 dB under CRATE before) */
     rnd_mc_level(tr);
 }
 static void rnd_static_generators(void)
@@ -2472,9 +2475,27 @@ static void rnd_static_generators(void)
     rnd_tx(tr, TX_CH_HIT, 0);
     rnd_tx(tr, TX_CH_OCT, 0);
     rnd_tx(tr, TX_CH_BREATH, rnd_rr(20, 50));
-    rnd_tp(tr, P_CHRD, rnd_pct(60) ? 2 : 1);        /* DIA7, DIA3 */
+    rnd_tp(tr, P_CHRD, rnd_pct(60) ? 2 : 1);        /* DIA7, DIA3 (on STATIC's scales: clusters, rnd_key_static) */
     rnd_tp(tr, P_SDIV, 0);
     rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+    tr = RND_ST_NOISE;                              /* the noise: never a rest (SERIES; TURING rests on its 0 bits,
+                                                     * heard: a bar or more gone), held, on the chord */
+    rnd_tx(tr, TX_MODE, TESS_ENG_SERIES);
+    rnd_tx(tr, TX_SR_START, rnd_rr(0, 127));
+    rnd_tx(tr, TX_SR_INTV, rnd_rr(1, 3));
+    rnd_tx(tr, TX_SR_LOOP, rnd_rr(2, 4));
+    rnd_tp(tr, P_SDIV, rnd_pct(50) ? 7 : 8);        /* 1/1 2BAR */
+    for (tr = RND_ST_FIZZ; tr <= RND_ST_DRIVE; tr++) {   /* the fizz and the drive: off the chord, wandering (atonal) */
+        static const uint8_t fd[] = {2, 1, 4}, fdw[] = {3, 2, 2};   /* 1/16 1/8 8T: the fizz stuttering */
+        rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+        rnd_tx(tr, TX_TUR_PROB, rnd_rr(30, 70));
+        rnd_tx(tr, TX_TUR_SPAN, rnd_rr(2, 3));
+        rnd_tx(tr, TX_TUR_LEN, rnd_rr(5, 11));
+        if (tr == RND_ST_FIZZ) {
+            rnd_tp(tr, P_SDIV, (int32_t)rnd_pick(fd, fdw, NELEM(fd)));
+            rnd_tp(tr, P_SGATE, rnd_rr(30, 110));
+        }
+    }
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(60, 80));
 }
 static void rnd_static_registers(void)
@@ -2490,7 +2511,8 @@ static void rnd_static_registers(void)
 }
 static void rnd_key_static(void)
 {
-    static const uint8_t sc[] = {2, 3, 1, 9, 8}, sw[] = {3, 3, 2, 1, 1};   /* MIN DOR MAJ LYD PHRY */
+    static const uint8_t sc[] = {0, 13, 14, 10, 20, 62}, sw[] = {4, 2, 2, 1, 1, 1};   /* CHR WHOLE DIMHW LOC 13EDO BP-ET
+                                                     * (atonal, asked 2026-11-08: not the modes) */
     int32_t scale = (int32_t)rnd_pick(sc, sw, NELEM(sc)), root = rnd_rr(0, 11);
     uint32_t tr;
     rnd_tx(0, TX_KEY_LINK, 1);
@@ -2511,8 +2533,8 @@ static void rnd_static_fx(void)
     rnd_tp(tr, P_FXMIX, rnd_rr(70, 110));
     rnd_tp(tr, P_FXRATE, rnd_rr(4, 30));
     rnd_tp(tr, P_FXCHAR, rnd_rr(70, 110));
-    if (rnd_pct(55)) {
-        tr = rnd_pct(60) ? RND_ST_NOISE : RND_ST_BED;
+    {                                               /* (always a second: the noise through SPIT mostly) */
+        tr = rnd_pct(75) ? RND_ST_NOISE : RND_ST_BED;
         rnd_tp(tr, P_FXTYPE, tr == RND_ST_NOISE ? FX_SPIT : FX_TAPE);
         rnd_tp(tr, P_FXMIX, rnd_rr(50, 90));
         rnd_tp(tr, P_FXRATE, rnd_rr(10, 50));
@@ -2554,12 +2576,13 @@ static uint32_t rnd_st_now(void)
  * 3 to 8 bars (the collapse: the layers out in a second or two); DRIFT FAST twice as fast */
 static void rnd_static_stage(uint32_t stage, uint32_t now)
 {
-    uint32_t bars = stage == RND_ST_BUILD ? (uint32_t)rnd_rr(12, 24) : stage == RND_ST_WALL ? (uint32_t)rnd_rr(4, 10) :
-                    (uint32_t)rnd_rr(3, 8);
+    uint32_t bars = stage == RND_ST_BUILD ? (uint32_t)rnd_rr(8, 16) : stage == RND_ST_WALL ? (uint32_t)rnd_rr(6, 14) :
+                    (uint32_t)rnd_rr(2, 5);
     if (settings_rnd_drift == 2u && bars > 3u) bars /= 2u;
     rnd_st.stage = (uint8_t)stage;
     rnd_st.from = rnd_st.x;
-    rnd_st.to = stage == RND_ST_LOW ? (uint16_t)rnd_rr(0, 80) : 1000u;
+    rnd_st.to = stage == RND_ST_LOW ? (uint16_t)rnd_rr(80, 260) : 1000u;   /* (the low: the bed and the noise, the fizz
+                                                     * now and then) */
     rnd_st.t0 = now;
     rnd_st.len = bars * 64u;
 }
@@ -2567,7 +2590,7 @@ static void rnd_static_start(void)
 {
     uint32_t tr;
     for (tr = 0; tr < NTRK; tr++) rnd_st.base[tr] = rnd_st.put[tr] = (uint8_t)trk[tr].p[P_LEVEL];
-    rnd_st.x = (uint16_t)rnd_rr(200, 500);          /* (it starts part built: a few layers in) */
+    rnd_st.x = (uint16_t)rnd_rr(400, 700);          /* (it starts part built: most layers in) */
     rnd_static_stage(RND_ST_BUILD, rnd_st_now());
 }
 /* STATIC's process, every frame while it plays (rnd_drift): the density along its stage, each layer's level from it
@@ -2592,6 +2615,8 @@ static void rnd_static_move(void)
         g = g < 0 ? 0 : g > 1000 ? 1000 : g;
         want = tr == RND_ST_BED ? rnd_st.base[tr] - (1000 - g) * 16 / 1000 :   /* (the bed: 8 dB down at most, the
                                                      * thread left in the collapse) */
+               tr == RND_ST_NOISE ? rnd_st.base[tr] - (1000 - (int32_t)rnd_st.x) * 16 / 1000 :   /* (the noise: never out,
+                                                     * 8 dB down at most) */
                !g ? 0 : rnd_st.base[tr] - (1000 - g) * 48 / 1000;
         want = want < 0 ? 0 : want;
         step = rnd_st.stage == RND_ST_LOW ? 4 : 1;
