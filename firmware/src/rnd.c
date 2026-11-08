@@ -69,7 +69,7 @@ static uint32_t rnd_state = 0x6D2B79F5u;          /* xorshift32 (never 0) */
 static uint32_t rnd_seed;                          /* the last roll's seed (shown: RND 1A2B3C4D) */
 static uint8_t rnd_backed;                         /* 1: the hold swapped back to before the roll */
 static uint8_t rnd_nice;                           /* 1: this roll is NICE's or FALL's (rnd_roll) */
-static uint8_t rnd_fall;                           /* 1: this roll is FALL's: TRIO on triangles, its melodies ORACLE's */
+static uint8_t rnd_fall;                           /* 1: this roll is FALL's: every track TRIO on triangles */
 static uint8_t rnd_loops;                          /* 1: this roll is LOOPS': four EUCLID loops of lengths apart */
 static uint8_t rnd_orbit;                          /* 1: this roll is ORBIT's: BOUNCE and CONSTELLATION only */
 static uint32_t rnd_next(void)
@@ -322,15 +322,8 @@ static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, ui
 {
     uint8_t code[NENG_SHOWN], w[NENG_SHOWN];
     uint32_t n = 0, k, full = *fm6s + *phys + *oracles >= RND_HEAVY;
-    if (rnd_fall && eng_ok(6u)) {                   /* (FALL: TRIO on every track, its melodies on ORACLE's leads, asked
-                                                     * 2026-11-07: FLUTE SQUARE LEAD VOX KEYS) */
-        static const uint8_t lp[] = {21, 17, 18, 11}, lw[] = {3, 3, 2, 2};
-        if (role != RND_ROLE_MELODY || !eng_ok(ENGI_ORACLE)) return 6u;
-        rnd_want_e = ENGI_ORACLE;
-        rnd_want_pi = rnd_pick(lp, lw, NELEM(lp));
-        (*oracles)++;
-        return ENGI_ORACLE;
-    }
+    if (rnd_fall && eng_ok(6u)) return 6u;          /* (FALL: TRIO on every track, triangles; the ORACLE lead asked for
+                                                     * was TIDE's, 2026-11-08) */
     if (rnd_want_e != 0xFFu && eng_ok(rnd_want_e) && (rnd_want_e != ENGI_PHYS || rnd_phys_ok())) {   /* (a mode's
                                                      * own engine for the role) */
         *fm6s += rnd_want_e == ENGI_FM6; *phys += rnd_want_e == ENGI_PHYS; *oracles += rnd_want_e == ENGI_ORACLE;
@@ -393,7 +386,6 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
                                                      * 2026-11-08: TRIO's RING BELL, ORACLE's POLY BELLS out of every
                                                      * pick: their neighbours, a lead) */
         engine_load_of(t, e, e == 6u ? 1u : 11u);
-    if (rnd_fall) rnd_want_e = rnd_want_pi = 0xFFu; /* (FALL's lead: this track's alone) */
     for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
         const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + k), tr);
         if (!d || d->max <= d->min) continue;
@@ -1667,6 +1659,11 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
     rnd_want_pi = fmkick ? (rnd_pct(40) ? 2 : rnd_pct(50) ? 10 : 28) :   /* (FM BASS, SOLID BASS, DROP: the low ones) */
                   role == RND_ROLE_MELODY ? (rnd_pct(50) ? 8 : 10) : role == RND_ROLE_CHORDS ? 5 : 8;   /* (SOFT PAD,
                                                      * SOFT LEAD; WARM PAD; the rest made below) */
+    if (role == RND_ROLE_MELODY && eng_ok(ENGI_ORACLE) && rnd_pct(75)) {   /* (the melody ORACLE's mostly, asked
+                                                     * 2026-11-08: its leads, keys, flute and voice; legato, dark) */
+        static const uint8_t op[] = {17, 21, 5, 11, 18}, ow[] = {3, 3, 2, 2, 2};   /* SQUARE LEAD FLUTE SYNC LEAD KEYS VOX */
+        rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pick(op, ow, NELEM(op));
+    }
     if (role == RND_ROLE_NOISE && rnd_mc_ok() && rnd_pct(50))   /* (the texture on MACRO half the time: WIND, DUST,
                                                      * TWIN PEAKS) */
         rnd_want_e = ENGI_MACRO, rnd_want_pi = rnd_pct(40) ? 10 : rnd_pct(50) ? 14 : 11;
@@ -1728,6 +1725,15 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
             rnd_tp(tr, P_E0 + 4u, 0);
             rnd_tp(tr, P_E0 + 5u, rnd_td_lead ? rnd_rr(30, 52) : rnd_rr(40, 62));   /* CUT: low */
             rnd_tp(tr, P_E0 + 6u, rnd_td_lead ? rnd_rr(20, 55) : rnd_rr(0, 25));    /* RES: a lead's a little vocal */
+        } else if (e == ENGI_ORACLE) {              /* (ORACLE: its own envelopes, made as the lead's or the leaves';
+                                                     * darker than the preset) */
+            uint8_t *q = or_patch_of(&trk[tr]);
+            q[OR_ATTACK_AMP] = (uint8_t)(rnd_td_lead ? rnd_rr(30, 60) : rnd_rr(0, 8));
+            q[OR_DECAY_AMP] = (uint8_t)(rnd_td_lead ? rnd_rr(70, 100) : rnd_rr(45, 75));
+            q[OR_SUSTAIN_AMP] = (uint8_t)(rnd_td_lead ? rnd_rr(80, 115) : rnd_rr(10, 50));
+            q[OR_RELEASE_AMP] = (uint8_t)rnd_rr(60, 90);
+            q[OR_RELEASE_ON] = 1;
+            rnd_tp(tr, P_E0, trk[tr].p[P_E0] - rnd_rr(5, 20));   /* CUT */
         }
         if (rnd_td_lead) {                          /* the lead: swelling, gliding where notes tie (rnd_tide_nl), its
                                                      * filter opening a little */
@@ -3952,9 +3958,9 @@ static void rnd_expr_one(uint32_t tr, int32_t vel, int32_t key, int32_t sh, int3
 static void rnd_orc_levels(void)
 {
     uint32_t tr;
-    for (tr = 0; tr < NTRK && rnd_fall; tr++)       /* (FALL's leads, measured: VOX 12 dB under SQUARE LEAD, FLUTE and
-                                                     * KEYS 4) */
-        if (trk[tr].eng_req == ENGI_ORACLE)
+    for (tr = 0; tr < NTRK && rnd_tide; tr++)       /* (TIDE's ORACLE lead, measured: VOX 12 dB under SQUARE LEAD, FLUTE
+                                                     * and KEYS 4) */
+        if (trk[tr].eng_req == ENGI_ORACLE && tr == RND_TD_MEL)
             rnd_tp(tr, P_LEVEL, trk[tr].p[P_LEVEL] + (trk[tr].preset == 18u ? 24 : trk[tr].preset == 17u ? 0 : 8));
     if (!rnd_wozza && !rnd_loops && !rnd_halo && !rnd_mirror) return;
     for (tr = 0; tr < NTRK; tr++)

@@ -6446,9 +6446,7 @@ static int test_rnd(void)
             rnd_roll();
             for (tr = 0; tr < NTRK; tr++) {
                 const track_t *t = &trk[tr];        /* (the melodies ORACLE's leads; the rest TRIO's triangles) */
-                trio &= rnd_role_of[tr] == RND_ROLE_MELODY ?
-                            t->eng_req == ENGI_ORACLE && (t->preset == 21u || t->preset == 17u || t->preset == 18u || t->preset == 11u) :
-                            t->eng_req == 6u && t->p[P_E0] == 4 && t->p[P_E0 + 4u] == 0;
+                trio &= t->eng_req == 6u && t->p[P_E0] == 4 && t->p[P_E0 + 4u] == 0;   /* (FALL: TRIO's triangles only) */
                 trio &= t->p[P_LD_AMP] == 0;
                 chordt += tessera.mode[tr] == TESS_ENG_CHORD;
                 falls += tessera.mode[tr] == TESS_ENG_BOUNCE && pid_get(PID_TESS(TX_BNC_BALLS), tr) == 5;
@@ -6470,8 +6468,7 @@ static int test_rnd(void)
                        trk[2].p[P_TRANS], trk[3].p[P_TRANS], peak);
             }
         }
-        bad += check("RND FALL: 200 rolls: the melodies on ORACLE's FLUTE, SQUARE LEAD, VOX or KEYS, the rest TRIO on three "
-                     "triangles (TRI3, LP), no tremolo; effects (clean)", trio);
+        bad += check("RND FALL: 200 rolls: every track TRIO on three triangles (TRI3, LP), no tremolo; effects (clean)", trio);
         bad += check("RND FALL: ..the ambient roles, an octave each; the melodies falling (BOUNCE's FALL) often",
                      roles_ok && falls >= 150u);
         bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
@@ -7136,7 +7133,7 @@ static int test_rnd(void)
         rnd_mode_put(RND_FREE);
     }
     {                                               /* TIDE: a sub groove, FALL's leaves, a triangle bed, a noise */
-        uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, kick_ok = 1, mel_ok = 1, bed_ok = 1, nz_ok = 1, dry = 1;
+        uint32_t r, tr, k, fixed = 1, tempo_ok = 1, key_ok = 1, kick_ok = 1, mel_ok = 1, bed_ok = 1, nz_ok = 1, dry = 1, td_orc = 0;
         uint32_t four = 0, across = 0, bp = 0, lp = 0, bounce = 0, quiet = 0, clipped_n = 0, sub_ok = 1, cpu = 1, leads = 0;
         uint32_t noisy = 0;
         rnd_mode_put(RND_TIDE);
@@ -7161,11 +7158,13 @@ static int test_rnd(void)
             if (st == 4 && pid_get(PID_TESS(TX_EUC_PULSES), RND_TD_KICK) == 4 && kp[P_SDIV] == 0) four++;
             else { across++; kick_ok &= st != 4 && st != 8 && st != 16 && (kp[P_SDIV] == 1 || kp[P_SDIV] == 4); }
             mel_ok &= (tessera.mode[RND_TD_MEL] == TESS_ENG_BOUNCE || tessera.mode[RND_TD_MEL] == TESS_ENG_SERIES) &&
-                      trk[RND_TD_MEL].eng_req == 6u && mp[P_TRANS] >= 0 && mp[P_LD_FLT] > 0 && mp[P_E0 + 5u] <= 62 &&
+                      (trk[RND_TD_MEL].eng_req == ENGI_ORACLE || (trk[RND_TD_MEL].eng_req == 6u && mp[P_E0 + 5u] <= 62)) &&
+                      mp[P_TRANS] >= 0 && mp[P_LD_FLT] > 0 &&
                       (mp[P_VOICE] != V_LEGATO || (pid_get(PID_TESS(TX_NL_MODE), RND_TD_MEL) == 1 &&
                        pid_get(PID_TESS(TX_NL_KEYS), RND_TD_MEL) == 1 && pid_get(PID_TESS(TX_TW_DROP), RND_TD_MEL) >= 15 &&
                        mp[P_GLIDE] > 0));          /* (a lead: legato in places, its gaps between) */
             leads += mp[P_VOICE] == V_LEGATO;
+            td_orc += trk[RND_TD_MEL].eng_req == ENGI_ORACLE;
             bounce += tessera.mode[RND_TD_MEL] == TESS_ENG_BOUNCE;
             bed_ok &= tessera.mode[RND_TD_BED] == TESS_ENG_CHORD && trk[RND_TD_BED].eng_req == 6u && bp_[P_E0] == 4 &&
                       bp_[P_LEVEL] < mp[P_LEVEL];
@@ -7204,8 +7203,8 @@ static int test_rnd(void)
                      kick_ok && sub_ok);
         bad += check("RND TIDE: ..the sub across the bar mostly, four on the floor now and then",
                      four > 10u && four < 70u && across > 130u);
-        bad += check("RND TIDE: ..the melody FALL's leaves or a line by step (a lead: runs), on TRIO, dark, moving, wandering the stereo",
-                     mel_ok && bounce > 70u && bounce < 150u);
+        bad += check("RND TIDE: ..the melody FALL's leaves or a line by step (a lead: runs), on ORACLE mostly (else TRIO), dark, "
+                     "moving, wandering the stereo", mel_ok && bounce > 70u && bounce < 150u && td_orc > 120u && td_orc < 190u);
         bad += check("RND TIDE: ..half the melodies a lead, legato in places (two steps a note, gaps), gliding",
                      leads > 60u && leads < 140u);
         bad += check("RND TIDE: ..the bed TRIO's triangles holding the chords, under the melody", bed_ok);
