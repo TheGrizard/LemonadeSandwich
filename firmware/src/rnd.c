@@ -2018,15 +2018,20 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     uint8_t nice = rnd_nice;
     uint32_t e, k = (uint32_t)rnd_rr(0, 99);
     int ph = !*phys && rnd_phys_ok(), fm = !*fm6s && rnd_fm6_ok(), orc = !*oracles && eng_ok(ENGI_ORACLE);
+    int orc2 = *oracles < 2u && eng_ok(ENGI_ORACLE), mc = rnd_mc_ok();   /* (a second ORACLE: FM6 gone, the CPU there) */
     int str = 0;
-    if (role == RND_ROLE_CHORDS) {                  /* the keys: a clavinet, the electric pianos, an organ, strings */
+    if (role == RND_ROLE_CHORDS) {                  /* the keys: ORACLE's keys, clavinet, stabs, brass, a warm pad;
+                                                     * TRIO's organ or string machine (more of them, asked 2026-11-08) */
         static const uint8_t fp[] = {13, 0, 8, 14, 6, 15}, fw[] = {6, 6, 2, 3, 2, 3};   /* CLAVINET, TINE EP, DX TINE,
                                                      * DRAWBARS, ORGAN, STRINGS */
+        static const uint8_t op[] = {11, 12, 22, 4, 1}, ow[] = {5, 4, 2, 2, 2};   /* KEYS CLAV FAT POLY BRASS WARM PAD */
         if (fm && k < 80u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
         else if (ph && k < 94u) rnd_want_e = ENGI_PHYS, rnd_want_pi = 9;   /* VIBES */
-        else if (orc && k < 94u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(50) ? 11 : 12;   /* KEYS, CLAV */
-        else rnd_want_e = 6u, rnd_want_pi = 6;      /* (TRIO's STRING MACH) */
-        rnd_cr_lush = rnd_want_pi == 14u || rnd_want_pi == 6u || rnd_want_pi == 15u;   /* (held, not stabbed) */
+        else if (orc && k < 76u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pick(op, ow, NELEM(op));
+        else rnd_want_e = 6u, rnd_want_pi = k < 90u ? 7 : 6;   /* (TRIO's organ, made from HOLLOW PAD below; STRING MACH) */
+        rnd_cr_lush = rnd_want_e == 6u || (rnd_want_e == ENGI_ORACLE && rnd_want_pi == 1u) ||
+                      (rnd_want_e == ENGI_FM6 && (rnd_want_pi == 14u || rnd_want_pi == 6u || rnd_want_pi == 15u));   /* (held,
+                                                     * not stabbed) */
     } else if (role == RND_ROLE_BASS) {             /* TRIO's, a square or a triangle (asked: not PHYS' pluck, not FM6) */
         rnd_want_e = 6u, rnd_want_pi = 8;
     } else if (role == RND_ROLE_COUNTER && k < 75u) {   /* the strings: lush, slow, wide */
@@ -2034,19 +2039,32 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         str = 1;
         rnd_cr_lush |= 2u;
         if (fm && k < 30u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pct(60) ? 15 : 25;   /* STRINGS, SOFT PAD */
+        else if (orc2 && k < 22u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 3;   /* SOFT STRINGS */
+        else if (mc && k < 40u) rnd_want_e = ENGI_MACRO, rnd_want_pi = 6;   /* CHOIR FOF: the backing singers' oohs */
         else rnd_want_e = 6u, rnd_want_pi = rnd_pick(tp, tw, NELEM(tp));
-    } else {                                        /* the head (or a second voice): horns, a flute, vibes; TRIO's own */
+    } else {                                        /* the head (or a second voice): ORACLE's flute, leads, brass, voice;
+                                                     * MACRO's sung vowels (a vocal chop); TRIO's flute or muted horn */
+        static const uint8_t op[] = {21, 17, 4, 18, 5}, ow[] = {4, 3, 3, 2, 1};   /* FLUTE SQUARE LEAD BRASS VOX SYNC LEAD */
         if (fm && k < 45u) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pct(55) ? 9 : 20;   /* BRASS SECT, FLUTE */
         else if (ph && k < 70u) rnd_want_e = ENGI_PHYS, rnd_want_pi = 9;   /* VIBES */
-        else if (*oracles < 2u && eng_ok(ENGI_ORACLE) && k < 75u)   /* (a second ORACLE: FM6 gone, the CPU there) */
-            rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(55) ? 21 : 17;   /* FLUTE, SQUARE LEAD */
+        else if (orc2 && k < 60u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pick(op, ow, NELEM(op));
+        else if (mc && k < 74u) rnd_want_e = ENGI_MACRO, rnd_want_pi = rnd_pct(60) ? 5 : 4;   /* VOWEL AH, VOSIM VOX */
         else rnd_want_e = 6u, rnd_want_pi = 10;     /* (TRIO's SOFT LEAD: made a flute or a muted horn below) */
     }
     rnd_nice = 1;
     rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
     rnd_nice = nice;
     rnd_want_e = rnd_want_pi = 0xFFu;
+    rnd_mc_model(tr);
     e = trk[tr].eng_req;
+    if (e == ENGI_MACRO) {                          /* MACRO: a voice, warm, a consonant a note (the singers: none) */
+        rnd_tp(tr, P_E0 + 1u, rnd_rr(10, 90));      /* TIMBR, COLOR: the vowel, the formants */
+        rnd_tp(tr, P_E0 + 2u, rnd_rr(30, 90));
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(92, 112));     /* TONE: an old record's top */
+        rnd_tp(tr, P_E0 + 4u, 0); rnd_tp(tr, P_E0 + 5u, 0);
+        rnd_tp(tr, P_E0 + 6u, str ? 0 : 1);
+        rnd_tp(tr, P_E0 + 7u, 0);
+    }
     if (e == 6u)                                    /* TRIO: INT2, INT3 the unison or an octave, CRATE's (rnd_tp's
                                                      * fifths too thick for its strings and keys, asked) */
         for (k = 1u; k < 3u; k++)
@@ -2068,7 +2086,15 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         rnd_tp(tr, P_VOICE, V_POLY);
         if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 0));   /* (MLVL: mellow) */
         if (trk[tr].preset == 6 || trk[tr].preset == 14) rnd_tp(tr, P_LD_AMP, 0);   /* (an organ held) */
-        if (e == 6u || (e == ENGI_FM6 && trk[tr].preset == 15)) {   /* (strings: swelling in, wide) */
+        if (e == ENGI_ORACLE && trk[tr].preset == 1) rnd_tp(tr, P_ATK, rnd_rr(20, 45));   /* (the warm pad: in softly) */
+        if (e == 6u && trk[tr].preset == 7) {       /* (TRIO's organ: squares on octaves, drawbars; at once, held) */
+            rnd_tp(tr, P_E0, 1);                    /* PLS3 */
+            rnd_tp(tr, P_E0 + 1u, 12); rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? 0 : -12); rnd_tp(tr, P_E0 + 3u, rnd_rr(2, 8));
+            rnd_tp(tr, P_E0 + 4u, 0); rnd_tp(tr, P_E0 + 5u, rnd_rr(68, 86)); rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 15));
+            rnd_tp(tr, P_E0 + 7u, rnd_rr(50, 64));  /* (PW: near square, hollow) */
+            rnd_tp(tr, P_ATK, rnd_rr(0, 6)); rnd_tp(tr, P_SUS, rnd_rr(100, 120));
+            rnd_tp(tr, P_LD_AMP, 0);
+        } else if (e == 6u || (e == ENGI_FM6 && trk[tr].preset == 15)) {   /* (strings: swelling in, wide) */
             rnd_tp(tr, P_ATK, rnd_rr(30, 60));
             rnd_tp(tr, P_SPRD, rnd_rr(60, 90));
             if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(80, 92));   /* (TRIO: open enough to be heard, measured) */
@@ -2095,6 +2121,7 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         rnd_tp(tr, P_LD_PIT, 0);                    /* (no vibrato: rnd_no_pitch) */
         if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(80, 94));   /* (TRIO: warm, the top soft; lower, measured: lost) */
         else if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 0));
+        if (e == ENGI_MACRO) rnd_tp(tr, P_DETUNE, rnd_rr(0, 15));   /* (the singers: together) */
     } else {                                        /* the head, the counter */
         int horn = rnd_pct(40);
         if (e == 6u) {                              /* TRIO: a flute (triangles, breathy) or a muted horn (a pulse
@@ -2120,6 +2147,14 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     }
     if (e == ENGI_PHYS && role != RND_ROLE_BASS) rnd_tp(tr, P_LEVEL, trk[tr].p[P_LEVEL] + 14);   /* (the vibes: quieter than
                                                      * the rest at a level, measured, 15 dB) */
+    {                                               /* (the levels against CRATE's others, measured, half a dB a step:
+                                                     * TRIO's organ 7 dB over the keys, the clavinet's stabs 9 under;
+                                                     * MACRO's voices 4 to 9 under) */
+        int32_t d = e == 6u && trk[tr].preset == 7 && role == RND_ROLE_CHORDS ? -14 :
+                    e == ENGI_ORACLE && trk[tr].preset == 12 ? 10 :
+                    e == ENGI_MACRO ? (trk[tr].preset == 4 ? 18 : trk[tr].preset == 5 ? 12 : 18) : 0;
+        if (d) rnd_tp(tr, P_LEVEL, clamp(trk[tr].p[P_LEVEL] + d, 0, 120));
+    }
 }
 /* a section of a track's FORM written now (its generator's settings as tess_save_sec keeps them), as if it had been
  * played and kept: FORM recalls it, never makes it (CONTRAST does not touch it) */
