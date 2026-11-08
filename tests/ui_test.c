@@ -6605,7 +6605,9 @@ static int test_rnd(void)
                             !f && p[P_SDIV] <= 6 && rnd_speed((uint32_t)p[P_SDIV]) != RND_FAST;
                 else if (role == RND_ROLE_TINT)
                     t_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_QUANT] == Q_CHRD && p[P_SDIV] == trk[m].p[P_SDIV] &&
-                            p[P_ATK] <= 8 && p[P_TRANS] <= 12 && (e == ENGI_FM6 || e == ENGI_ORACLE || e == 6u);
+                            p[P_ATK] >= 10 && p[P_ATK] <= 35 && p[P_TRANS] <= 12 &&
+                            ((e == ENGI_ORACLE && (trk[tr].preset == 21u || trk[tr].preset == 18u)) ||
+                             (e == 6u && (trk[tr].preset == 11u || trk[tr].preset == 10u)));
                 else if (role == RND_ROLE_CANON)
                     c_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_VOICE] == V_LEGATO && p[P_TRANS] < trk[m].p[P_TRANS] &&
                             p[P_TRANS] >= -12 && e != ENGI_PHYS;
@@ -6636,7 +6638,8 @@ static int test_rnd(void)
         bad += check("RND HALO: ..slow (60 to 72 BPM), MIN MAJ DOR LYD MIX on all four", tempo_ok && key_ok);
         bad += check("RND HALO: ..the halo the tonic triad held (CHORD DRONE or TWO, HOLD), a warm pad swelling, quiet", halo_ok);
         bad += check("RND HALO: ..the M-voice a slow line (SERIES, FALL's leaves, TURING) on FALL's triangles", m_ok);
-        bad += check("RND HALO: ..the T-voice follows it on its clock onto the triad (QNT CHRD), bells, never past +12", t_ok);
+        bad += check("RND HALO: ..the T-voice follows it on its clock onto the triad (QNT CHRD), soft (ORACLE's FLUTE or "
+                     "VOX, TRIO's BREATH FLUTE or SOFT LEAD: no bells), never past +12", t_ok);
         bad += check("RND HALO: ..the canon follows it slower, below, held", c_ok);
         bad += check("RND HALO: ..the bells heard on the halo's triad (95 % and more of their notes)",
                      notes > 10u && on_triad * 100u >= notes * 95u);
@@ -7380,7 +7383,8 @@ static int test_rnd(void)
                         if (m == RND_CRATE) crate_bad += (i2 + 48) % 12 != 0 || (i3 + 48) % 12 != 0;
                     }
                 for (tr = 0; tr < NTRK; tr++) in_key &= trk[tr].p[P_QUANT] == Q_WHITE || trk[tr].p[P_QUANT] == Q_CHRD;
-                for (tr = 0; tr < NTRK; tr++) no_phys &= trk[tr].eng_req != ENGI_PHYS;
+                for (tr = 0; tr < NTRK; tr++) no_phys &= trk[tr].eng_req != ENGI_PHYS &&   /* (and no bells) */
+                    !(trk[tr].eng_req == 6u && trk[tr].preset == 3u) && !(trk[tr].eng_req == ENGI_ORACLE && trk[tr].preset == 10u);
                 for (tr = 0; tr < NTRK; tr++) {     /* (no pitch modulation: WOZZA's wow, TIDE's kick thump only) */
                     const track_t *t = &trk[tr];
                     no_pit &= (m == RND_WOZZA ? t->p[P_LD_PIT] <= 1 : t->p[P_LD_PIT] == 0) &&
@@ -7419,7 +7423,8 @@ static int test_rnd(void)
         bad += check("RND: every mode, DRIFT FAST: TRIO's INT2, INT3 unisons, octaves or fifths (CRATE's octaves)",
                      seen > 100u && !bad_iv && !crate_bad);
         bad += check("RND: ..and every track's QUANTIZE WHITE or CHRD: the scale on the white keys, to play along", in_key);
-        bad += check("RND: ..PHYS in no roll; CRATE's bass TRIO's square or triangle", no_phys && crate_bass);
+        bad += check("RND: ..PHYS and bells (TRIO's RING BELL, ORACLE's POLY BELLS) in no roll; CRATE's bass TRIO's square or "
+                     "triangle", no_phys && crate_bass);
         bad += check("RND: ..no pitch modulation: no vibrato, pitch envelope, ORACLE Poly-Mod or LFO on FREQ, FM6 PMD, "
                      "pitch cord, STATIC glide (WOZZA's wow, TIDE's kick thump kept)", no_pit);
         bad += check("RND: ..velocity on the cutoff: every track of WOZZA, CRATE, ORBIT and RND, FALL's melodies, TIDE's "

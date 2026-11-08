@@ -835,8 +835,9 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   never PHYS: no roll uses it, it stays to play by hand) and one of its presets,
   pushed a long way from where it started: the engine's eight (EDIT), the envelope (slow swells or hard snaps, long
   releases), the LFO, the voice mode (never UNISON), glide and spread, the register (TRN: an octave or two down, a fifth or an
-  octave up). On ORACLE the patch itself too, often with noise in it. At most one FM6 and one ORACLE track a roll
-  (the FM-1's CPU).
+  octave up). On ORACLE the patch itself too, often with noise in it. At most one ORACLE track a roll
+  (the FM-1's CPU). No roll picks a bell (TRIO's RING BELL, ORACLE's POLY BELLS), and ORBIT keeps to leads, keys,
+  pads and brass.
 - **What plays**: a generator on each track (TURING, EUCLID, MARKOV, MORPH, BOUNCE, AWAKE, POLY, QUAD,
   CONSTELLATION, SERIES or one CHORD track) with its settings, EVOLVE and now and then a FORM, TWEAK's DROP and
   HUMAN, LENGTH, sometimes a ratchet, and the track's DIV, LEN, GATE and SWING (leaning slow).
@@ -936,8 +937,8 @@ Spiegel, Für Alina, the canons of Cantus): 60 to 72 BPM, a minor or major key (
 then), four parts in a random order. The **halo** is a warm TRIO pad (WARM, HOLLOW or SOFT PAD, STRING MACH) holding
 the tonic triad (CHORD on DRONE, now and then TWO: I and IV), four bars a chord, swelling in slowly, quiet, breathing.
 The **M-voice** is a slow line, mostly by step (SERIES a degree at a time, FALL's falling leaves, or a loose TURING), on
-FALL's three triangles, warmer and hazier (detuned a little, the filter lower). The **T-voice** is bells (FM6's ZEN
-BELL, RIN, BELL, TINE EP or FURIN; ORACLE's POLY BELLS; TRIO's RING BELL) that follow the M-voice (TWEAK FOLLOW) on its clock
+FALL's three triangles, warmer and hazier (detuned a little, the filter lower). The **T-voice** is a soft flute or voice (ORACLE's
+FLUTE or VOX, TRIO's BREATH FLUTE or SOFT LEAD: no bells in any roll) that follow the M-voice (TWEAK FOLLOW) on its clock
 onto the nearest note of the halo's triad (QNT CHRD): Pärt's tintinnabuli voice, an octave above the line or below it
 (beside a high line, or below it). The **canon** follows the M-voice too, half as fast, held, an octave down (a high
 line's mostly in its own octave): the slow voice of a mensuration canon, on the triangles or FM6's SOFT PAD or SOFT
@@ -962,7 +963,7 @@ PELOG, 19 and 22 EDO, HARM16, JI-MAJ, Bohlen-Pierce). The **halo** is glass, no 
 pulses through a high-pass, speaking at once; in twelve notes a CHORD track (DRONE, TWO, CIRCLE, WALK or 50S; held,
 or pulsing on the beat or off it), off them a cluster of two or three notes taking turns, held. The **line** is digital
 (ORACLE's SEQ BLIP or SYNC LEAD; TRIO's pulses, ring or sync waves on octaves and fifths, high- or band-passed, short), by step or not (SERIES, TURING, BOUNCE, MARKOV or AWAKE), on 1/16 to 1/4, tight.
-The **mirror** is glass bells (ORACLE's POLY BELLS or TRIO's RING BELL) following the line: onto the halo's chord (QNT CHRD, the tintinnabuli voice) or in parallel a few degrees off
+The **mirror** is glassy blips (ORACLE's SEQ BLIP or GLASS PAD, or TRIO's thin pulses) following the line: onto the halo's chord (QNT CHRD, the tintinnabuli voice) or in parallel a few degrees off
 (TWEAK SHIFT; always, off twelve notes), on the line's clock or twice as fast, now and then stuttering (ratchets). The
 **canon** is the line again an octave down, struck (ORACLE's SEQ BLIP or a TRIO pulse), half as fast or across it in
 triplets. No wow: the
@@ -1009,8 +1010,7 @@ moves one step ahead and stays there, and new patterns come out of the way the t
 moves another step, and so on, until the two meet in unison again. Then a new cell begins on the next bar line.
 **Track 3** is a third copy that moves a step back half as often (TRIO cells only), or a low pulse of a few notes on
 the cell's length. **Track 4** is a soft chord bed under it all: one chord or two, four or two bars each, pulsing on
-every step of a slower clock or held and breathing. The cell is on TRIO's bright pulses, FM6's mallets (marimbas,
-mallet, kalimba, tines: on 1/8 at 160 to 184 BPM) or ORACLE's plucks (on 1/16 at 88 to 104 BPM). The key is pentatonic
+every step of a slower clock or held and breathing. The cell is on TRIO's bright pulses or ORACLE's PLUCK, SEQ BLIP or KEYS (on 1/16 at 88 to 104 BPM). The key is pentatonic
 or modal. Every note is even, with no human timing, nothing dropped and no swing, because that evenness is the point.
 The phasing is the piece, so it goes on whatever **DRIFT** says (DRIFT FAST holds each place half as long), and DRIFT
 changes nothing else. No effects and no cords. The screen shows **PHASE** and the seed.
@@ -1054,7 +1054,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, bells on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly; **STATIC**: a wall of noise, four held layers on a buried chord progression, building to an overload and collapsing; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **RND**: REC rolls a whole new piece, random and strange; **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, a triangle bed and a noise, slow, always on tracks 1 to 4; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **HALO**: warm and hazy, after Pärt: a slow line, a soft voice on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital, microtonal now and then, its rules loosened; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings in sections that come back exactly; **STATIC**: a wall of noise, four held layers on a buried chord progression, building to an overload and collapsing; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |

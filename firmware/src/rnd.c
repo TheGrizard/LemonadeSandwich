@@ -358,8 +358,19 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
     uint32_t e = rnd_engine(fm6s, phys, oracles, role), k;
     uint32_t wild = (uint32_t)(rnd_nice ? rnd_rr(0, 20) : rnd_rr(40, 100));
     const engine_t *en = ENGINES[e];
+    if (rnd_orbit && (e == 6u || e == ENGI_ORACLE)) {   /* (ORBIT: leads, keys, pads, brass; no bells, plucks or
+                                                     * chimes: heard, terrible, 2026-11-08) */
+        static const uint8_t ot[] = {1, 2, 5, 6, 7, 8, 10, 11, 13}, oo[] = {1, 2, 3, 4, 5, 11, 12, 17, 18, 19, 20, 21, 22};
+        rnd_want_e = (uint8_t)e;
+        rnd_want_pi = e == 6u ? ot[rnd_next() % NELEM(ot)] : oo[rnd_next() % NELEM(oo)];
+    }
     engine_load_of(t, e, rnd_want_pi < en->npresets && e == rnd_want_e ? rnd_want_pi
                                                                      : (uint32_t)rnd_rr(0, (int32_t)en->npresets - 1));
+    if (rnd_orbit) rnd_want_e = rnd_want_pi = 0xFFu;
+    if ((e == 6u && t->preset == 3u) || (e == ENGI_ORACLE && t->preset == 10u))   /* (no bells anywhere, asked
+                                                     * 2026-11-08: TRIO's RING BELL, ORACLE's POLY BELLS out of every
+                                                     * pick: their neighbours, a lead) */
+        engine_load_of(t, e, e == 6u ? 1u : 11u);
     if (rnd_fall) rnd_want_e = rnd_want_pi = 0xFFu; /* (FALL's lead: this track's alone) */
     for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
         const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + k), tr);
@@ -1057,15 +1068,13 @@ static void rnd_halo_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
     } else if (role == RND_ROLE_MELODY) {           /* the M-voice: FALL's triangles (a bowed string in the middle
                                                      * was a hiss, measured) */
         rnd_want_e = 6u, rnd_want_pi = 8;
-    } else if (role == RND_ROLE_TINT) {             /* the T-voice: bells */
-        static const uint8_t fp[] = {30, 31, 1, 0, 33}, fw[] = {3, 3, 2, 2, 1};   /* ZEN BELL, RIN, BELL, TINE EP, FURIN */
-        static const uint8_t pp[] = {9}, pw[] = {1};                              /* VIBES (BELL TREE: a glare; a bowl
-                                                     * unbowed: silent) */
+    } else if (role == RND_ROLE_TINT) {             /* the T-voice: a soft flute or voice (no bells anywhere, asked
+                                                     * 2026-11-08): ORACLE's FLUTE or VOX, TRIO's BREATH FLUTE or
+                                                     * SOFT LEAD */
         int orc = !*oracles && eng_ok(ENGI_ORACLE);
-        if (fm && (rnd_pct(55) || (!ph && !orc))) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pick(fp, fw, NELEM(fp));
-        else if (ph) rnd_want_e = ENGI_PHYS, rnd_want_pi = rnd_pick(pp, pw, NELEM(pp));
-        else if (orc) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 10;   /* (POLY BELLS: PHYS' vibes gone) */
-        else rnd_want_e = 6u, rnd_want_pi = 3;      /* (TRIO's RING BELL) */
+        (void)fm; (void)ph;
+        if (orc && rnd_pct(55)) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(60) ? 21 : 18;
+        else rnd_want_e = 6u, rnd_want_pi = rnd_pct(55) ? 11 : 10;
     } else {                                        /* the canon: triangles or a soft pad, low (PHYS bowed: a
                                                      * hiss as often as not, measured) */
         if (fm && rnd_pct(35)) rnd_want_e = ENGI_FM6, rnd_want_pi = rnd_pct(50) ? 25 : 26;   /* SOFT PAD, SOFT SWELL */
@@ -1106,10 +1115,9 @@ static void rnd_halo_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
         rnd_tp(tr, P_VOICE, rnd_pct(50) ? V_LEGATO : V_MONO);
         rnd_tp(tr, P_LEVEL, rnd_rr(76, 90));
         rnd_tp(tr, P_PAN, rnd_rr(-20, 20));
-    } else if (role == RND_ROLE_TINT) {             /* struck, ringing, a step aside in the stereo */
-        /* (ringing, but the pool kept: a bell a step) */
+    } else if (role == RND_ROLE_TINT) {             /* soft, a step aside in the stereo (no bell's strike) */
         {
-            static const int8_t rg[][3] = {{P_ATK, 0, 8}, {P_DEC, 75, 105}, {P_SUS, 0, 20}, {P_REL, 65, 95}};
+            static const int8_t rg[][3] = {{P_ATK, 10, 35}, {P_DEC, 75, 105}, {P_SUS, 40, 80}, {P_REL, 65, 95}};
             rnd_tp_rr(tr, rg, NELEM(rg));
         }
         rnd_tp(tr, P_VOICE, V_POLY);
@@ -1300,10 +1308,11 @@ static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_
         else rnd_want_e = 6u, rnd_want_pi = 8;      /* (SOFT PAD, made thin and bright below) */
     } else if (role == RND_ROLE_MELODY) {           /* digital: ORACLE's SEQ BLIP or SYNC LEAD, TRIO's ring and sync */
         if (orc && k < 45u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(60) ? 20 : 5;
-        else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 1 : 3;   /* ARP LEAD, RING BELL (their waves below) */
+        else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 1 : 2;   /* ARP LEAD, SYNC LEAD (their waves below) */
     } else if (role == RND_ROLE_TINT) {             /* glass bells */
-        if (orc && k < 60u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 10;   /* POLY BELLS */
-        else rnd_want_e = 6u, rnd_want_pi = 3;      /* RING BELL */
+        if (orc && k < 60u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(50) ? 20 : 2;   /* SEQ BLIP, GLASS PAD (no
+                                                     * bells anywhere, 2026-11-08) */
+        else rnd_want_e = 6u, rnd_want_pi = 1;      /* ARP LEAD (thin, high-passed below) */
     } else {                                        /* the canon: low, digital, struck (not HALO's held pad) */
         if (orc && k < 35u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 20;   /* SEQ BLIP */
         else rnd_want_e = 6u, rnd_want_pi = 1;      /* ARP LEAD */
@@ -1711,8 +1720,9 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
             }
             rnd_tp(tr, P_VOICE, V_POLY);
         }
-        rnd_tp(tr, P_LEVEL, rnd_td_lead ? rnd_rr(84, 96) : rnd_rr(96, 108));   /* (the voice up front, over the bed; a
-                                                     * lead's saw louder than the leaves, measured) */
+        rnd_tp(tr, P_LEVEL, rnd_td_lead ? rnd_rr(74, 86) : rnd_rr(86, 98));   /* (the voice over the bed, not on top of
+                                                     * it: 5 dB down, heard 2026-11-08; a lead's saw louder than the
+                                                     * leaves, measured) */
         rnd_tp(tr, P_LRATE, rnd_rr(30, 60));        /* (0.2 to 0.8 Hz) */
         rnd_tp(tr, P_LD_FLT, rnd_rr(15, 40));
         rnd_tp(tr, P_LWAVE, rnd_pct(70) ? 0 : 1);   /* (sine or triangle) */
@@ -2512,7 +2522,7 @@ static void rnd_phase_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_
 {
     static const uint8_t fp[] = {5, 12, 29, 19, 0, 8}, fw[] = {4, 3, 3, 2, 1, 1};   /* MARIMBA DX MARIMBA MALLET KALIMBA,
                                                      * TINE EP DX TINE */
-    static const uint8_t op[] = {9, 20, 11, 10}, ow[] = {4, 3, 2, 2};   /* PLUCK SEQ BLIP KEYS POLY BELLS */
+    static const uint8_t op[] = {9, 20, 11}, ow[] = {4, 3, 2};   /* PLUCK SEQ BLIP KEYS (no POLY BELLS: no bells) */
     static const uint8_t tw[] = {1, 3, 0, 4, 6}, tww[] = {3, 2, 2, 2, 1};   /* PLS3 SST SAW3 TRI3 P&S: bright */
     track_t *t = &trk[tr];
     (void)phys;
