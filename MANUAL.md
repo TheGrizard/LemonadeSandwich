@@ -138,9 +138,10 @@ key skips it.
 
 ## Sounds
 
-LEMONADE SANDWICH has four engines on the device: ORACLE, TRIO, PHYS and **MACRO**: Mutable Instruments Braids'
-macro-oscillator, by Emilie Gillet (MIT licence; not her product). FM6 is out (its tines and bells sounded cheap), and
-so is DRUM (drums come from another machine). MACRO is cheap: Braids works in whole numbers, so a voice costs a third
+LEMONADE SANDWICH has three engines on the device: ORACLE, TRIO and **MACRO**: Mutable Instruments Braids'
+macro-oscillator, by Emilie Gillet (MIT licence; not her product). FM6 is out (its tines and bells sounded cheap), so
+is PHYS (too many cheap sounds), and so is DRUM (drums come from another machine). A saved track on any of them loads
+TRIO's first voice. MACRO is cheap: Braids works in whole numbers, so a voice costs a third
 to a half of an ORACLE voice, and a track plays four. Its **MODEL** picks one of 16: **CSAW**, **FOLD** (a wavefolder),
 **SWARM** (seven detuned saws), **TOY**; the voices **VOSIM**, **VOWEL** (a note strikes a consonant) and **VFOF**;
 **FM**, **FBFM** (feedback FM) and **WTFM** (chaotic FM); and the noises **NOISE** (filtered), **TWINQ** (two resonant peaks), **CLKN** (clocked, digital), **CLOUD** (granular),
@@ -854,6 +855,11 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   play on the keys is in its key. A track on **CHRD** (FALL's, HALO's bells, CRATE's bass and strings ..) keeps it:
   its notes are the chord's, and its keys snap to the chord. In every roll TRIO's **INT2** and **INT3** are a unison,
   an octave or a fifth, never a semitone or two off.
+- **MACRO in the rolls** (Braids): RND puts one track a roll (two now and then) on MACRO's VOWEL, CHOIR FOF or
+  VOSIM, a consonant every note, its vowel anywhere: chopped speech among the rest, and picks MACRO's other models
+  now and then. STATIC's noise layer is MACRO's GRAIN CLOUD, WIND, TWIN PEAKS, DUST, BIT NOISE or QPSK most rolls,
+  and its fizz now and then SAW SWARM, FB GROWL or CHAOS FM, crushed or driven a little. TIDE's texture is MACRO's
+  WIND, DUST or TWIN PEAKS half the time.
 - **No pitch modulation**: no roll moves a note's pitch. No vibrato (the LFO, FM6's PMD), no pitch envelope, no cord
   to PITCH, and ORACLE's Poly-Mod goes to the filter or the pulse width, never FREQ A (its FENV on FREQ was a swoop on
   every note). WOZZA's tape wow and TIDE's soft kick thump are the only exceptions. STATIC's layers do not glide.

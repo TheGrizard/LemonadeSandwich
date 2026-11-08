@@ -235,6 +235,28 @@ static int rnd_phys_ok(void) { return 0; }
 /* FM6 in no roll (asked 2026-11-07: its tines cheap; FM6 out of the device build too, MELODEE_FM6 0): ORACLE and TRIO
  * in its places. The host tests' build keeps FM6; the rolls are the device's either way */
 static int rnd_fm6_ok(void) { return 0; }
+/* MACRO (Braids, the device's: eng_braids.c) in STATIC, TIDE and RND (asked 2026-11-08: its textures and vowels;
+ * the CPU fine). Its MODEL kept as the preset has it (a push would make a vowel a noise): rnd_mc_model */
+static int rnd_mc_ok(void) { return eng_ok(ENGI_MACRO) && MELODEE_BRAIDS; }
+/* a MACRO texture's level up to the TRIO layer it stands for (measured, the rolls' settings: TWIN PEAKS 7 dB under,
+ * and the most uneven, its peaks narrow or wide; DUST 10, GRAIN CLOUD 5, the swarm and FB GROWL 4 to 8; a level step
+ * half a dB) */
+static void rnd_mc_level(uint32_t tr)
+{
+    static const uint8_t up[][2] = {{11, 14}, {14, 20}, {13, 10}, {10, 4}, {2, 16}, {8, 12}, {9, 12}};
+    uint32_t k;
+    if (trk[tr].eng_req != ENGI_MACRO) return;
+    for (k = 0; k < NELEM(up); k++)
+        if (trk[tr].preset == up[k][0]) pid_set(PID_TRACK(P_LEVEL), tr, clamp(trk[tr].p[P_LEVEL] + up[k][1], 0, 127));
+}
+static void rnd_mc_model(uint32_t tr)
+{
+#if MELODEE_BRAIDS
+    if (trk[tr].eng_req == ENGI_MACRO) pid_set(PID_TRACK(P_E0), tr, MC_PRESETS[trk[tr].preset % NELEM(MC_PRESETS)].e[0]);
+#else
+    (void)tr;
+#endif
+}
 /* a track's knob, as a roll or DRIFT sets it. TRIO's INT2 and INT3: the nearest unison, octave or fifth (-24 -17 -12
  * -5 0 7 12 19 24), every roll and nudge (a semitone or a tritone off, heard: out of tune; DTN's cents kept) */
 static void rnd_tp(uint32_t tr, uint32_t id, int32_t v)
@@ -1645,10 +1667,14 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
     rnd_want_pi = fmkick ? (rnd_pct(40) ? 2 : rnd_pct(50) ? 10 : 28) :   /* (FM BASS, SOLID BASS, DROP: the low ones) */
                   role == RND_ROLE_MELODY ? (rnd_pct(50) ? 8 : 10) : role == RND_ROLE_CHORDS ? 5 : 8;   /* (SOFT PAD,
                                                      * SOFT LEAD; WARM PAD; the rest made below) */
+    if (role == RND_ROLE_NOISE && rnd_mc_ok() && rnd_pct(50))   /* (the texture on MACRO half the time: WIND, DUST,
+                                                     * TWIN PEAKS) */
+        rnd_want_e = ENGI_MACRO, rnd_want_pi = rnd_pct(40) ? 10 : rnd_pct(50) ? 14 : 11;
     rnd_nice = 1;
     rnd_sound(tr, fm6s, phys, oracles, RND_ROLE_FREE);
     rnd_nice = nice;
     rnd_want_e = rnd_want_pi = 0xFFu;
+    rnd_mc_model(tr);
     e = trk[tr].eng_req;
     rnd_tp(tr, P_ED_SHP, 0);
     rnd_tp(tr, P_LD_PIT, 0);
@@ -1760,6 +1786,9 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
             rnd_tp(tr, P_E0 + 4u, bp ? 1 : 0);      /* MODE BP or LP */
             rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(35, 62) : rnd_rr(22, 50));   /* CUT: low */
             rnd_tp(tr, P_E0 + 6u, bp ? rnd_rr(20, 55) : rnd_rr(0, 25));    /* RES: a band-pass sings a little */
+        } else if (e == ENGI_MACRO) {               /* (MACRO: dark, soft) */
+            rnd_tp(tr, P_E0 + 3u, rnd_rr(80, 105)); /* TONE (80 Hz x 2^(TONE/16): 2.6 to 7 kHz) */
+            rnd_tp(tr, P_E0 + 7u, 0);
         }
         rnd_tp(tr, P_ATK, rnd_rr(90, 118));
         rnd_tp(tr, P_DEC, 127);
@@ -1767,6 +1796,7 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
         rnd_tp(tr, P_REL, rnd_rr(90, 115));
         rnd_tp(tr, P_VOICE, V_LEGATO);
         rnd_tp(tr, P_LEVEL, rnd_rr(54, 68));
+        rnd_mc_level(tr);
         rnd_tp(tr, P_LWAVE, rnd_pct(50) ? 4 : 0);   /* (S&H: a random step now and then; or a sine) */
         rnd_tp(tr, P_LRATE, rnd_rr(5, 28));         /* (slow: 0.05 to 0.2 Hz) */
         rnd_tp(tr, P_LD_FLT, rnd_rr(10, 30));
@@ -2266,6 +2296,22 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
                 rnd_tp_rr(tr, env, NELEM(env));
             }
         }
+    } else if ((tr == RND_ST_NOISE && rnd_mc_ok() && rnd_pct(70)) || (tr == RND_ST_FIZZ && rnd_mc_ok() && rnd_pct(40))) {
+        static const uint8_t np[] = {13, 10, 11, 14, 12, 15}, nw[] = {3, 2, 2, 2, 1, 1};   /* GRAIN CLOUD WIND TWIN PEAKS
+                                                     * DUST BIT NOISE QPSK DATA */
+        static const uint8_t zp[] = {2, 8, 9}, zw[] = {2, 2, 1};   /* SAW SWARM FB GROWL CHAOS FM */
+        engine_load_of(t, ENGI_MACRO, tr == RND_ST_NOISE ? rnd_pick(np, nw, NELEM(np)) : rnd_pick(zp, zw, NELEM(zp)));
+        rnd_tp(tr, P_E0 + 1u, clamp(t->p[P_E0 + 1u] + rnd_rr(-20, 20), 0, 127));   /* TIMBR, COLOR: near the preset's */
+        rnd_tp(tr, P_E0 + 2u, clamp(t->p[P_E0 + 2u] + rnd_rr(-20, 20), 0, 127));
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(96, 127));   /* TONE: open-ish (a noise's energy is high up: 70 was 15 dB
+                                                     * down, measured) */
+        rnd_tp(tr, P_E0 + 4u, rnd_pct(30) ? rnd_rr(1, 3) : 0);   /* BITS, RATE: crushed now and then */
+        rnd_tp(tr, P_E0 + 5u, rnd_pct(25) ? rnd_rr(1, 2) : 0);
+        rnd_tp(tr, P_E0 + 7u, rnd_rr(0, 40));       /* DRIVE */
+        {
+            static const int8_t env[][3] = {{P_ATK, 50, 90}, {P_DEC, 100, 127}, {P_SUS, 100, 127}, {P_REL, 60, 86}};
+            rnd_tp_rr(tr, env, NELEM(env));
+        }
     } else if (tr == RND_ST_FIZZ && rnd_fm6_ok() && rnd_pct(25)) {   /* FM6, its feedback up: grit */
         uint32_t k;
         engine_load_of(t, ENGI_FM6, rnd_pick(fp, fpw, NELEM(fp)));
@@ -2326,6 +2372,7 @@ static void rnd_static_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
     rnd_tp(tr, P_SPRD, rnd_rr(50, 100));
     rnd_tp(tr, P_DETUNE, 0);
     rnd_tp(tr, P_LEVEL, tr == RND_ST_BED ? rnd_rr(72, 82) : rnd_rr(80, 92));
+    rnd_mc_level(tr);
 }
 static void rnd_static_generators(void)
 {
@@ -3891,6 +3938,7 @@ static void rnd_expr_one(uint32_t tr, int32_t vel, int32_t key, int32_t sh, int3
         if (e == 6u) rnd_tp(tr, P_E0 + 5u, t->p[P_E0 + 5u] - low);
         else if (e == ENGI_ORACLE) rnd_tp(tr, P_E0, t->p[P_E0] - low);
         else if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, t->p[P_E0 + 2u] - low * 2 / 3);   /* (a CUT step: 2/3 of MLVL's) */
+        else if (e == ENGI_MACRO) rnd_tp(tr, P_E0 + 3u, t->p[P_E0 + 3u] - low);   /* (MACRO's TONE) */
     }
     c.src = CS_KEY; c.amount = (int8_t)key;
     if (key) rnd_cord_add(&c);
@@ -3912,6 +3960,35 @@ static void rnd_orc_levels(void)
     for (tr = 0; tr < NTRK; tr++)
         if (trk[tr].eng_req == ENGI_ORACLE && (trk[tr].preset == 9u || trk[tr].preset == 10u))
             rnd_tp(tr, P_LEVEL, trk[tr].p[P_LEVEL] + 24);
+}
+/* RND's vowels (asked 2026-11-08: more of them): one track a roll on MACRO's VOWEL, CHOIR FOF or VOSIM, two now and
+ * then, its vowel and formants anywhere (TIMBR, COLOR), a note a consonant (STRIK), crushed now and then: chopped
+ * speech among the rest; the track's generator, envelope and register as RND rolled them */
+static void rnd_vowels(void)
+{
+    static const uint8_t vp[] = {5, 6, 4}, vw[] = {4, 3, 2};   /* VOWEL AH, CHOIR FOF, VOSIM VOX */
+    uint32_t n = rnd_pct(30) ? 2u : 1u, first = NTRK;
+    if (!rnd_mc_ok() || rnd_setting() != RND_FREE || !rnd_pct(85)) return;
+    while (n--) {
+        uint32_t tr = rnd_next() % NTRK;
+        track_t *t = &trk[tr];
+        int16_t keep[4];
+        if (tr == first) tr = (tr + 1u) % NTRK;
+        first = tr;
+        t = &trk[tr];
+        memcpy(keep, &t->p[P_ATK], sizeof keep);    /* (RND's envelope kept: ATK DEC SUS REL) */
+        engine_load_of(t, ENGI_MACRO, rnd_pick(vp, vw, NELEM(vp)));
+        memcpy(&t->p[P_ATK], keep, sizeof keep);
+        rnd_tp(tr, P_E0 + 1u, rnd_rr(0, 127));      /* TIMBR, COLOR: the vowel, the formants */
+        rnd_tp(tr, P_E0 + 2u, rnd_rr(0, 127));
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(100, 127));    /* TONE: open-ish (the formants high up) */
+        rnd_tp(tr, P_E0 + 4u, rnd_pct(30) ? rnd_rr(1, 4) : 0);   /* BITS, RATE: crushed now and then */
+        rnd_tp(tr, P_E0 + 5u, rnd_pct(25) ? rnd_rr(1, 3) : 0);
+        rnd_tp(tr, P_E0 + 6u, 1);                   /* STRIK: a consonant a note */
+        rnd_tp(tr, P_E0 + 7u, rnd_pct(40) ? rnd_rr(10, 50) : 0);
+        rnd_tp(tr, P_VOICE, rnd_pct(60) ? V_MONO : V_POLY);
+        rnd_tp(tr, P_LEVEL, rnd_rr(84, 100));
+    }
 }
 /* no pitch modulation in any roll (heard: far too much, silly): no vibrato (the track's LFO, FM6's PMD and PMS,
  * ORACLE's LFO on its oscillators; its Poly-Mod to the filter or width, never FREQ A), no pitch envelope (TIDE's kick its thump kept), no cord to the pitch. WOZZA's tape
@@ -4113,6 +4190,7 @@ static void rnd_roll(void)
         else rnd_fx_dry();
         rnd_cords();
     }
+    rnd_vowels();
     rnd_orc_levels();
     rnd_no_pitch();
     rnd_expression();

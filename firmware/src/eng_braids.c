@@ -12,19 +12,33 @@
 #include "braids_glue.h"
 
 /* the models one can pick: Braids' shapes (settings.h MacroOscillatorShape), in four or five letters, grouped:
- * analog, voices, FM, noise (the wavetables out: their 33 KB past the flash, 2026-11-08). Its gain to an even level (measured on the host: RMS at TIMBR and COLOR
- * half way, to about 9000; the impulsive ones twice at most) and its voice budget units (its cost against Plaits'
+ * analog, voices, FM, noise (the wavetables out: their 33 KB past the flash, 2026-11-08). Its gain to an even level
+ * (measured on the host: the RMS over TIMBR and COLOR 0..127 and five octaves, to about 9000; 4x at most, DUST's
+ * 2.5x: its grains' peaks) and its voice budget units (its cost against Plaits'
  * VA, 4 units: 1 at most a quarter of it, else 2) */
 static const struct { uint8_t shape, gain_q4, units; } BR_MODEL[] = {
-    {0, 10, 1},  {3, 10, 2},  {14, 27, 2}, {16, 9, 1},     /* CSAW FOLD SWARM TOY */
-    {21, 8, 1},  {22, 13, 1}, {23, 24, 2},                  /* VOSIM VOWEL VFOF */
+    {0, 9, 1},   {3, 8, 2},   {14, 16, 2}, {16, 9, 1},     /* CSAW FOLD SWARM TOY */
+    {21, 7, 1},  {22, 13, 1}, {23, 28, 2},                  /* VOSIM VOWEL VFOF */
     {25, 6, 1},  {26, 6, 2},  {27, 6, 2},                   /* FM FBFM WTFM */
-    {41, 32, 2}, {42, 19, 1}, {43, 8, 1}, {44, 28, 2}, {45, 32, 1}, {46, 6, 1},   /* NOISE TWINQ CLKN CLOUD DUST QPSK */
+    {41, 21, 2}, {42, 16, 1}, {43, 8, 1}, {44, 24, 2}, {45, 40, 1}, {46, 6, 1},   /* NOISE TWINQ CLKN CLOUD DUST QPSK */
 };
 static const char *const N_BR_MODEL[] = {"CSAW", "FOLD", "SWARM", "TOY", "VOSIM", "VOWEL", "VFOF", "FM", "FBFM",
                                          "WTFM", "NOISE", "TWINQ", "CLKN", "CLOUD", "DUST",
                                          "QPSK"};
 _Static_assert(NELEM(BR_MODEL) == NELEM(N_BR_MODEL), "BR_MODEL / N_BR_MODEL");
+static const uint16_t BR_TONE[128] = {   /* TONE's one-pole, Q15: 80 Hz x 2^(TONE/16), 1 - e^(-2 pi f / 44100); 127 open */
+      371,   388,   405,   423,   441,   461,   481,   502,   524,   547,   571,   596,
+      622,   649,   678,   708,   739,   771,   805,   840,   876,   915,   955,   996,
+     1040,  1085,  1132,  1181,  1232,  1286,  1342,  1400,  1460,  1524,  1589,  1658,
+     1729,  1804,  1881,  1962,  2046,  2134,  2225,  2320,  2419,  2521,  2628,  2740,
+     2856,  2976,  3102,  3232,  3367,  3508,  3654,  3806,  3964,  4128,  4299,  4475,
+     4659,  4849,  5046,  5251,  5462,  5682,  5909,  6145,  6389,  6641,  6901,  7171,
+     7449,  7737,  8033,  8339,  8655,  8980,  9315,  9660, 10014, 10379, 10753, 11137,
+    11532, 11935, 12349, 12772, 13205, 13646, 14097, 14556, 15024, 15499, 15982, 16472,
+    16968, 17470, 17977, 18489, 19005, 19523, 20044, 20566, 21088, 21609, 22129, 22646,
+    23159, 23667, 24169, 24663, 25149, 25626, 26092, 26546, 26987, 27414, 27827, 28224,
+    28604, 28968, 29313, 29641, 29950, 30240, 30511, 30763,
+};
 static const char *const N_BR_BITS[] = {"16", "12", "10", "8", "6", "4", "3"};
 static const uint8_t BR_BITS[] = {16, 12, 10, 8, 6, 4, 3};
 static const char *const N_BR_RATE[] = {"44K", "22K", "15K", "11K", "7K", "5K", "3K"};
@@ -71,7 +85,7 @@ static void br_render(struct track *t, voice_t *v, int32_t *out, uint32_t n, con
     timbre = clamp(p[P_E1] + ((m->shape - 64 * 256) >> 8), 0, 127) << 8;   /* (the voice's SHAPE moves it) */
     color = (int32_t)p[P_E2] << 8;
     tone = clamp(p[P_E3] + (m->cutoff >> 8), 0, 127);   /* (the voice's CUTOFF moves it: envelope, cords, expression) */
-    a = (tone + 1) * (tone + 1) * 2;                    /* (a one-pole's coefficient, Q15: 127 all but open) */
+    a = BR_TONE[tone];                                  /* (the one-pole's coefficient) */
     for (done = 0; done < n; done += BG_BLOCK) {
         uint32_t len = n - done < BG_BLOCK ? n - done : BG_BLOCK;
         bg_render(osc, BR_MODEL[md].shape, pitch, timbre, color, o, len);

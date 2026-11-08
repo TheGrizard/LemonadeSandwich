@@ -9,8 +9,8 @@ static unsigned char host_samples[3][0x14000];
 #define main hostsim_main
 #include "hostsim.c"
 #undef main
-#if MELODEE_FM6 || MELODEE_SID || MELODEE_DRUM || MELODEE_CZ || !MELODEE_ORACLE || !MELODEE_PHYS
-#error "engine_device_test: build it as the device (tools/build.py): FM6, SID, DRUM and CZ-1 off, ORACLE and PHYS on"
+#if MELODEE_FM6 || MELODEE_SID || MELODEE_DRUM || MELODEE_CZ || !MELODEE_ORACLE || MELODEE_PHYS
+#error "engine_device_test: build it as the device (tools/build.py): FM6, SID, DRUM, PHYS and CZ-1 off, ORACLE on"
 #endif
 
 static int32_t fm1_enc_take(uint32_t e) { (void)e; return 0; }
@@ -51,12 +51,12 @@ static project_t p;
 
 int main(void)
 {
-    static const uint32_t GONE[3] = {12u, ENGI_SID, ENGI_DRUM};
+    static const uint32_t GONE[4] = {12u, ENGI_SID, ENGI_DRUM, ENGI_PHYS};
     uint32_t k, shown = 0, ok = 1;
     for (k = 0; k < NENGINES; k++) shown += eng_ok(k);
-    check("FM6, SID, DRUM, CZ-1 never offered; ORACLE, TRIO, PHYS are; the fallback TRIO",
+    check("FM6, SID, DRUM, PHYS, CZ-1 never offered; ORACLE and TRIO are (MACRO with Braids: its own test); the fallback TRIO",
           !eng_ok(12) && !eng_ok(ENGI_SID) && !eng_ok(ENGI_DRUM) && !eng_ok(15) && eng_ok(ENGI_ORACLE) && eng_ok(6) &&
-          eng_ok(ENGI_PHYS) && ENGI_FALLBACK == 6u && shown == NENG_SHOWN && NENG_SHOWN == 3u);
+          !eng_ok(ENGI_PHYS) && ENGI_FALLBACK == 6u && shown == NENG_SHOWN && NENG_SHOWN == 2u);
     for (k = 0; k < NENG_SHOWN; k++) ok &= ENG_BUILT(eng_vis(k));
     for (k = 0; k < NPART; k++) ok &= ENG_BUILT(TRK_DEF[k][0]) && eng_ok(TRK_DEF[k][0]);
     check("the engine list and the power-on sounds: built engines only (ORACLE, TRIO)", ok);
@@ -64,7 +64,7 @@ int main(void)
     host_tracks_init();
     for (k = 0; k < NPART; k++) host_power_on_sound(&trk[k], k);
     project_capture(&p);
-    for (k = 0; k < 3u; k++) {                    /* (a project saved with them) */
+    for (k = 0; k < 4u; k++) {                    /* (a project saved with them) */
         p.t[k].engine = (uint8_t)GONE[k];
         p.t[k].preset = 7;
         p.t[k].p[P_ATK] = (int16_t)(20 + k);
@@ -73,12 +73,12 @@ int main(void)
     }
     p.sum = proj_sum(&p);
     check("(the project with them taken: a valid record)", !project_restore_runtime(&p));
-    for (k = 0, ok = 1; k < 3u; k++) {
+    for (k = 0, ok = 1; k < 4u; k++) {
         uint32_t i;
         ok &= trk[k].eng_req == 6u && trk[k].preset == 0 && trk[k].p[P_ATK] == (int16_t)(20 + k) && !drum_track(&trk[k]);
         for (i = 0; i < 8u; i++) ok &= trk[k].p[P_E0 + i] == ENGINES[6]->edit[i].def;
     }
-    check("a project's FM6, SID, DRUM tracks: TRIO's first voice, its common settings kept (ATTACK)", ok);
+    check("a project's FM6, SID, DRUM, PHYS tracks: TRIO's first voice, its common settings kept (ATTACK)", ok);
     {
         int32_t o[2 * CTL];
         uint32_t f;
