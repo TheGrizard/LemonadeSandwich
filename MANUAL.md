@@ -843,7 +843,14 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   CONSTELLATION, SERIES or one CHORD track) with its settings, EVOLVE and now and then a FORM, TWEAK's DROP and
   HUMAN, LENGTH, sometimes a ratchet, and the track's DIV, LEN, GATE and SWING (leaning slow).
 - **The registers**: each track an octave of its own (TRN), dealt at random: four of two octaves down, one down,
-  none, one up and two up, so the voices never sit on top of each other.
+  none, one up and two up, so the voices never sit on top of each other. The modes set theirs by part, measured so
+  each sits in its own range of the spectrum and stays clear under reverb and delay: a bass or drone low, the pads
+  in the middle, the leads over them, textures and noise at the top.
+- **The tempo**: each mode its own: FALL 64 to 80 BPM, TIDE 64 to 84, WOZZA 72 to 84, ORBIT, HALO, MIRROR and
+  STATIC 100 to 120, LOOPS 72 to 90, CRATE 80 to 100, PHASE by its pattern, RND 80 to 130. Held REC brings yours
+  back.
+- **The balance**: pads, beds and strings a little up, leads a little down (FALL and TIDE most), so a lead sits in
+  the pads rather than on top of them.
 - **The key**: one ROOT and SCALE for all four (KEY LINK on), a mode often, often something stranger (an EDO, just
   intonation, a gamelan or maqam scale).
 - **Effects**: none. Rolls are dry: every effect slot off and nothing sent (with effects the FM-1 ran near 70 %
@@ -880,10 +887,11 @@ What a roll writes, every one an ordinary setting you can then change on its pag
 | **Chords** | A CHORD track: a progression held (or on the beat) over two or four bars, a slow pad (POLY). |
 | **Melodies** (two) | A line generator, sparser and slower than RND's: most of the time BOUNCE's **FALL** (after ambalek's norns script Fall), leaves landing low on the left and high on the right, the WIND calm. |
 
-Every track is on **TRIO** on three triangles (WAVE TRI3, LP): octaves, fifths and unisons between its oscillators, a
-little detune, the filter open and soft, each preset kept close to how it was made, a gentle sine LFO (no tremolo), no
-pitch envelope and only gentle cords. The registers are dealt as in RND, so the drone can be low one roll and high the
-next. The key is one of the modes (minor, Dorian, Mixolydian, the pentatonics, Phrygian, Lydian, major) and **QNT
+Every track is on **TRIO** on three triangles (WAVE TRI3, LP): octaves, fifths and unisons between its oscillators
+(never two octaves under, and the drone none under it: no rumble), the pads chorused a little for warmth, the leaves
+rounder, each preset kept close to how it was made, a gentle sine LFO (no tremolo), no pitch envelope and only gentle
+cords. The drone and the chords sit in the middle (the drone's body about 110 Hz), the melodies an octave over them
+(one two now and then). The key is one of the modes (minor, Dorian, Mixolydian, the pentatonics, Phrygian, Lydian, major) and **QNT
 CHRD** is on, so the drone and the melodies follow the chords. The screen shows **FALL** and the seed.
 
 **Effects in the modes after RND.** None: every mode rolls dry, as RND does (every effect slot off, nothing sent).
@@ -896,7 +904,7 @@ groove:** a synthesized sub kick, pitched to the bed's lowest note two octaves d
 chords), its rhythm mostly across the bar (EUCLID on 5, 7, 9, 10, 11 or 13 steps, or 12 in threes; on 1/8, now and then
 8T) and now and then four on the floor. It is a soft, low boom: TRIO's triangles filtered to near a sine, a breath of
 attack (no click), the pitch falling a little or not at all, a long decay. **Track 2, the melody:** FALL's leaves
-(BOUNCE) or now and then a line by step (SERIES, as HALO's), in the middle or an octave up, onto the chord's notes now
+(BOUNCE) or now and then a line by step (SERIES, as HALO's), an octave over the bed, onto the chord's notes now
 and then (QNT CHRD), dark. Three rolls in four it is on ORACLE (SQUARE LEAD, FLUTE, SYNC LEAD, KEYS or VOX, its own
 envelopes made to match), else TRIO. Half the rolls it is soft and struck (TRIO's triangles, sine and triangle, PPT); half a
 filtered lead (a saw, pulse, triangle or sine and triangle, the filter low with a little resonance, gliding), mostly
@@ -904,9 +912,9 @@ runs by step on 1/8 or 1/4: each note held two steps (four for the leaves), so n
 (LEGATO) and a phrase runs on until two rests let it breathe (about three notes in four tied); each phrase's first note
 swells in softly. The LFO moves its filter, the LFO and the note's height move its place in the stereo, a slow wanderer
 its colour. **Track 3, the bed:** TRIO's triangles holding the chords (CHORD: DRONE, TWO, CIRCLE or WALK, two or four
-bars a chord), in the middle, under the melody. **Track 4, the texture:** half the rolls MACRO's WIND, DUST or TWIN PEAKS; else TRIO's noise mostly, now and then a pulse
-with noise, a saw or a triangle (in octaves, beating slowly), through its low-pass or band-pass with the cutoff low (a
-band-pass rings a little), held, soft; its colour, its place in the stereo and even its LFO's pace wander on slow
+bars a chord), in the middle, under the melody. **Track 4, the texture:** two octaves up, over the rest: half the rolls MACRO's WIND, DUST or TWIN PEAKS; else TRIO's
+noise mostly, now and then a pulse with noise, a saw or a triangle (in octaves, beating slowly), through its band-pass
+or high-pass with the cutoff high (air; a band-pass rings a little), held, soft; its colour, its place in the stereo and even its LFO's pace wander on slow
 random walks (the LFO very slow, a sine or S&H steps). With **DRIFT** on, TIDE moves on HALO's clock: the groove anew
 (across the bar, or four on the floor now and then), the melody's pace a step, or the key to its relative and home (the
 sub kept in its octave). No effects, as every roll. The screen shows **TIDE** and the seed.
@@ -934,24 +942,22 @@ held REC brings yours back) and a plain key (major pentatonic or major mostly; m
 lydian now and then), and deals four parts in a random order. The **bed** is a dark pad on TRIO (WARM, HOLLOW or SOFT
 PAD, FIFTH DRONE, STRING MACH): two to four notes, a bar to four bars each, held
 (SERIES, so it never drops out), low or now and then in the middle, a slow tremolo now and then. The **ostinato** is
-two notes taking turns (SERIES on a two-step loop, a third, fourth or fifth apart), a beat or two each, soft. The **melody** is an itty bitty line on a few notes, with repeats, short phrases and gaps (a short, nearly locked TURING, AWAKE or a sparse MARKOV, with DROP; on the beat, now and then a note struck two or three times), a soft synth line: ORACLE's KEYS, SQUARE LEAD, FLUTE or SYNC LEAD, or TRIO's SOFT LEAD, BREATH FLUTE or ARP LEAD. No plucks, no tines, no FM6. The ostinato is on ORACLE's KEYS or TRIO's pads. The fourth part is the **texture** (TRIO's noise, low and dark: a rumble or a hiss, held
-under it all) or, in a quarter of the rolls, a second melody, higher and sparser. Every pitched part wobbles like worn
+two notes taking turns (SERIES on a two-step loop, a third, fourth or fifth apart), a beat or two each, soft. The **melody** is an itty bitty line on a few notes, with repeats, short phrases and gaps (a short, nearly locked TURING, AWAKE or a sparse MARKOV, with DROP; on the beat, now and then a note struck two or three times), a soft synth line: ORACLE's KEYS, SQUARE LEAD, FLUTE or SYNC LEAD, or TRIO's SOFT LEAD, BREATH FLUTE or ARP LEAD. No plucks, no tines, no FM6. The ostinato is on ORACLE's KEYS or TRIO's pads. The fourth part is the **texture** (TRIO's noise through its high-pass: a tape hiss over it all, out of the other parts' way) or, in a quarter of the rolls, a second melody, higher and sparser. Every pitched part wobbles like worn
 tape (the LFO a sine at about 2.5 Hz, a fifth of a semitone on the pitch, as the references' wow measured), and every
 step plays a little late by a new amount (TIMING HUMAN), so the parts sit off the grid. Cords move the bed's and
 texture's colour and the melody's pan slowly, and now and then dip the melody's level at random, like a tape's
 dropouts. No effects, as every roll. The screen shows **WOZZA** and the seed.
 
 **HALO.** With REC BUTTON on **HALO**, a roll is warm, hazy and slow, after Arvo Pärt's *tintinnabuli* (Spiegel im
-Spiegel, Für Alina, the canons of Cantus): 60 to 72 BPM, a minor or major key (dorian, lydian or mixolydian now and
+Spiegel, Für Alina, the canons of Cantus): 100 to 120 BPM, a minor or major key (dorian, lydian or mixolydian now and
 then), four parts in a random order. The **halo** is a warm TRIO pad (WARM, HOLLOW or SOFT PAD, STRING MACH) holding
 the tonic triad (CHORD on DRONE, now and then TWO: I and IV), four bars a chord, swelling in slowly, quiet, breathing.
 The **M-voice** is a slow line, mostly by step (SERIES a degree at a time, FALL's falling leaves, or a loose TURING), on
 FALL's three triangles, warmer and hazier (detuned a little, the filter lower). The **T-voice** is a soft flute or voice (ORACLE's
 FLUTE or VOX, TRIO's BREATH FLUTE or SOFT LEAD: no bells in any roll) that follow the M-voice (TWEAK FOLLOW) on its clock
-onto the nearest note of the halo's triad (QNT CHRD): Pärt's tintinnabuli voice, an octave above the line or below it
-(beside a high line, or below it). The **canon** follows the M-voice too, half as fast, held, an octave down (a high
-line's mostly in its own octave): the slow voice of a mensuration canon, on the triangles or FM6's SOFT PAD or SOFT
-SWELL. A T-voice dealt before its M-voice plays the
+onto the nearest note of the halo's triad (QNT CHRD): Pärt's tintinnabuli voice, an octave above the line or beside it.
+The **canon** follows the M-voice too, half as fast, held, two octaves down, under the halo: the slow voice of a
+mensuration canon, on the triangles. Each part has its own octave: the canon lowest, the halo, the line, the voice. A T-voice dealt before its M-voice plays the
 line a step behind, an echo. Every voice is a little detuned and spread, and the halo's filter breathes. Slow cords move the colours and the bells' place. No effects, as
 every roll. The screen shows **HALO** and the seed.
 
@@ -960,13 +966,13 @@ every 4 to 8 on FAST: each time, a quarter of the time the key moves to its rela
 minor, a minor key to its relative major, on the same notes; dorian and phrygian to their notes' major, lydian and
 mixolydian to their notes' minor) or back home, the halo's chord and the bells with it, the line a little lower rather
 than a sixth higher; otherwise either the line's pace eases a step slower or faster (1/2, 1/4, 1/8; FALL's leaves 1/4
-or 1/8), the bells keeping its clock and the canon half of it, or the bells change sides (above the line or below it;
-beside a high line or below), as Pärt's voices change places in Für Alina. DRIFT's nudges come between, but never
+or 1/8), the bells keeping its clock and the canon half of it, or the voice changes sides (an octave above the line, or
+beside it), as Pärt's voices change places in Für Alina. DRIFT's nudges come between, but never
 to TRIO's intervals, the halo's chords or the line's single steps. With DRIFT OFF, HALO stays as it was rolled.
 
 **MIRROR.** With REC BUTTON on **MIRROR**, a roll is HALO's mirror (Pärt's *Spiegel im Spiegel*, the mirror in the
 mirror): the same four parts, HALO's opposite: cold, glassy and digital (still in key), struck rather than swelling,
-the rules loosened. 70 to 100 BPM; a key in twelve notes (lydian,
+the rules loosened. 100 to 120 BPM; a key in twelve notes (lydian,
 whole tone, major pentatonic, major, dorian, half-whole diminished) or, in about two rolls of five, off them (SLENDRO,
 PELOG, 19 and 22 EDO, HARM16, JI-MAJ, Bohlen-Pierce). The **halo** is glass, no warm pad: ORACLE's GLASS PAD, MACRO's WAVE TABLE, or TRIO's thin
 pulses through a high-pass, speaking at once; in twelve notes a CHORD track (DRONE, TWO, CIRCLE, WALK or 50S; held,
@@ -992,10 +998,10 @@ tracks. **Track 1, the keys:** seventh chords (now and then plain triads), four 
 soul turns (i to IV, I vi IV V, IV iii ii I and others), stabbed on and off the beat or on the eighths and sixteenths
 (ORACLE's KEYS, CLAV, FAT POLY or BRASS), or held (ORACLE's WARM PAD, TRIO's organ, squares on octaves, or its
 string machine). **Track 2, the bass:**
-low, onto the chord's notes, a fixed line each section: funk's sixteenths jumping octaves about half the time, else
-soul's eighths, on TRIO, a square or a triangle. **Track 3, the hook:** a fixed phrase for each section on
+low (about 50 to 150 Hz), onto the chord's notes, a fixed line each section: funk's sixteenths jumping octaves about half the time, else
+soul's eighths, on TRIO, a square or a triangle. **Track 3, the hook:** on top, two octaves up, a fixed phrase for each section on
 ORACLE's FLUTE, SQUARE LEAD, BRASS, VOX or SYNC LEAD, MACRO's sung vowels (VOWEL or VOSIM: a vocal chop), or TRIO's
-flute or muted horn. **Track 4, the strings** (three rolls in four): a lush, slow line
+flute or muted horn. **Track 4, the strings** (three rolls in four), an octave under the hook: a lush, slow line
 by step onto the chord's notes, a note every half or whole bar, swelling in, wide (TRIO's
 string machine or pads, ORACLE's SOFT STRINGS, or MACRO's CHOIR FOF: the backing singers' oohs); otherwise a quieter second voice answering the hook. The timing is a
 player's (a few milliseconds late now and then), on the grid otherwise: send MIDI clock to your sampler, or set its
@@ -1018,7 +1024,7 @@ on the bed. The piece starts most of the way
 built, builds to a wall in 8 to 16 bars, holds it 6 to 14 with SPIT at its hardest, then drops to the bed, the bass and
 the noise for 3 to 6 bars, and builds again. STATIC moves the layers' levels itself while it plays.
 A level you turn becomes that layer's full level. It goes on whatever **DRIFT** says (FAST builds and drops twice as
-often). 60 to 80 BPM. The screen shows **STATIC** and the seed.
+often). 100 to 120 BPM. The screen shows **STATIC** and the seed.
 
 **PHASE.** With REC BUTTON on **PHASE**, a roll is a phase piece after Steve Reich (Piano Phase, Clapping Music,
 Drumming). **Tracks 1 and 2** play one short, bright cell, the same sound and the same notes (a EUCLID cell of 8 to 16
