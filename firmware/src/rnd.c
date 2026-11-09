@@ -1268,7 +1268,7 @@ static void rnd_halo_registers(const uint8_t *role)
     for (tr = 0; tr < NTRK; tr++)
         rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_CHORDS ? halo : role[tr] == RND_ROLE_MELODY ? m :
                             role[tr] == RND_ROLE_TINT ? t : c);
-    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(60, 72));
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(100, 120));   /* (100 to 120, asked 2026-11-09: was 60 to 72) */
 }
 /* the key: MIN and MAJ mostly (Pärt's), DOR LYD MIX now and then */
 static void rnd_key_halo(void)
@@ -1594,7 +1594,7 @@ static void rnd_mirror_registers(const uint8_t *role)
     for (tr = 0; tr < NTRK; tr++)
         rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_CHORDS ? halo : role[tr] == RND_ROLE_MELODY ? m :
                             role[tr] == RND_ROLE_TINT ? t : -12);
-    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(70, 100));
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(100, 120));   /* (100 to 120, asked 2026-11-09: was 70 to 100) */
 }
 /* the key: twelve notes (LYD WHOLE PEN MAJ DOR DIMHW), or off them (SLENDRO PELOG 19EDO HARM16 JI-MAJ 22EDO BP-ET) */
 static void rnd_key_mirror(void)
@@ -2518,7 +2518,7 @@ static void rnd_static_generators(void)
     rnd_tx(tr, TX_SR_INTV, rnd_rr(1, 2));
     rnd_tx(tr, TX_SR_LOOP, rnd_rr(2, 4));
     rnd_tp(tr, P_SDIV, rnd_pct(60) ? 7 : 8);        /* 1/1 2BAR */
-    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(60, 80));
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(100, 120));   /* (100 to 120, asked 2026-11-09: was 60 to 80) */
 }
 static void rnd_static_registers(void)
 {
@@ -4178,6 +4178,16 @@ static void rnd_expression(void)
     }
 }
 static void rnd_drift_start(void);
+/* the tempo of the rolls that kept yours (asked 2026-11-09: every roll starts at its own): FALL slow, LOOPS slow,
+ * ORBIT 100 to 120, RND anywhere from 80 to 130. (The others set theirs: TIDE 64-84, WOZZA 72-84, HALO MIRROR STATIC
+ * 100-120, CRATE 80-100, PHASE by its cell.) Held REC brings yours back */
+static void rnd_tempo(void)
+{
+    if (rnd_fall) pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(64, 80));
+    else if (rnd_loops) pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(72, 90));
+    else if (rnd_orbit) pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(100, 120));
+    else if (rnd_setting() == RND_FREE) pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(80, 130));
+}
 static void rnd_roll(void)
 {
     uint32_t tr, fm6s = 0, phys = 0, oracles = 0, chords = 0;
@@ -4325,6 +4335,7 @@ static void rnd_roll(void)
     rnd_expression();
     rnd_in_key();
     rnd_chord_prime();
+    rnd_tempo();
     sync_reload = 1;
     rnd_say(rnd_name(), rnd_seed);
     if (!song.playing && !seq_counting() && !chain_busy()) transport_req = 1;   /* (it plays at once) */

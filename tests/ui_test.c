@@ -6574,6 +6574,22 @@ static int test_rnd(void)
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
     }
+    {                                               /* the tempo of the rolls that kept yours: every roll its own now */
+        static const struct { uint8_t m; int16_t lo, hi; } tt[] = {
+            {RND_FALL, 64, 80}, {RND_LOOPS, 72, 90}, {RND_ORBIT, 100, 120}, {RND_FREE, 80, 130}};
+        uint32_t i, r, ok = 1;
+        for (i = 0; i < NELEM(tt); i++) {
+            rnd_mode_put(tt[i].m);
+            for (r = 0; r < 40u; r++) {
+                int32_t bpm;
+                rnd_roll();
+                bpm = pid_get(PID_GLOBAL(G_BPM), 0);
+                ok &= bpm >= tt[i].lo && bpm <= tt[i].hi;
+            }
+        }
+        rnd_mode_put(RND_FREE);
+        bad += check("RND: every roll its own tempo: FALL 64-80, LOOPS 72-90, ORBIT 100-120, RND 80-130 BPM", ok);
+    }
     {                                               /* HALO: Pärt's tintinnabuli: a line, bells on its triad, a canon */
         uint32_t r, tr, k, roles_ok = 1, tempo_ok = 1, key_ok = 1, halo_ok = 1, m_ok = 1, t_ok = 1, c_ok = 1, dry = 1;
         uint32_t cpu = 1, on_triad = 0, notes = 0, quiet = 0, clipped_n = 0;
@@ -6585,7 +6601,7 @@ static int test_rnd(void)
             int32_t bpm;
             rnd_roll();
             bpm = pid_get(PID_GLOBAL(G_BPM), 0);
-            tempo_ok &= bpm >= 60 && bpm <= 72;
+            tempo_ok &= bpm >= 100 && bpm <= 120;
             k = (uint32_t)trk[0].p[P_SCALE];
             key_ok &= (k == 2u || k == 1u || k == 3u || k == 9u || k == 4u) && tessera.key_link == 1u;
             dry &= rnd_fx_mode_ok(0) >= 1u;
@@ -6634,7 +6650,7 @@ static int test_rnd(void)
             }
         }
         bad += check("RND HALO: 200 rolls: the halo, the M-voice, the T-voice and the canon, one each", roles_ok);
-        bad += check("RND HALO: ..slow (60 to 72 BPM), MIN MAJ DOR LYD MIX on all four", tempo_ok && key_ok);
+        bad += check("RND HALO: ..100 to 120 BPM, MIN MAJ DOR LYD MIX on all four", tempo_ok && key_ok);
         bad += check("RND HALO: ..the halo the tonic triad held (CHORD DRONE or TWO, HOLD), a warm pad swelling, quiet", halo_ok);
         bad += check("RND HALO: ..the M-voice a slow line (SERIES, FALL's leaves, TURING) on FALL's triangles", m_ok);
         bad += check("RND HALO: ..the T-voice follows it on its clock onto the triad (QNT CHRD), soft (ORACLE's FLUTE or "
@@ -6730,7 +6746,7 @@ static int test_rnd(void)
             rnd_roll();
             bpm = pid_get(PID_GLOBAL(G_BPM), 0);
             sc = trk[0].p[P_SCALE];
-            tempo_ok &= bpm >= 70 && bpm <= 100;
+            tempo_ok &= bpm >= 100 && bpm <= 120;
             micro += sc >= 16;
             dry &= rnd_fx_mode_ok(0) >= 1u;
             for (tr = 0; tr < NTRK; tr++) if (rnd_role_of[tr] == RND_ROLE_MELODY) m = tr;
@@ -6784,7 +6800,7 @@ static int test_rnd(void)
             }
         }
         bad += check("RND MIRROR: 200 rolls: the halo, the line, the mirror and the canon, one each", roles_ok);
-        bad += check("RND MIRROR: ..70 to 100 BPM; off twelve notes now and then (a third of rolls or so)",
+        bad += check("RND MIRROR: ..100 to 120 BPM; off twelve notes now and then (a third of rolls or so)",
                      tempo_ok && micro > 40u && micro < 120u);
         bad += check("RND MIRROR: ..the halo chords in twelve notes, a held cluster off them; on ORACLE's GLASS PAD or TRIO's "
                      "thin pulses", halo_ok);
@@ -6968,7 +6984,7 @@ static int test_rnd(void)
             uint32_t ins = 0, orc = 0, fm = 0, bpm, nc = 0;
             rnd_roll();
             bpm = (uint32_t)pid_get(PID_GLOBAL(G_BPM), 0);
-            tempo_ok &= bpm >= 60u && bpm <= 80u;
+            tempo_ok &= bpm >= 100u && bpm <= 120u;
             roles &= tessera.mode[RND_ST_BED] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_HIT), RND_ST_BED) == 0;
             for (tr = 1; tr < NTRK; tr++)           /* (the noise on the chord, held; the fizz and the drive off it,
                                                      * atonal: the fizz stuttering, fast) */
@@ -7004,7 +7020,7 @@ static int test_rnd(void)
             }
         }
         bad += check("RND STATIC: 200 rolls: the bed a held CHORD on track 1; the noise and the bass held, slow, never a rest "
-                     "(SERIES), on its chord (QUANTIZE CHRD); the fizz fast, off it (WHITE); 60-80 BPM", roles && tempo_ok);
+                     "(SERIES), on its chord (QUANTIZE CHRD); the fizz fast, off it (WHITE); 100-120 BPM", roles && tempo_ok);
         bad += check("RND STATIC: ..the noise TRIO's noise, the fizz TRIO's ring and sync; ORACLE once at most, no FM6, no "
                      "PHYS", (kinds & 1u) && !(kinds & 2u) && (kinds & 4u) && !(kinds & 8u) && heavy);
         bad += check("RND STATIC: ..SPIT on the fizz, one more insert (SPIT, TAPE) at most, no sends; its cords (S&H fizz); "
