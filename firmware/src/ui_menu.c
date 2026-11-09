@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Melodee menu (HOME held): COLOR, HOLD (the layer threshold), LIGHTS (the keys' and buttons'
- * glow: ui_input.c ui_leds), REC BUTTON (RECORD, FALL, TIDE, WOZZA, ORBIT, LOOPS, HALO, MIRROR, PHASE, CRATE, STATIC or RND: REC rolls a new piece, held swaps back; rnd.c), DRIFT (OFF, SLOW or FAST: a roll changes a little at a time; rnd.c rnd_drift), KNOB ACCEL (ui_input.c accel_by), TRACK KNOB (RIGHT: ALGORITHM picks the track, LEFT:
+ * glow: ui_input.c ui_leds), REC BUTTON (RECORD, FALL, TIDE, WOZZA, ORBIT, LOOPS, HALO, MIRROR, PHASE, CRATE, STATIC, FORGE, CHAOS or RND: REC rolls a new piece, held swaps back; rnd.c), DRIFT (OFF, SLOW or FAST: a roll changes a little at a time; rnd.c rnd_drift), KNOB ACCEL (ui_input.c accel_by), TRACK KNOB (RIGHT: ALGORITHM picks the track, LEFT:
  * PRESETS does; panel.c), USB AUDIO (IN+OUT, IN, OUT or OFF; usb.c ua_off_set),
  * USB INPUT (stereo master or four track stems; usb.c ua_tracks_set),
  * MIDI OUT (KEYS, ALL or OFF: the notes sent over USB) and CLOCK OUT (midi_out.c), MIDI CC IN (ON or OFF: CCs and
@@ -411,7 +411,7 @@ static const char *menu_value(uint32_t i, char *b, uint32_t size)
     if (i == MI_AUTOSAVE) value = settings_autosave ? "ON" : "OFF";
     if (i == MI_BATTERY) value = settings_batt_off ? "WHEN LOW" : "ON";
     if (i == MI_REC_BTN) value = (const char *const[]){"RECORD", "FALL", "TIDE", "WOZZA", "ORBIT", "LOOPS", "HALO",
-                                                         "MIRROR", "PHASE", "CRATE", "STATIC", "RND"}[rnd_setting() %
+                                                         "MIRROR", "PHASE", "CRATE", "STATIC", "FORGE", "CHAOS", "RND"}[rnd_setting() %
                                                                                                      RND_MODES];
     if (i == MI_DRIFT) value = (const char *const[]){"OFF", "SLOW", "FAST"}[settings_rnd_drift % RND_DRIFTS];
     if (i == MI_SCREEN) value = (const char *const[]){"NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"}[scr_get()];

@@ -28,7 +28,7 @@
  * sections, without drums, to sample: rnd_crate_sound), RND_STATIC STATIC (a wall of noise, ambient: it builds, overloads
  * and collapses: rnd_static_move), RND_PHASE PHASE (after Steve Reich: one cell on two tracks, one
  * moving a step ahead every few bars: rnd_phase_move). (tessera-rnd: AMBIENT, NICE, GLITCH and PULSE gone; their codes,
- * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE STATIC RND.) Saved as RND_CODE:
+ * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE STATIC FORGE CHAOS RND.) Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
  * beside them (0..7: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
@@ -36,10 +36,10 @@
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
 enum { RND_OFF, RND_FALL, RND_TIDE, RND_WOZZA, RND_ORBIT, RND_LOOPS, RND_HALO, RND_MIRROR, RND_PHASE, RND_CRATE,
-       RND_STATIC, RND_FREE, RND_MODES };           /* (the menu's order, asked 2026-11-08; the codes each mode's own) */
+       RND_STATIC, RND_FORGE, RND_CHAOS, RND_FREE, RND_MODES };           /* (the menu's order, asked 2026-11-08; the codes each mode's own) */
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
     {0x00u, 0}, {0x80u, 1}, {0x40u, 4}, {0x40u, 3}, {0xC0u, 1}, {0x80u, 2}, {0x80u, 3}, {0xC0u, 3}, {0x40u, 5},
-    {0x80u, 4}, {0x80u, 5}, {0x40u, 0},             /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
+    {0x80u, 4}, {0x80u, 5}, {0xC0u, 4}, {0xC0u, 5}, {0x40u, 0},   /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
                                                      * 0x80 0, GLITCH 0x40 1, PULSE 0x40 2: gone) */
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
@@ -148,6 +148,7 @@ typedef struct {
     int16_t tx[TESSERA_TRACKS][RND_NTX];
     int16_t g[RND_NG];
     cord_t cord[CORD_LIVE];
+    step_t step[NTRK][NSTEP];                       /* (FORGE, CHAOS write the kick's steps) */
 } rnd_snap_t;
 static rnd_snap_t rnd_snap __attribute__((section(".pool")));
 
@@ -172,6 +173,7 @@ static void rnd_swap(void)
         memcpy(b, or_patch_of(t), OR_N);
         memcpy(or_patch[tr], rnd_snap.oracle[tr], OR_N);
         memcpy(rnd_snap.oracle[tr], b, OR_N);
+        for (i = 0; i < NSTEP; i++) { step_t v = t->step[i]; t->step[i] = rnd_snap.step[tr][i]; rnd_snap.step[tr][i] = v; }
         fm1_irq_on();
         if (memcmp(fm6_patch[tr], rnd_snap.fm6[tr], FP_SIZE)) {   /* (only a roll to FM6 changes it) */
             memcpy(b, fm6_patch[tr], FP_SIZE);
@@ -217,6 +219,7 @@ static void rnd_take(void)
         memcpy(rnd_snap.p[tr], t->p, sizeof t->p);
         memcpy(rnd_snap.fm6[tr], fm6_patch[tr], FP_SIZE);
         memcpy(rnd_snap.oracle[tr], or_patch_of(t), OR_N);
+        memcpy(rnd_snap.step[tr], t->step, sizeof rnd_snap.step[tr]);
     }
     for (tr = 0; tr < TESSERA_TRACKS; tr++)
         for (i = 0; i < RND_NTX; i++)
@@ -318,6 +321,8 @@ static uint8_t rnd_tide;                           /* 1: this roll is TIDE's */
 static uint8_t rnd_crate;                          /* 1: this roll is CRATE's */
 static uint8_t rnd_phase;                          /* 1: this roll is PHASE's */
 static uint8_t rnd_static;                         /* 1: this roll is STATIC's */
+static uint8_t rnd_forge, rnd_chaos;               /* 1: this roll is FORGE's or CHAOS's (rnd_forge both, rnd_chaos
+                                                     * CHAOS's) */
 static uint8_t rnd_wz_lead = NTRK;                 /* WOZZA: the first melody's track (a second one sparser, higher) */
 static uint8_t rnd_want_e = 0xFFu, rnd_want_pi = 0xFFu;   /* PULSE: the engine and preset its role wants (0xFF: rolled) */
 static int rnd_perc(uint32_t tr)                   /* GLITCH's glitch tracks, PULSE's percussion: each hit its attack */
@@ -2953,6 +2958,326 @@ static void rnd_phase_move(void)
     }
 }
 
+/* FORGE and CHAOS (asked 2026-11-09): techno at 132 to 148 BPM, dark, hypnotic and exhilarating, no four on the floor.
+ * The kick a pattern with an identity the ear learns, one of eight ideas a roll (RND_FG_IDEA): broken and syncopated,
+ * the kick and the bass one rhythm, kicks missing from a four, an odd-length loop sliding against the bar, triplets, the
+ * kick answering the hats, three over four, the kick an accent over a rolling low tom. The hats a steady sixteenth grid
+ * (the tempo); the percussion a loop of an odd length against it (polymeter: 5, 7, 9, 11 or 13 steps); the bass stabs in
+ * the kick's gaps. All on STEP, the tracks' own steps written (the patterns exact; held REC brings yours back:
+ * rnd_snap.step). FORGE: dark techno: Braids' 808-like kick or a two-op FM kick, an acid or sub bass, hats, toms or FM
+ * percussion. CHAOS: noisier, synthetic: crushed and driven FM kicks, metal (feedback and chaotic FM), clocked and data
+ * noise for hats, ratchets and chance. The drums struck at the key's root (MACRO's STRIK DRUM) with a pitch drop: the
+ * one place a roll moves pitch, drum hits. DRIFT OFF: the loops as rolled, for ever (hypnotic); SLOW: a move every 16
+ * bars, FAST every 8, the arc of a set (kicks missing, a breakdown and the slam back, a fill, the percussion turned,
+ * the hats opened): rnd_forge_move */
+#define RND_FG_KICK 0u
+#define RND_FG_BASS 1u                              /* (CHAOS: the metal, half its rolls) */
+#define RND_FG_HAT 2u
+#define RND_FG_PERC 3u
+enum { FG_BROKEN, FG_LOCK, FG_MISSING, FG_ODD, FG_TRIPLET, FG_ANSWER, FG_THREE, FG_ACCENT, FG_IDEAS };
+static struct { uint8_t idea, metal, phrase, down, fill, len[NTRK], hits[NTRK], rot[NTRK]; uint16_t mask[NTRK]; uint32_t bar; } rnd_fg;
+static uint16_t rnd_fg_euclid(uint32_t len, uint32_t hits, uint32_t rot)
+{
+    uint32_t i, m = 0;
+    for (i = 0; i < len; i++) {
+        uint32_t k = (i + rot) % len;
+        if ((k + 1u) * hits / len > k * hits / len) m |= 1u << i;
+    }
+    return (uint16_t)m;
+}
+/* the kick's steps from its mask: a hit where the bit is (its note C2: STRIK DRUM plays the key's root), rests else;
+ * accents on acc's bits; ratchets on rat's (CHAOS) */
+static void rnd_fg_write(uint32_t tr, uint32_t mask, uint32_t acc, uint32_t rat, const uint8_t *notes, uint32_t nn)
+{
+    track_t *t = &trk[tr];
+    uint32_t i, len = rnd_fg.len[tr];
+    fm1_irq_off();
+    for (i = 0; i < NSTEP; i++) {
+        step_t *st = &t->step[i];
+        memset(st, 0, sizeof *st);
+        st->time = ST_REST;
+        if (i >= len || !(mask >> i & 1u)) continue;
+        st->time = ST_NOTE;
+        st->n = 1;
+        st->note[0] = notes ? notes[i % nn] : 36u;
+        st->vel = (uint8_t)(acc >> i & 1u ? 124u : 104u);
+        if (acc >> i & 1u) st->flags |= SF_ACCENT;
+        if (rat >> i & 1u) step_set_ratch(st, rnd_chaos ? 3u : 2u);
+    }
+    fm1_irq_on();
+    rnd_tp(tr, P_SLEN, (int32_t)len);
+}
+static void rnd_fg_drum(uint32_t tr, uint32_t pi, int32_t dec)
+{
+    engine_load_of(&trk[tr], ENGI_MACRO, pi);
+    rnd_tp(tr, P_E0 + 6u, 2);                       /* STRIK DRUM: at the key's root */
+    rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, 0);
+    rnd_tp(tr, P_DEC, dec); rnd_tp(tr, P_REL, dec / 2);
+    rnd_tp(tr, P_VOICE, V_MONO);
+}
+static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
+{
+    track_t *t = &trk[tr];
+    int mc = rnd_mc_ok(), ch = rnd_chaos;
+    rnd_tp_still(tr);
+    rnd_tp(tr, P_GLIDE, 0); rnd_tp(tr, P_DETUNE, 0); rnd_tp(tr, P_CHRD, 0); rnd_tp(tr, P_MUTE, 0);
+    rnd_tp(tr, P_SPRD, 0); rnd_tp(tr, P_ED_PIT, 0); rnd_tp(tr, P_ED_FLT, 0); rnd_tp(tr, P_AMODE, 0);
+    if (tr == RND_FG_KICK) {                        /* the kick: Braids' 808-like, or two-op FM with a pitch drop */
+        if (mc && rnd_pct(ch ? 35 : 60)) {
+            rnd_fg_drum(tr, 19, rnd_rr(60, 90));    /* BD ANALOG */
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(55, 100)); /* TIMBR: its decay */
+            rnd_tp(tr, P_E0 + 2u, rnd_rr(15, 60));  /* COLOR: its tone */
+        } else if (mc) {
+            rnd_fg_drum(tr, 20, rnd_rr(45, 62));    /* BD DIGI: two-op FM */
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(10, ch ? 60 : 35));
+            rnd_tp(tr, P_E0 + 2u, rnd_rr(0, 20));
+            rnd_tp(tr, P_ED_PIT, rnd_rr(18, 34));   /* (the drop: the hit's thump) */
+        } else {                                    /* (no MACRO: TRIO's triangles near a sine, TIDE's thump) */
+            engine_load_of(t, 6u, 9u);
+            rnd_tide_tri(tr, 1);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(14, 30));
+            rnd_tp(tr, P_ED_PIT, rnd_rr(20, 34));
+            rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, 0); rnd_tp(tr, P_DEC, rnd_rr(48, 62)); rnd_tp(tr, P_REL, 30);
+            rnd_tp(tr, P_VOICE, V_MONO);
+        }
+        if (t->eng_req == ENGI_MACRO) {
+            rnd_tp(tr, P_E0 + 3u, rnd_rr(96, 120));
+            rnd_tp(tr, P_E0 + 4u, ch && rnd_pct(60) ? rnd_rr(2, 4) : 0);   /* BITS: CHAOS crushed */
+            rnd_tp(tr, P_E0 + 7u, ch ? rnd_rr(40, 100) : rnd_rr(0, 30));   /* DRIVE */
+        }
+        rnd_tp(tr, P_LEVEL, rnd_rr(104, 112));
+    } else if (tr == RND_FG_BASS && rnd_fg.metal) { /* CHAOS's metal: feedback or chaotic FM, struck, short */
+        engine_load_of(t, ENGI_MACRO, rnd_pct(50) ? 8u : 9u);   /* FB GROWL, CHAOS FM */
+        rnd_tp(tr, P_E0 + 1u, rnd_rr(50, 110)); rnd_tp(tr, P_E0 + 2u, rnd_rr(30, 120));
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(90, 120)); rnd_tp(tr, P_E0 + 4u, rnd_pct(40) ? rnd_rr(1, 3) : 0);
+        rnd_tp(tr, P_E0 + 6u, 1); rnd_tp(tr, P_E0 + 7u, rnd_rr(20, 70));
+        rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, 0); rnd_tp(tr, P_DEC, rnd_rr(25, 45)); rnd_tp(tr, P_REL, 20);
+        rnd_tp(tr, P_VOICE, V_MONO);
+        rnd_tp(tr, P_LEVEL, rnd_rr(94, 104));
+    } else if (tr == RND_FG_BASS) {                 /* the bass: stabs, short, dark, its filter's envelope */
+        if (*oracles < 1u && eng_ok(ENGI_ORACLE) && rnd_pct(45)) {
+            engine_load_of(t, ENGI_ORACLE, rnd_pct(50) ? 8u : rnd_pct(50) ? 6u : 7u);   /* ACID LINE, FUNK BASS, SUB BASS */
+            (*oracles)++;
+        } else {
+            engine_load_of(t, 6u, rnd_pct(50) ? 0u : 9u);   /* FAT BASS, SUB BASS */
+            rnd_tp(tr, P_E0, rnd_pct(60) ? 0 : 1);  /* SAW3, PLS3 */
+            rnd_tp(tr, P_E0 + 1u, 0); rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? -12 : 0);
+            rnd_tp(tr, P_E0 + 3u, rnd_rr(4, 14)); rnd_tp(tr, P_E0 + 4u, 0);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(24, 46)); rnd_tp(tr, P_E0 + 6u, rnd_rr(20, 70));
+            rnd_tp(tr, P_ED_FLT, rnd_rr(30, 70));   /* (the stab's bite) */
+        }
+        rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, rnd_rr(0, 30)); rnd_tp(tr, P_DEC, rnd_rr(35, 55)); rnd_tp(tr, P_REL, 25);
+        rnd_tp(tr, P_VOICE, V_MONO);
+        rnd_tp(tr, P_LEVEL, rnd_rr(90, 98));        /* (the levels, measured by their peaks: the kick about -10 dB, the
+                                                     * bass 6 under, the percussion 8, the hats 12) */
+    } else if (tr == RND_FG_HAT) {                  /* the hats: Braids' cymbal short, clocked or data noise, TRIO's */
+        uint32_t k = (uint32_t)rnd_rr(0, 99);
+        if (mc && k < (ch ? 35u : 60u)) {
+            rnd_fg_drum(tr, 22, rnd_rr(14, 30));    /* HAT */
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(60, 110)); rnd_tp(tr, P_E0 + 2u, rnd_rr(60, 120));
+        } else if (mc) {
+            rnd_fg_drum(tr, rnd_pct(60) ? 12u : 15u, rnd_rr(10, 24));   /* BIT NOISE, QPSK DATA */
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(60, 127)); rnd_tp(tr, P_E0 + 2u, rnd_rr(40, 127));
+            rnd_tp(tr, P_E0 + 4u, ch && rnd_pct(50) ? rnd_rr(1, 3) : 0);
+        } else {
+            engine_load_of(t, 6u, 12u);             /* (WIND: TRIO's noise, high-passed, short) */
+            rnd_tp(tr, P_E0 + 4u, 2); rnd_tp(tr, P_E0 + 5u, rnd_rr(96, 118));
+            rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, 0); rnd_tp(tr, P_DEC, rnd_rr(12, 26)); rnd_tp(tr, P_REL, 10);
+            rnd_tp(tr, P_VOICE, V_MONO);
+        }
+        if (t->eng_req == ENGI_MACRO) rnd_tp(tr, P_E0 + 3u, rnd_rr(110, 127));
+        rnd_tp(tr, P_LEVEL, rnd_rr(92, 100) + (t->eng_req == ENGI_MACRO && t->p[P_E0] != 21 ? 10 : 0));   /* (the noises
+                                                     * 5 dB under the cymbal, measured) */
+        rnd_tp(tr, P_PAN, rnd_rr(-12, 12));
+    } else {                                        /* the percussion: toms in key, FM percussion, CHAOS's noise */
+        uint32_t k = (uint32_t)rnd_rr(0, 99);
+        if (mc && k < (ch ? 25u : 45u)) {
+            rnd_fg_drum(tr, 21, rnd_rr(40, 64));    /* TOM */
+            rnd_tp(tr, P_E0 + 6u, 1);               /* (STRIK ON: in key, on the loop's notes) */
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(30, 75)); rnd_tp(tr, P_E0 + 2u, rnd_rr(30, 90));
+            rnd_tp(tr, P_ED_PIT, rnd_rr(6, 16));
+        } else if (mc) {
+            rnd_fg_drum(tr, ch && rnd_pct(50) ? 9u : 23u, rnd_rr(22, 42));   /* CHAOS FM, FM PERC */
+            rnd_tp(tr, P_E0 + 6u, 1);
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(50, 120)); rnd_tp(tr, P_E0 + 2u, rnd_rr(40, 127));
+            rnd_tp(tr, P_E0 + 4u, ch && rnd_pct(40) ? rnd_rr(1, 4) : 0);
+            rnd_tp(tr, P_E0 + 7u, ch ? rnd_rr(20, 80) : 0);
+        } else {
+            engine_load_of(t, 6u, 1u);              /* (TRIO: a pulse, short, in key) */
+            rnd_tp(tr, P_E0, 1); rnd_tp(tr, P_E0 + 5u, rnd_rr(50, 80));
+            rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, 0); rnd_tp(tr, P_DEC, rnd_rr(24, 40)); rnd_tp(tr, P_REL, 15);
+            rnd_tp(tr, P_VOICE, V_MONO);
+        }
+        if (t->eng_req == ENGI_MACRO) rnd_tp(tr, P_E0 + 3u, rnd_rr(96, 124));
+        rnd_tp(tr, P_LEVEL, rnd_rr(96, 106) + (t->p[P_E0] == 7 ? 10 : 0));   /* (FM: 5 dB under the tom, measured) */
+        rnd_tp(tr, P_PAN, rnd_pct(50) ? rnd_rr(14, 30) : -rnd_rr(14, 30));
+    }
+}
+/* the patterns (asked 2026-11-09: the kick a written pattern holding the groove, the rest Euclidean): the kick's idea
+ * on STEP; the bass, the hats and the percussion on EUCLID, each its steps, hits and turn (rnd_fg_euc) */
+static const uint16_t FG_BROKEN_M[] = {0x2149, 0x90A1, 0x0945, 0x4209};   /* K--K --K- K--- -K--; A, C, D */
+static void rnd_fg_euc(uint32_t tr, uint32_t n, uint32_t hits, uint32_t rot)
+{
+    rnd_fg.len[tr] = (uint8_t)n;
+    rnd_fg.hits[tr] = (uint8_t)hits;
+    rnd_fg.rot[tr] = (uint8_t)rot;
+    rnd_fg.mask[tr] = rnd_fg_euclid(n, hits, rot);
+    rnd_tx(tr, TX_EUC_STEPS, (int32_t)n);
+    rnd_tx(tr, TX_EUC_PULSES, (int32_t)hits);
+    rnd_tx(tr, TX_EUC_ROT, (int32_t)rot);
+}
+static void rnd_forge_patterns(void)
+{
+    uint32_t kick, krat = 0, n, h, r, best = 0, over = 99;
+    static const uint8_t pl[] = {5, 7, 9, 11, 13}, plw[] = {2, 3, 2, 2, 1};
+    rnd_fg.len[RND_FG_KICK] = 16;
+    switch (rnd_fg.idea) {
+    case FG_BROKEN: kick = FG_BROKEN_M[rnd_next() % NELEM(FG_BROKEN_M)]; break;
+    case FG_LOCK: kick = rnd_pct(50) ? 0x1041u : 0x8201u; break;          /* K--- --K- ---- K---; K--- ---- -K-- ---K */
+    case FG_MISSING: kick = rnd_pct(50) ? 0x1011u : 0x0501u; break;       /* K--- K--- ---- K---; K--- ---- K-K- ---- */
+    case FG_ODD:
+        n = rnd_pick(pl, plw, NELEM(pl));
+        rnd_fg.len[RND_FG_KICK] = (uint8_t)n;
+        kick = rnd_fg_euclid(n, n / 3u + (uint32_t)rnd_rr(0, 1), 0);
+        break;
+    case FG_TRIPLET: rnd_fg.len[RND_FG_KICK] = 12; kick = rnd_pct(50) ? 0x0449u : 0x0249u; break;   /* K..K..K...K. */
+    case FG_ANSWER: kick = rnd_pct(50) ? 0x2492u : 0x4912u; break;        /* -K-- K--K --K- -K-- */
+    case FG_THREE: rnd_fg.len[RND_FG_KICK] = (uint8_t)(rnd_pct(60) ? 3 : 6); kick = rnd_fg.len[RND_FG_KICK] == 3u ? 1u : 9u; break;
+    default: kick = rnd_pct(50) ? 0x0001u : 0x0101u; break;               /* (the accent: one or two a bar) */
+    }
+    if (rnd_chaos && rnd_pct(50)) krat = kick & (0u - kick);   /* (CHAOS: a ratchet on the first kick now and then) */
+    rnd_fg.mask[RND_FG_KICK] = (uint16_t)kick;
+    rnd_fg_write(RND_FG_KICK, kick, kick & 1u, krat, 0, 1);
+    if (rnd_fg.metal) {                             /* (CHAOS's metal: a short loop of its own against the bar) */
+        n = rnd_pct(50) ? 5u : 7u;
+        rnd_fg_euc(RND_FG_BASS, n, 2u + rnd_next() % 2u, rnd_next() % n);
+    } else {                                        /* the bass: in the kick's gaps, the turn that meets it least */
+        h = (uint32_t)rnd_rr(3, rnd_fg.idea == FG_ACCENT ? 7 : 5);
+        for (r = 0; r < 16u; r++) {
+            uint32_t m = rnd_fg_euclid(16, h, r), o = 0, k;
+            for (k = 0; k < 16u; k++) o += (m & kick) >> k & 1u;
+            if (rnd_fg.len[RND_FG_KICK] != 16u) o = r % 2u;   /* (a kick of its own length: the offbeats) */
+            if (o < over || (o == over && rnd_pct(30))) over = o, best = r;
+        }
+        rnd_fg_euc(RND_FG_BASS, 16, h, best);
+    }
+    if (rnd_chaos) rnd_fg_euc(RND_FG_HAT, rnd_pct(50) ? 16u : 12u, (uint32_t)rnd_rr(9, 12), rnd_next() % 4u);   /* (broken) */
+    else if (rnd_pct(65)) rnd_fg_euc(RND_FG_HAT, 16, 16, 0);   /* (every sixteenth: the tempo) */
+    else rnd_fg_euc(RND_FG_HAT, 16, 8, 1);          /* (the offbeats) */
+    n = rnd_pick(pl, plw, NELEM(pl));
+    if (n == rnd_fg.len[RND_FG_KICK] || n == rnd_fg.len[RND_FG_BASS]) n = n == 7u ? 9u : 7u;
+    rnd_fg_euc(RND_FG_PERC, n, (uint32_t)rnd_rr((int32_t)n / 3, (int32_t)n / 2 + 1), rnd_next() % n);
+}
+static void rnd_forge_generators(void)
+{
+    uint32_t tr, chords = 1;
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {       /* (the clean slate: the kick STEP, the rest EUCLID) */
+        rnd_generator(tr, &chords);
+        rnd_tx(tr, TX_MODE, tr == RND_FG_KICK ? TESS_ENG_OFF : TESS_ENG_EUCLID);
+        rnd_tx(tr, TX_EV_EVERY, 0); rnd_tx(tr, TX_EV_LOCK, 0); rnd_tx(tr, TX_FM_FORM, 0);
+        rnd_tx(tr, TX_TW_BRANCH, 0); rnd_tx(tr, TX_TW_LOGIC, 0); rnd_tx(tr, TX_TW_COND, 0);
+        rnd_tx(tr, TX_TW_SHIFT, 0); rnd_tx(tr, TX_TW_FOLLOW, 0); rnd_tx(tr, TX_TW_DROP, 0);
+        rnd_tx(tr, TX_SUB_RATCH, 0); rnd_tx(tr, TX_NL_MODE, 0);
+        rnd_tx(tr, TX_TW_HUMAN, 0); rnd_tx(tr, TX_SUB_HUMAN, 0);
+        rnd_tp(tr, P_SDIV, 2);                      /* 1/16 */
+        rnd_tp(tr, P_SSWING, 0);
+        rnd_tp(tr, P_SGATE, tr == RND_FG_BASS ? rnd_rr(30, 60) : rnd_rr(24, 40));
+    }
+    rnd_fg.idea = (uint8_t)(rnd_chaos ? (uint32_t[]){FG_BROKEN, FG_ODD, FG_ANSWER, FG_THREE, FG_ODD, FG_LOCK}[rnd_next() % 6u] :
+                                        rnd_next() % FG_IDEAS);
+    rnd_forge_patterns();
+    if (rnd_chaos) rnd_tx(RND_FG_PERC, TX_SUB_CHANCE, rnd_rr(20, 50)), rnd_tx(RND_FG_PERC, TX_SUB_RATCH, rnd_rr(2, 3));   /* (CHAOS:
+                                                     * the percussion rattling now and then) */
+    if (rnd_fg.idea == FG_TRIPLET) rnd_tp(RND_FG_KICK, P_SDIV, 5);   /* 16T: the kick's triplets, the hats straight */
+    if (rnd_fg.idea == FG_TRIPLET || (!rnd_chaos && rnd_pct(25))) rnd_tp(RND_FG_HAT, P_SSWING, rnd_rr(18, 34));
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_chaos ? rnd_rr(138, 148) : rnd_rr(132, 142));
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) tess_roll_apply(tr);   /* (the loops together from now) */
+    rnd_fg.phrase = rnd_fg.down = rnd_fg.fill = 0;
+    rnd_fg.bar = bar_n;
+}
+static void rnd_forge_registers(void)
+{
+    rnd_tp(RND_FG_KICK, P_TRANS, -12);              /* (the drums' root C2 + TRANS: the kick C1 to B1, 33 to 62 Hz) */
+    rnd_tp(RND_FG_BASS, P_TRANS, rnd_fg.metal ? 12 : 0);   /* (the bass C2 up, over the kick) */
+    rnd_tp(RND_FG_HAT, P_TRANS, 36);
+    rnd_tp(RND_FG_PERC, P_TRANS, trk[RND_FG_PERC].p[P_E0] == 20 ? 0 : 12);   /* (the toms low-mid, FM higher) */
+}
+static void rnd_key_forge(void)
+{
+    static const uint8_t sc[] = {2, 8, 3, 10}, sw[] = {4, 3, 2, 1};   /* MIN PHRY DOR LOC */
+    int32_t scale = (int32_t)rnd_pick(sc, sw, rnd_chaos ? 4u : 3u), root = rnd_rr(0, 11);
+    uint32_t tr;
+    rnd_tx(0, TX_KEY_LINK, 1);
+    for (tr = 0; tr < NTRK; tr++) {
+        rnd_tp(tr, P_SCALE, scale);
+        rnd_tp(tr, P_ROOT, root);
+        rnd_tp(tr, P_QUANT, TP[P_QUANT].def);
+    }
+    scale_share(&trk[0]);
+}
+static void rnd_roles_forge(uint8_t *role)
+{
+    rnd_fg.metal = (uint8_t)(rnd_chaos && rnd_pct(50));
+    role[RND_FG_KICK] = RND_ROLE_LOWPERC;
+    role[RND_FG_BASS] = rnd_fg.metal ? RND_ROLE_GLITCH : RND_ROLE_BASS;
+    role[RND_FG_HAT] = RND_ROLE_NOISE;
+    role[RND_FG_PERC] = RND_ROLE_GLITCH;
+}
+/* the set's arc, bar by bar (rnd_drift: DRIFT SLOW a phrase of 16 bars, FAST of 8). The kick holds the groove: only
+ * a breakdown takes it, now and then (it and the bass out a few bars, then in on the one). The Euclidean loops move:
+ * the percussion's turned a step, the hats thinned or filled, the bass a hit more or less; a fill in a phrase's last
+ * bar (the hats and the percussion ratcheting); then back as rolled */
+static void rnd_forge_move(void)
+{
+    uint32_t len = settings_rnd_drift == 2u ? 8u : 16u, at, n;
+    if (bar_n == rnd_fg.bar) return;
+    rnd_fg.bar = bar_n;
+    at = ++rnd_fg.phrase % len;
+    if (rnd_fg.down && !--rnd_fg.down) {            /* (the slam back) */
+        rnd_tp(RND_FG_KICK, P_MUTE, 0);
+        rnd_tp(RND_FG_BASS, P_MUTE, 0);
+    }
+    if (at == len - 1u && rnd_pct(60)) {            /* a fill: the phrase's last bar */
+        rnd_fg.fill = 1;
+        rnd_tx(RND_FG_HAT, TX_SUB_RATCH, 2); rnd_tx(RND_FG_HAT, TX_SUB_CHANCE, 40);
+        rnd_tx(RND_FG_PERC, TX_SUB_RATCH, 3); rnd_tx(RND_FG_PERC, TX_SUB_CHANCE, 60);
+        return;
+    }
+    if (at) return;
+    if (rnd_fg.fill) {
+        rnd_fg.fill = 0;
+        rnd_tx(RND_FG_HAT, TX_SUB_RATCH, 0);
+        rnd_tx(RND_FG_PERC, TX_SUB_RATCH, rnd_chaos ? 2 : 0);
+    }
+    switch (rnd_next() % 6u) {
+    case 0:                                         /* a breakdown, now and then: a quarter or half a phrase */
+        if (rnd_pct(50)) {
+            rnd_fg.down = (uint8_t)(len / (rnd_pct(50) ? 4u : 2u));
+            rnd_tp(RND_FG_KICK, P_MUTE, 1);
+            rnd_tp(RND_FG_BASS, P_MUTE, 1);
+        }
+        break;
+    case 1: case 2:                                 /* the percussion's loop turned a step */
+        n = rnd_fg.len[RND_FG_PERC];
+        rnd_tx(RND_FG_PERC, TX_EUC_ROT, (pid_get(PID_TESS(TX_EUC_ROT), RND_FG_PERC) + 1) % (int32_t)n);
+        break;
+    case 3:                                         /* the hats thinned to the offbeats, or every sixteenth */
+        if (rnd_pct(50)) { rnd_tx(RND_FG_HAT, TX_EUC_PULSES, 8); rnd_tx(RND_FG_HAT, TX_EUC_ROT, 1); }
+        else { rnd_tx(RND_FG_HAT, TX_EUC_PULSES, rnd_fg.len[RND_FG_HAT]); rnd_tx(RND_FG_HAT, TX_EUC_ROT, 0); }
+        break;
+    case 4:                                         /* the bass a hit more or less */
+        n = (uint32_t)pid_get(PID_TESS(TX_EUC_PULSES), RND_FG_BASS);
+        rnd_tx(RND_FG_BASS, TX_EUC_PULSES, (int32_t)(rnd_pct(50) && n > 2u ? n - 1u : n < 7u ? n + 1u : n));
+        break;
+    default:                                        /* back as rolled */
+        for (n = RND_FG_BASS; n <= RND_FG_HAT; n++) {
+            rnd_tx(n, TX_EUC_PULSES, rnd_fg.hits[n]);
+            rnd_tx(n, TX_EUC_ROT, rnd_fg.rot[n]);
+        }
+        break;
+    }
+}
+
 /* a CHORD track's chord known at once, before it first strikes (its lowest note for FOLLOW, its notes for QNT CHRD):
  * else a track before it in the order (TIDE's sub, a HALO bell) takes the last roll's for a step, measured (a sub on
  * B3). As tessera.c tess_chord_play keeps them */
@@ -3995,6 +4320,12 @@ static void rnd_drift(void)
         if (rnd_snap.valid && !rnd_backed && song.playing) rnd_static_move();
         return;
     }
+    if (rnd_forge) {                                /* (FORGE, CHAOS: their set's arc, DRIFT SLOW or FAST; OFF: the
+                                                     * loops as rolled) */
+        if (settings_rnd_drift && rnd_snap.valid && !rnd_backed && song.playing) rnd_forge_move();
+        else rnd_fg.bar = bar_n;
+        return;
+    }
     if (!settings_rnd_drift || !rnd_snap.valid || rnd_backed || !song.playing || rnd_crate) {   /* (CRATE: a record,
                                                      * played as pressed; roll again for another) */
         rnd_drift_s.bar = bar_n;
@@ -4056,7 +4387,7 @@ static void rnd_roles(uint8_t *role, uint32_t ambient)
 /* the roll's mode as the screen says it, with the seed after */
 static const char *rnd_name(void)
 {
-    return rnd_static ? "STATIC " : rnd_phase ? "PHASE " : rnd_crate ? "CRATE " : rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " :
+    return rnd_chaos ? "CHAOS " : rnd_forge ? "FORGE " : rnd_static ? "STATIC " : rnd_phase ? "PHASE " : rnd_crate ? "CRATE " : rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " :
            rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " :
            "RND ";
 }
@@ -4153,7 +4484,8 @@ static void rnd_no_pitch(void)
     for (tr = 0; tr < NTRK; tr++) {
         track_t *t = &trk[tr];
         if (!rnd_wozza) rnd_tp(tr, P_LD_PIT, 0);
-        if (!(rnd_tide && tr == RND_TD_KICK)) rnd_tp(tr, P_ED_PIT, 0);
+        if (!(rnd_tide && tr == RND_TD_KICK) && !(rnd_forge && tr != RND_FG_BASS)) rnd_tp(tr, P_ED_PIT, 0);   /* (the
+                                                     * drums' pitch drop kept: FORGE, CHAOS) */
         if (t->eng_req == ENGI_ORACLE) {
             uint8_t *q = or_patch_of(t);
             q[OR_WHEEL_FREQ_A] = q[OR_WHEEL_FREQ_B] = 0;
@@ -4260,7 +4592,9 @@ static void rnd_roll(void)
     rnd_crate = (uint8_t)(rnd_setting() == RND_CRATE);
     rnd_phase = (uint8_t)(rnd_setting() == RND_PHASE);
     rnd_static = (uint8_t)(rnd_setting() == RND_STATIC);
-    if (rnd_wozza || rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_static) rnd_nice = 1;   /* (WOZZA HALO MIRROR TIDE: NICE's gentle
+    rnd_chaos = (uint8_t)(rnd_setting() == RND_CHAOS);
+    rnd_forge = (uint8_t)(rnd_setting() == RND_FORGE || rnd_chaos);
+    if (rnd_wozza || rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_static || rnd_forge) rnd_nice = 1;   /* (WOZZA HALO MIRROR TIDE: NICE's gentle
                                                      * drift) */
     if (rnd_loops || rnd_orbit) rnd_nice = 1;       /* (LOOPS, ORBIT: NICE's gentle voices too) */
     rnd_roles(role, ambient && !rnd_loops && !rnd_orbit);
@@ -4273,6 +4607,7 @@ static void rnd_roll(void)
     if (rnd_crate) rnd_roles_crate(role);
     if (rnd_phase) rnd_roles_phase(role);
     if (rnd_static) rnd_roles_static(role);
+    if (rnd_forge) rnd_roles_forge(role);
     memcpy(rnd_role_of, role, sizeof rnd_role_of);
     rnd_lp_phys = rnd_lp_glass = NTRK;
     if (rnd_loops) {                                /* (LOOPS: the piano's track, the glass') */
@@ -4296,6 +4631,7 @@ static void rnd_roll(void)
                 else if (rnd_crate) rnd_crate_sound(tr, role[tr], &fm6s, &phys, &oracles);
                 else if (rnd_phase) rnd_phase_sound(tr, &fm6s, &phys, &oracles);
                 else if (rnd_static) rnd_static_sound(tr, &fm6s, &phys, &oracles);
+                else if (rnd_forge) rnd_forge_sound(tr, &oracles);
                 else if (rnd_loops) rnd_loops_voice(tr, &fm6s, &phys, &oracles);
                 else rnd_sound(tr, &fm6s, &phys, &oracles, role[tr]);
     }
@@ -4308,6 +4644,7 @@ static void rnd_roll(void)
     else if (rnd_crate) rnd_crate_registers();
     else if (rnd_phase) ;                           /* (PHASE: after its generators, rnd_phase_registers) */
     else if (rnd_static) rnd_static_registers();
+    else if (rnd_forge) rnd_forge_registers();
     else rnd_registers();
     if (rnd_fall) rnd_fall_registers(role);
     if (rnd_loops) rnd_loops_registers();           /* (LOOPS: spread wider, -24 to +24) */
@@ -4318,6 +4655,7 @@ static void rnd_roll(void)
     else if (rnd_crate) rnd_key_crate();
     else if (rnd_phase) rnd_key_phase();
     else if (rnd_static) rnd_key_static();
+    else if (rnd_forge) rnd_key_forge();
     else if (rnd_loops || rnd_orbit) rnd_key_loops();
     else if (ambient) rnd_key_ambient();
     else rnd_key();
@@ -4331,6 +4669,9 @@ static void rnd_roll(void)
         rnd_phase_registers();
     } else if (rnd_static) {
         rnd_static_generators();
+        for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
+    } else if (rnd_forge) {
+        rnd_forge_generators();
         for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
     } else if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate) {
         if (rnd_halo) rnd_halo_generators(role);
@@ -4353,12 +4694,12 @@ static void rnd_roll(void)
     }
     rnd_tails();
     rnd_budget();
-    if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase) {
+    if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_forge) {
         rnd_fx_dry();
         if (rnd_halo) rnd_cords_halo(role);
         else if (rnd_mirror) rnd_cords_mirror(role);
         else if (rnd_tide) rnd_cords_tide();
-        else rnd_cords_crate();                     /* (CRATE, PHASE: none) */
+        else rnd_cords_crate();                     /* (CRATE, PHASE, FORGE, CHAOS: none) */
     } else if (rnd_static) {                        /* (its own: SPIT's drive, the fizz) */
         rnd_static_fx();
         rnd_cords_static();
