@@ -999,10 +999,10 @@ soul turns (i to IV, I vi IV V, IV iii ii I and others), stabbed on and off the 
 (ORACLE's KEYS, CLAV, FAT POLY or BRASS), or held (ORACLE's WARM PAD, TRIO's organ, squares on octaves, or its
 string machine). **Track 2, the bass:**
 low (about 50 to 150 Hz), onto the chord's notes, a fixed line each section: funk's sixteenths jumping octaves about half the time, else
-soul's eighths, on TRIO, a square or a triangle. **Track 3, the hook:** on top, two octaves up, a fixed phrase for each section on
+soul's eighths, on TRIO, a square or a triangle. **Track 3, the hook:** an octave up, a fixed phrase for each section on
 ORACLE's FLUTE, SQUARE LEAD, BRASS, VOX or SYNC LEAD, MACRO's sung vowels (VOWEL or VOSIM: a vocal chop), or TRIO's
 flute or muted horn. **Track 4, the strings** (three rolls in four), an octave under the hook: a lush, slow line
-by step onto the chord's notes, a note every half or whole bar, swelling in, wide (TRIO's
+by step onto the chord's notes, a note every half or whole bar, swelling in, wide, dull as an old record's (TRIO's
 string machine or pads, ORACLE's SOFT STRINGS, or MACRO's CHOIR FOF: the backing singers' oohs); otherwise a quieter second voice answering the hook. The timing is a
 player's (a few milliseconds late now and then), on the grid otherwise: send MIDI clock to your sampler, or set its
 tempo to the BPM on the screen. DRIFT leaves CRATE alone: roll again for another record. No effects, as every roll.

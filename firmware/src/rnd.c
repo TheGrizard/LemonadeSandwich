@@ -2071,7 +2071,7 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
     if (e == ENGI_MACRO) {                          /* MACRO: a voice, warm, a consonant a note (the singers: none) */
         rnd_tp(tr, P_E0 + 1u, rnd_rr(10, 90));      /* TIMBR, COLOR: the vowel, the formants */
         rnd_tp(tr, P_E0 + 2u, rnd_rr(30, 90));
-        rnd_tp(tr, P_E0 + 3u, rnd_rr(92, 112));     /* TONE: an old record's top */
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(84, 102));     /* TONE: an old record's top, dull */
         rnd_tp(tr, P_E0 + 4u, 0); rnd_tp(tr, P_E0 + 5u, 0);
         rnd_tp(tr, P_E0 + 6u, str ? 0 : 1);
         rnd_tp(tr, P_E0 + 7u, 0);
@@ -2130,7 +2130,8 @@ static void rnd_crate_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         rnd_tp_rr(tr, sr, NELEM(sr));
         rnd_tp(tr, P_VOICE, V_POLY);
         rnd_tp(tr, P_LD_PIT, 0);                    /* (no vibrato: rnd_no_pitch) */
-        if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(80, 94));   /* (TRIO: warm, the top soft; lower, measured: lost) */
+        if (e == 6u) rnd_tp(tr, P_E0 + 5u, rnd_rr(74, 88));   /* (TRIO: warm, the top soft, an old record's; lower,
+                                                     * measured: lost) */
         else if (e == ENGI_FM6) rnd_tp(tr, P_E0 + 2u, rnd_rr(-20, 0));
         if (e == ENGI_MACRO) rnd_tp(tr, P_DETUNE, rnd_rr(0, 15));   /* (the singers: together) */
     } else {                                        /* the head, the counter */
@@ -2287,7 +2288,8 @@ static void rnd_crate_registers(void)
 {
     rnd_tp(RND_CR_KEYS, P_TRANS, 0);
     rnd_tp(RND_CR_BASS, P_TRANS, 0);                /* (-12: 23 to 74 Hz, measured, felt more than heard: mud) */
-    rnd_tp(RND_CR_HEAD, P_TRANS, 24);               /* (the hook on top, the strings an octave under it) */
+    rnd_tp(RND_CR_HEAD, P_TRANS, 12);               /* (the hook over the keys, the strings an octave under it: +24 and
+                                                     * +12 were bright, heard 2026-11-09, a third of it over 2 kHz) */
     rnd_tp(RND_CR_COUNTER, P_TRANS, trk[RND_CR_HEAD].p[P_TRANS] - 12);
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(80, 100));
 }
@@ -2786,7 +2788,9 @@ static void rnd_phase_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_
     rnd_tp(tr, P_CHRD, 0);
     rnd_tp(tr, P_MUTE, 0);
     rnd_tp(tr, P_AMODE, 0);
-    rnd_tp(tr, P_LEVEL, tr == RND_PH_BED ? rnd_rr(58, 66) : tr == RND_PH_C ? rnd_rr(70, 80) : rnd_rr(84, 92));
+    rnd_tp(tr, P_LEVEL, tr == RND_PH_BED ? rnd_rr(76, 82) : tr == RND_PH_C ? rnd_rr(82, 88) : rnd_rr(84, 92));   /* (the
+                                                     * pulse and the bed -12 to -15 dB, rnd_balance's lift with it,
+                                                     * asked 2026-11-09: at -20 the cells' plucks buried them) */
     if (tr == RND_PH_A) {
         static const uint8_t lf[][2] = {{5, 20}, {12, 24}, {29, 14}, {19, 14}, {8, 12}},   /* FM6's: up, as loud as */
                              lo[][2] = {{9, 24}, {10, 20}, {11, 12}, {20, 24}};          /* TINE EP; ORACLE's */
@@ -4210,7 +4214,8 @@ static void rnd_balance(void)
         if (rnd_fall || rnd_wozza || rnd_halo || rnd_mirror)
             d = r == RND_ROLE_CHORDS || r == RND_ROLE_DRONE ? up : r == RND_ROLE_MELODY ? down : 0;
         else if (rnd_tide) d = tr == RND_TD_BED ? up : tr == RND_TD_MEL ? down : 0;
-        else if (rnd_crate) d = tr == RND_CR_COUNTER ? up : tr == RND_CR_HEAD ? down : 0;
+        else if (rnd_crate) d = tr == RND_CR_KEYS ? up : tr == RND_CR_HEAD ? down : tr == RND_CR_COUNTER ? -6 : 0;   /* (the
+                                                     * keys up, the strings down: they were 10 dB over the keys, measured) */
         else if (rnd_static) d = tr == RND_ST_BED ? up : 0;
         else if (rnd_phase) d = tr == NTRK - 1u ? up : 0;
         else if (rnd_loops) d = tr != rnd_lp_phys && tr != rnd_lp_glass ? up : 0;
