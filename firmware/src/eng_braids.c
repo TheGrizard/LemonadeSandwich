@@ -5,7 +5,7 @@
  * place (eng_macro.c: too heavy on the AC79, its floating point; Braids is integer throughout, a voice a third to a
  * half of an ORACLE voice). MODEL: the models kept (BRAIDS_LEAN: textures, voices, FM, CSAW, FOLD, the swarm, TOY); TIMBR and COLOR: Braids' two (the voice's SHAPE moves TIMBR); TONE: a low-pass after it (the voice's
  * CUTOFF moves it); BITS, RATE: Braids' own bit and rate reduction; STRIK: a note strikes it (VOWEL's consonant, the
- * grains and FM restarted); DRIVE: a soft clip. The track's ADSR shapes it. Four voices a part, each a Braids
+ * grains and FM restarted; DRUM: struck at a fixed pitch, the key's root, for KICK DRUM CYMB and FM hits); DRIVE: a soft clip. The track's ADSR shapes it. Four voices a part, each a Braids
  * oscillator (688 bytes) from the audio arena. MELODEE_BRAIDS 0: none of it. */
 #define ENGI_MACRO 21u
 #if MELODEE_BRAIDS
@@ -22,10 +22,13 @@ static const struct { uint8_t shape, gain_q4, units; } BR_MODEL[] = {
     {25, 6, 1},  {26, 6, 2},  {27, 6, 2},                   /* FM FBFM WTFM */
     {41, 21, 2}, {42, 16, 1}, {43, 8, 1}, {44, 24, 2}, {45, 40, 1}, {46, 6, 1},   /* NOISE TWINQ CLKN CLOUD DUST QPSK */
     {37, 9, 1},  {38, 9, 2},  {39, 9, 2},                   /* WTBL WMAP WLINE (back: PHYS out, room for their table) */
+    {34, 22, 1}, {33, 28, 1}, {35, 24, 1},                  /* KICK DRUM CYMB (FORGE, CHAOS, 2026-11-09: Braids' own
+                                                             * drums, its 808-like kick, a struck drum, a metal cymbal;
+                                                             * at the end, the saved models' numbers kept) */
 };
 static const char *const N_BR_MODEL[] = {"CSAW", "FOLD", "SWARM", "TOY", "VOSIM", "VOWEL", "VFOF", "FM", "FBFM",
                                          "WTFM", "NOISE", "TWINQ", "CLKN", "CLOUD", "DUST",
-                                         "QPSK", "WTBL", "WMAP", "WLINE"};
+                                         "QPSK", "WTBL", "WMAP", "WLINE", "KICK", "DRUM", "CYMB"};
 _Static_assert(NELEM(BR_MODEL) == NELEM(N_BR_MODEL), "BR_MODEL / N_BR_MODEL");
 static const uint16_t BR_TONE[128] = {   /* TONE's one-pole, Q15: 80 Hz x 2^(TONE/16), 1 - e^(-2 pi f / 44100); 127 open */
       371,   388,   405,   423,   441,   461,   481,   502,   524,   547,   571,   596,
@@ -44,7 +47,8 @@ static const char *const N_BR_BITS[] = {"16", "12", "10", "8", "6", "4", "3"};
 static const uint8_t BR_BITS[] = {16, 12, 10, 8, 6, 4, 3};
 static const char *const N_BR_RATE[] = {"44K", "22K", "15K", "11K", "7K", "5K", "3K"};
 static const uint8_t BR_RATE[] = {1, 2, 3, 4, 6, 8, 12};
-static const char *const N_BR_ONOFF[] = {"OFF", "ON"};
+static const char *const N_BR_STRIK[] = {"OFF", "ON", "DRUM"};   /* (DRUM: struck, at a fixed pitch: the key's root,
+                                                     * C2 + TRANS, the note ignored; its pitch envelope kept) */
 #define BR_POLY 4
 #define BR_MAGIC 0x53444942u                            /* "BIDS": the part's oscillators made (the arena gives zeros) */
 
@@ -85,7 +89,10 @@ static void br_render(struct track *t, voice_t *v, int32_t *out, uint32_t n, con
                                                          * one sample for minutes, measured: the voice silent) */
     }
     if (cnt > rate) cnt = 0;                            /* (a legato voice from another engine, or RATE turned down) */
-    pitch = m->pitch16 * 8 + ((m->fine * 277) >> 9);   /* (1/128 semitone; fine: 1/4096 of the rate) */
+    pitch = p[P_E6] >= 2 ? clamp((36 + p[P_ROOT] + p[P_TRANS]) * 16 + m->pitch16 - v->pitch_cur, 0, 2047) :
+                           m->pitch16;              /* (DRUM: the root's, the voice's envelope, LFO, TUNE on it; the
+                                                     * note's own pitch, quantized, out) */
+    pitch = pitch * 8 + ((m->fine * 277) >> 9);     /* (1/128 semitone; fine: 1/4096 of the rate) */
     timbre = clamp(p[P_E1] + ((m->shape - 64 * 256) >> 8), 0, 127) << 8;   /* (the voice's SHAPE moves it) */
     color = (int32_t)p[P_E2] << 8;
     tone = clamp(p[P_E3] + (m->cutoff >> 8), 0, 127);   /* (the voice's CUTOFF moves it: envelope, cords, expression) */
@@ -115,6 +122,7 @@ static void br_render(struct track *t, voice_t *v, int32_t *out, uint32_t n, con
 static uint32_t mc_units(const struct track *t) { return BR_MODEL[br_model(t)].units; }
 
 #define BRP(n, mo, ti, co, to, a, d, s, r, mono) {n, {mo, ti, co, to, 0, 0, 1, 0}, {a, d, s, r}, 0, mono}
+#define BRD(n, mo, ti, co, to, a, d, s, r) {n, {mo, ti, co, to, 0, 0, 2, 0}, {a, d, s, r}, 0, 1}   /* (a drum: DRUM, mono) */
 static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the rest POLY; model: 0 CSAW 1 FOLD
                                              * 2 SWARM 3 TOY 4 VOSIM 5 VOWEL 6 VFOF 7 FM 8 FBFM 9 WTFM 10 NOISE
                                              * 11 TWINQ 12 CLKN 13 CLOUD 14 DUST 15 QPSK 16 WTBL 17 WMAP
@@ -138,8 +146,14 @@ static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the r
     BRP("WAVE TABLE",   16,  50,  50, 115,  10,  64, 120,  50, 0),
     BRP("WAVE MAP",     17,  60,  60, 110,  40,  64, 127,  70, 0),
     BRP("WAVE LINE",    18,  40,  70, 110,  40,  64, 127,  70, 0),
+    BRD("BD ANALOG",    19,  70,  40, 110,   0,  80,   0,  60),   /* (the drums: struck at the key's root) */
+    BRD("BD DIGI",       7,  30,  20,  90,   0,  52,   0,  40),   /* (two-op FM: a pitch drop, the roll's ENV PITCH) */
+    BRD("TOM",          20,  60,  50, 115,   0,  70,   0,  55),
+    BRD("HAT",          21,  80,  90, 127,   0,  28,   0,  20),
+    BRD("FM PERC",       7,  90,  70, 120,   0,  40,   0,  30),
 };
 #undef BRP
+#undef BRD
 
 static const engine_t ENG_MACRO = {
     .name = "MACRO",
@@ -151,7 +165,7 @@ static const engine_t ENG_MACRO = {
         {"TONE", F_PCT, 0, 127, 127, 0, 0},
         {"BITS", F_ENUM, 0, (int16_t)(NELEM(BR_BITS) - 1), 0, N_BR_BITS, 0},
         {"RATE", F_ENUM, 0, (int16_t)(NELEM(BR_RATE) - 1), 0, N_BR_RATE, 0},
-        {"STRIK", F_ENUM, 0, 1, 1, N_BR_ONOFF, 0},
+        {"STRIK", F_ENUM, 0, 2, 1, N_BR_STRIK, 0},
         {"DRIVE", F_PCT, 0, 127, 0, 0, 0},
     },
     .presets = MC_PRESETS,

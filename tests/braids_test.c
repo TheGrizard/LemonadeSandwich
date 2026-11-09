@@ -67,7 +67,8 @@ int main(void)
 {
     uint32_t k, ok = 1, models;
     double peak, rms, zc, tail, base;
-    check("MACRO offered, at engine 21, with Braids' presets", eng_ok(ENGI_MACRO) && ENGINES[ENGI_MACRO]->npresets == 19u);
+    check("MACRO offered, at engine 21, with Braids' presets", eng_ok(ENGI_MACRO) && ENGINES[ENGI_MACRO]->npresets == 24u);   /* (19, the 5 drums since
+                                                                                         * 2026-11-09) */
     check("its memory: four oscillators a part (no delay lines: BRAIDS_LEAN), from the audio arena",
           bg_size() < 1024u && mc_bytes() < 4096u && ENGINES[ENGI_MACRO]->poly == 4u);
     models = (uint32_t)ENGINES[ENGI_MACRO]->edit[0].max + 1u;
@@ -79,8 +80,8 @@ int main(void)
             printf("    model %u (%s): peak %.0f rms %.0f\n", k, ENGINES[ENGI_MACRO]->edit[0].names[k], peak, rms);
         }
     }
-    check("every model plays (19: textures, voices, FM, wavetables, CSAW FOLD SWARM TOY): sound, finite, in range",
-          ok && models == 19u);
+    check("every model plays (22: textures, voices, FM, wavetables, CSAW FOLD SWARM TOY, KICK DRUM CYMB): sound, finite, "
+          "in range", ok && models == 22u);
     for (k = 0, ok = 1; k < NELEM(MC_PRESETS); k++) {
         sound(k);
         if (!play(60, 0.8, 0.5, &peak, &rms, &zc, &tail) || rms < 50.0 || peak > 0.95 * 2147483647.0) {
@@ -138,6 +139,19 @@ int main(void)
         play(60, 0.5, 0.45, &peak, &r2, &zc, &tail);
         check("a voice another engine left (its RATE's count huge): it plays as a fresh one (was silent for minutes)",
               r2 > 0.7 * r1 && r2 < 1.4 * r1);
+    }
+    {                                                 /* STRIK DRUM: struck at the key's root, whatever the note */
+        double z1, z2, z3, r;
+        uint32_t k;
+        for (k = 0; k < 3u; k++) {                    /* (CSAW held, struck as a drum: its pitch in its crossings; FM's
+                                                     * phase carried from the last note in the arena muddles them) */
+            sound(0);
+            trk[0].p[P_E6] = k == 2u ? 1 : 2;         /* (DRUM; ON: the note's pitch) */
+            trk[0].p[P_TRANS] = 24;                   /* (C4: at C2 its crossings once or twice a cycle) */
+            play(k ? 67 : 48, 1.0, 0.9, &peak, &r, k == 0u ? &z1 : k == 1u ? &z2 : &z3, &tail);
+        }
+        check("STRIK DRUM: a drum at the key's root whatever the note (C3, G4 the same pitch); ON: at the note's",
+              fabs(z1 - z2) < 0.03 * z1 && z3 > 1.3 * z1);
     }
     {                                                 /* the cost, one note, on this computer: Braids' worst models */
         double t0, br, sid, idle;
