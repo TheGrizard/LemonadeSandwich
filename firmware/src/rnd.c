@@ -1832,8 +1832,8 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
             rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? 0 : -12);
             rnd_tp(tr, P_E0 + 3u, rnd_rr(5, 25));   /* DTN: a tone's slow beating */
             rnd_tp(tr, P_E0 + 4u, bp ? 1 : 2);      /* MODE BP or HP (2026-11-09: up, over the bed and the melody) */
-            rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(70, 92) : rnd_rr(74, 100));   /* CUT: high, air */
-            rnd_tp(tr, P_E0 + 6u, bp ? rnd_rr(20, 55) : rnd_rr(0, 25));    /* RES: a band-pass sings a little */
+            rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(72, 92) : rnd_rr(80, 100));   /* CUT: high, air */
+            rnd_tp(tr, P_E0 + 6u, bp ? rnd_rr(20, 40) : rnd_rr(0, 20));    /* RES: a band-pass sings a little */
         } else if (e == ENGI_MACRO) {               /* (MACRO: dark, soft) */
             rnd_tp(tr, P_E0 + 3u, rnd_rr(80, 105)); /* TONE (80 Hz x 2^(TONE/16): 2.6 to 7 kHz) */
             rnd_tp(tr, P_E0 + 7u, 0);
@@ -1845,6 +1845,10 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
         rnd_tp(tr, P_VOICE, V_LEGATO);
         rnd_tp(tr, P_LEVEL, rnd_rr(54, 68));
         rnd_mc_level(tr);
+        if (e == 6u)                                /* (TRIO's noise -33 to -29 dB on the level, asked 2026-11-09: at
+                                                     * -20 too loud in the mix, heard; its tones, quieter, -30 to -27;
+                                                     * MACRO's noises fine as they were) */
+            rnd_tp(tr, P_LEVEL, trk[tr].p[P_E0] == 7 || trk[tr].p[P_E0] == 8 ? rnd_rr(46, 54) : rnd_rr(52, 58));
         rnd_tp(tr, P_LWAVE, rnd_pct(50) ? 4 : 0);   /* (S&H: a random step now and then; or a sine) */
         rnd_tp(tr, P_LRATE, rnd_rr(5, 28));         /* (slow: 0.05 to 0.2 Hz) */
         rnd_tp(tr, P_LD_FLT, rnd_rr(10, 30));
