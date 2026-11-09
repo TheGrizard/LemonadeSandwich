@@ -81,7 +81,10 @@ static void br_render(struct track *t, voice_t *v, int32_t *out, uint32_t n, con
         v->s[0] = 0;
         if (p[P_E6]) bg_strike(osc);
         y = 0;                                          /* (a voice taken over starts its filter clean) */
+        hold = cnt = 0;                                 /* (and its RATE's hold: another engine's state in v->s[2] held
+                                                         * one sample for minutes, measured: the voice silent) */
     }
+    if (cnt > rate) cnt = 0;                            /* (a legato voice from another engine, or RATE turned down) */
     pitch = m->pitch16 * 8 + ((m->fine * 277) >> 9);   /* (1/128 semitone; fine: 1/4096 of the rate) */
     timbre = clamp(p[P_E1] + ((m->shape - 64 * 256) >> 8), 0, 127) << 8;   /* (the voice's SHAPE moves it) */
     color = (int32_t)p[P_E2] << 8;

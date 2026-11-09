@@ -128,6 +128,17 @@ int main(void)
         if (fabs(r1 - r2) < 1e-6 * (r1 + r2)) { ok = 0; printf("    E%u: no change\n", k + 1u); }
     }
     check("MODEL, TIMBR, COLOR, TONE, BITS, RATE, DRIVE: each moves the sound", ok);
+    {                                                 /* a voice another engine left: its state words anything */
+        double r1, r2;
+        uint32_t v;
+        sound(13);                                    /* (GRAIN CLOUD: STATIC's noise, heard silent) */
+        play(60, 0.5, 0.45, &peak, &r1, &zc, &tail);
+        sound(13);
+        for (v = 0; v < NVOICE; v++) { trk[0].v[v].s[1] = -20000; trk[0].v[v].s[2] = 0x7FFFFFFF; trk[0].v[v].s[3] = 30000; }
+        play(60, 0.5, 0.45, &peak, &r2, &zc, &tail);
+        check("a voice another engine left (its RATE's count huge): it plays as a fresh one (was silent for minutes)",
+              r2 > 0.7 * r1 && r2 < 1.4 * r1);
+    }
     {                                                 /* the cost, one note, on this computer: Braids' worst models */
         double t0, br, sid, idle;
         int32_t o[2 * CTL];
