@@ -7092,7 +7092,7 @@ static int test_rnd(void)
                 uint32_t hits = 0, mask = 0;
                 rnd_roll();
                 bpm = pid_get(PID_GLOBAL(G_BPM), 0);
-                tempo_ok &= m ? bpm >= 138 && bpm <= 148 : bpm >= 132 && bpm <= 142;
+                tempo_ok &= m ? bpm >= 130 && bpm <= 134 : bpm >= 128 && bpm <= 132;   /* (about 130, 2026-11-09) */
                 ok &= tessera.mode[RND_FG_KICK] == TESS_ENG_OFF;
                 for (tr = 1; tr < NTRK; tr++) ok &= tessera.mode[tr] == TESS_ENG_EUCLID;
                 for (k = 0; k < (uint32_t)trk[RND_FG_KICK].p[P_SLEN]; k++)
@@ -7134,7 +7134,7 @@ static int test_rnd(void)
             back_ok &= !memcmp(trk[RND_FG_KICK].step, s0, sizeof s0);
         }
         bad += check("RND FORGE, CHAOS: 80 rolls each: the kick STEP (its pattern written, its length), the bass, hats and "
-                     "percussion EUCLID; FORGE 132-142, CHAOS 138-148 BPM", ok && kick_ok && tempo_ok);
+                     "percussion EUCLID; FORGE 128-132, CHAOS 130-134 BPM", ok && kick_ok && tempo_ok);
         bad += check("RND FORGE, CHAOS: ..never four on the floor; every kick idea; the percussion an odd length now and then "
                      "(polymeter)", no_four && ideas == (1u << FG_IDEAS) - 1u && odd);
         bad += check("RND FORGE, CHAOS: ..dry, no vibrato, the bass no pitch drop (the drums' kept)", dry);

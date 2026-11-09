@@ -1028,22 +1028,26 @@ the noise for 3 to 6 bars, and builds again. STATIC moves the layers' levels its
 A level you turn becomes that layer's full level. It goes on whatever **DRIFT** says (FAST builds and drops twice as
 often). 100 to 120 BPM. The screen shows **STATIC** and the seed.
 
-**FORGE and CHAOS.** With REC BUTTON on **FORGE**, a roll is dark, hypnotic techno at 132 to 142 BPM, and never four
-on the floor. **Track 1, the kick**, holds the groove: a written pattern on STEP, one of eight ideas a roll: broken and
-syncopated (K--K --K- K--- -K--), the kick and the bass one rhythm, kicks missing from a four, an odd-length loop (5
-to 13 steps) sliding against the bar, triplets against straight hats, the kick answering the hats (-K-- K--K --K-
--K--), three over four, or the kick as an accent over everything else. Braids' 808-like KICK or a two-op FM kick with a
-pitch drop, at the key's root (STRIK DRUM). **Track 2, the bass:** EUCLID, turned to sit in the kick's gaps, short
-dark stabs (ORACLE's ACID LINE, FUNK or SUB BASS, or TRIO's saws or pulses with a filter bite). **Track 3, the hats:**
-EUCLID, a steady sixteenth grid or the offbeats (Braids' cymbal, clocked or data noise). **Track 4, the percussion:**
-EUCLID on a loop of 5, 7, 9, 11 or 13 steps against the bar (polymeter): toms in key or two-op FM percussion. With
-**CHAOS**, 138 to 148 BPM, noisier and more synthetic: the kick crushed and driven, track 2 half the rolls metal
-(feedback or chaotic FM on a loop of its own) instead of a bass, the hats broken, the percussion ratcheting. The drums
-drop in pitch as they strike (the one place a roll moves pitch). Dry. **DRIFT OFF**: the loops stay as rolled, for
-ever. **SLOW**: every 16 bars a move, **FAST**: every 8: a breakdown (the kick and the bass out a few bars, then back
-on the one), a fill (the hats and the percussion ratcheting in a phrase's last bar), the percussion's loop turned a
-step, the hats thinned or filled, the bass a hit more or less. The kick's pattern is never changed. Held REC brings
-back what was there, your own steps included. The screen shows **FORGE** or **CHAOS** and the seed.
+**FORGE and CHAOS.** With REC BUTTON on **FORGE**, a roll is dark, hypnotic techno at about 130 BPM (128 to 132),
+and never four on the floor. **Track 1, the kick**, holds the groove: a written pattern on STEP, one of eight ideas a
+roll, the sparse ones most often: broken (K--K --K- K--- -K--, or A K--- -K-K ---- K--K, B K--- ---- -K-- ---K, C
+K-K- --K- K--K ----, D K--K ---- -K-- --K-), the kick and the bass one rhythm (K--- --K- ---- K---, the bass between),
+kicks missing from a four, an odd-length loop (K--K--- over 7, or 9 to 13 steps) sliding against the bar, triplets
+(K..K..K...K.) against straight hats, the kick answering the hats (-K-- K--K --K- -K--), three over four (on
+eighths), or one kick a bar as an accent. Deep: Braids' 808-like KICK with a long, dark decay most rolls, or a two-op
+FM kick with a big pitch drop, at the key's root (STRIK DRUM). **Track 2, the bass:** EUCLID, turned to sit in the
+kick's gaps, short dark stabs (ORACLE's ACID LINE, FUNK or SUB BASS, or TRIO's saws or pulses), its filter swept by a
+slow LFO. **Track 3, the hats:** EUCLID, a sixteenth grid or the offbeats (Braids' cymbal, clocked or data noise),
+panned side to side by their LFO, TIMBR, TONE and COLOR swept slowly. **Track 4, the low tom**, answering the kick
+from its gaps (rolling under an accent kick), or now and then a loop of 5 to 13 steps against the bar (polymeter),
+its TIMBR and COLOR swept. With **CHAOS** (130 to 134 BPM), noisier and more synthetic: the kick crushed and driven,
+track 2 half the rolls metal (feedback or chaotic FM on a loop of its own) instead of a bass, the hats broken, track 4
+half the rolls FM percussion, ratcheting. The drums drop in pitch as they strike (the one place a roll moves pitch);
+the kick is still and centred. Dry. **DRIFT OFF**: the loops stay as rolled, for ever. **SLOW**: every 16 bars a move,
+**FAST**: every 8: a breakdown (the kick and the bass out a few bars, then back on the one), a fill (the hats and the
+percussion ratcheting in a phrase's last bar), the percussion's loop turned a step, the hats thinned or filled, the
+bass a hit more or less. The kick's pattern is never changed. Held REC brings back what was there, your own steps
+included. The screen shows **FORGE** or **CHAOS** and the seed.
 
 **PHASE.** With REC BUTTON on **PHASE**, a roll is a phase piece after Steve Reich (Piano Phase, Clapping Music,
 Drumming). **Tracks 1 and 2** play one short, bright cell, the same sound and the same notes (a EUCLID cell of 8 to 16
@@ -1096,7 +1100,7 @@ Hold **HOME** for the menu. Tessera's additions:
 
 | Item | What it does |
 |---|---|
-| **REC BUTTON** | **RECORD** (the default): REC records, as always. **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, an ORACLE melody, a triangle bed and a noise, slow, always on tracks 1 to 4; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **HALO**: warm and hazy, after Pärt: a slow line, a soft voice on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital (MACRO's wavetables), microtonal now and then, its rules loosened; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings or a choir in sections that come back exactly; **STATIC**: a wall of noise, atonal, four held layers, the noise never out, building to an overload and dropping back; **FORGE**: dark polyrhythmic techno at about 140 BPM, the kick a written pattern, never four on the floor, Euclidean bass, hats and percussion against it; **CHAOS**: FORGE noisier and more synthetic, crushed FM kicks, metal and noise; **RND**: a whole new piece, random and strange, sung vowels and a wavetable among it. Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default): REC records, as always. **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, an ORACLE melody, a triangle bed and a noise, slow, always on tracks 1 to 4; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **HALO**: warm and hazy, after Pärt: a slow line, a soft voice on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital (MACRO's wavetables), microtonal now and then, its rules loosened; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings or a choir in sections that come back exactly; **STATIC**: a wall of noise, atonal, four held layers, the noise never out, building to an overload and dropping back; **FORGE**: dark polyrhythmic techno at about 130 BPM, a deep kick on a written pattern, never four on the floor, Euclidean bass, panned hats and a low tom against it; **CHAOS**: FORGE noisier and more synthetic, crushed FM kicks, metal and noise; **RND**: a whole new piece, random and strange, sung vowels and a wavetable among it. Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **COLOR** | The screen's ink, on black: YELLOW (the default), WHITE, GREEN, BLUE, RED, ORANGE, PINK, HOT PINK or LILAC; or MOSAIC, a colour per track with the selection in white. |
 | **MIDI OUT** | What goes out over USB MIDI: **KEYS** (the notes you play, as Melodee sent them), **ALL** (also the steps, the ARP, recordings and every generator) or **OFF**. Each track on its own channel: see [MIDI OUT channels](#midi-out-channels). |
 | **CLOCK OUT** | 24 pulses a beat with START and STOP over USB, while the clock is INT. |
