@@ -530,14 +530,19 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
         if (e == 6u && trk[tr].p[P_E0] > 5) rnd_tp(tr, P_E0, (int32_t)rnd_pick(clean, cw, NELEM(clean)));
         if (rnd_fall && e == 6u) {                  /* FALL: three triangles, consonant, soft */
             static const uint8_t i2[] = {24, 36, 31, 12, 43}, i2w[] = {3, 3, 2, 1, 1};   /* (+24: 0 +12 +7 -12 +19) */
-            static const uint8_t i3[] = {12, 24, 36, 0, 31}, i3w[] = {3, 2, 2, 1, 1};    /* (-12 0 +12 -24 +7) */
+            static const uint8_t i3[] = {12, 24, 36, 31}, i3w[] = {3, 2, 2, 1};    /* (-12 0 +12 +7: never -24, the drone
+                                                     * two octaves under, heard: a rumble, mud under effects) */
+            static const uint8_t d3[] = {24, 36, 31}, d3w[] = {3, 2, 2};    /* (the drone: 0 +12 +7, no octave under) */
             rnd_tp(tr, P_E0, 4);                    /* WAVE TRI3 */
             rnd_tp(tr, P_E0 + 1u, (int32_t)rnd_pick(i2, i2w, NELEM(i2)) - 24);   /* INT2 */
-            rnd_tp(tr, P_E0 + 2u, (int32_t)rnd_pick(i3, i3w, NELEM(i3)) - 24);   /* INT3 */
-            rnd_tp(tr, P_E0 + 3u, rnd_rr(2, 12));   /* DTN, cents */
+            rnd_tp(tr, P_E0 + 2u, role == RND_ROLE_DRONE ? (int32_t)rnd_pick(d3, d3w, NELEM(d3)) - 24 :
+                                                          (int32_t)rnd_pick(i3, i3w, NELEM(i3)) - 24);   /* INT3 */
+            rnd_tp(tr, P_E0 + 3u, role == RND_ROLE_MELODY ? rnd_rr(2, 10) : rnd_rr(6, 16));   /* DTN, cents: the pads
+                                                     * chorused, warm (asked 2026-11-09: FALL warmer) */
             rnd_tp(tr, P_E0 + 4u, 0);               /* MODE LP */
-            rnd_tp(tr, P_E0 + 5u, rnd_rr(70, 127)); /* CUT */
-            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 30));   /* RES */
+            rnd_tp(tr, P_E0 + 5u, role == RND_ROLE_MELODY ? rnd_rr(66, 96) : rnd_rr(84, 112));   /* CUT: the leaves
+                                                     * round, the pads full */
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 18));   /* RES */
             if (role == RND_ROLE_MELODY) {          /* (a leaf lands: struck, ringing out) */
                 {
                     static const int8_t rg[][3] = {{P_ATK, 0, 10}, {P_DEC, 40, 90}, {P_SUS, 0, 50}, {P_REL, 60, 110}};
@@ -874,8 +879,9 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
             rnd_tp(tr, P_E0 + 7u, rnd_pct(30) ? rnd_rr(5, 30) : 0);    /* CRSH */
         } else {
             rnd_tp(tr, P_E0, 8);                    /* (TRIO: NOIS; NOISE is retired on the FM-1's build) */
-            rnd_tp(tr, P_E0 + 5u, rnd_pct(50) ? rnd_rr(25, 45) : rnd_rr(45, 75));   /* (CUT: a rumble, or a hiss) */
-            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 30));
+            rnd_tp(tr, P_E0 + 4u, 2);               /* MODE HP: a hiss over it all (the rumble gone, 2026-11-09: mud) */
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(70, 92));
+            rnd_tp(tr, P_E0 + 6u, rnd_rr(0, 20));
         }
         rnd_tp(tr, P_ATK, rnd_rr(90, 120));
         rnd_tp(tr, P_DEC, 127);
@@ -1026,8 +1032,9 @@ static void rnd_wozza_generator(uint32_t tr, uint32_t role, uint32_t *chords)
  * melody higher; the texture where it is. And the tempo: slow */
 static void rnd_wozza_registers(const uint8_t *role)
 {
-    int32_t bed = rnd_pct(40) ? -24 : rnd_pct(75) ? -12 : 0, osti = bed == -12 ? (rnd_pct(60) ? 0 : -24) : -12;
-    int32_t mel = rnd_pct(60) ? 12 : rnd_pct(75) ? 0 : 24;
+    int32_t bed = rnd_pct(50) ? -24 : -12, osti = bed + 12;   /* (each an octave over the one under, 2026-11-09: they
+                                                     * shared octaves, muddy under effects) */
+    int32_t mel = osti + 24;                        /* (two over: the keys play low, measured near the ostinato) */
     uint32_t tr;
     for (tr = 0; tr < NTRK; tr++) {
         rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_DRONE ? bed : role[tr] == RND_ROLE_OSTI ? osti :
@@ -1261,9 +1268,12 @@ static void rnd_halo_generators(const uint8_t *role)
  * the canon an octave under (two, from a high line); and the tempo: slow */
 static void rnd_halo_registers(const uint8_t *role)
 {
-    int32_t halo = rnd_pct(60) ? 0 : -12, m = rnd_pct(60) ? 0 : 12, t = m ? 0 : rnd_pct(65) ? 12 : -12;   /* (the bells
+    int32_t m = 12, halo = m - 12, t = 12;          /* (each its own octave, 2026-11-09: the canon under all, the halo,
+                                                     * the line, the voice over it; the line lower, the canon and the
+                                                     * halo met, measured. The voice's and the canon's TRANS are from the
+                                                     * line's notes: they FOLLOW it) */   /* (the bells
                                                      * never past +12: higher, a glare) */
-    int32_t c = m && rnd_pct(30) ? m - 24 : m - 12;   /* (never below -12: lower, a rumble) */
+    int32_t c = -24;                                /* (two octaves under the line: under the halo) */   /* (never below -12: lower, a rumble) */
     uint32_t tr;
     for (tr = 0; tr < NTRK; tr++)
         rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_CHORDS ? halo : role[tr] == RND_ROLE_MELODY ? m :
@@ -1589,11 +1599,12 @@ static void rnd_mirror_generators(const uint8_t *role)
  * middle or above, the mirror an octave over it or under (beside a high line), the canon an octave under; the tempo */
 static void rnd_mirror_registers(const uint8_t *role)
 {
-    int32_t halo = rnd_pct(50) ? 0 : -12, m = rnd_pct(50) ? 0 : 12, t = m ? (rnd_pct(50) ? 0 : -12) : rnd_pct(60) ? 12 : -12;
+    int32_t m = rnd_pct(50) ? 0 : 12, halo = m - 12, t = 12;   /* (each its own octave, 2026-11-09; the mirror's and
+                                                     * the canon's TRANS from the line's notes: they FOLLOW it) */
     uint32_t tr;
     for (tr = 0; tr < NTRK; tr++)
         rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_CHORDS ? halo : role[tr] == RND_ROLE_MELODY ? m :
-                            role[tr] == RND_ROLE_TINT ? t : -12);
+                            role[tr] == RND_ROLE_TINT ? t : -24);
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(100, 120));   /* (100 to 120, asked 2026-11-09: was 70 to 100) */
 }
 /* the key: twelve notes (LYD WHOLE PEN MAJ DOR DIMHW), or off them (SLENDRO PELOG 19EDO HARM16 JI-MAJ 22EDO BP-ET) */
@@ -1815,8 +1826,8 @@ static void rnd_tide_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t 
             rnd_tp(tr, P_E0 + 1u, rnd_pct(50) ? 0 : 12);   /* INT2, INT3: the tones in octaves */
             rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? 0 : -12);
             rnd_tp(tr, P_E0 + 3u, rnd_rr(5, 25));   /* DTN: a tone's slow beating */
-            rnd_tp(tr, P_E0 + 4u, bp ? 1 : 0);      /* MODE BP or LP */
-            rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(35, 62) : rnd_rr(22, 50));   /* CUT: low */
+            rnd_tp(tr, P_E0 + 4u, bp ? 1 : 2);      /* MODE BP or HP (2026-11-09: up, over the bed and the melody) */
+            rnd_tp(tr, P_E0 + 5u, bp ? rnd_rr(70, 92) : rnd_rr(74, 100));   /* CUT: high, air */
             rnd_tp(tr, P_E0 + 6u, bp ? rnd_rr(20, 55) : rnd_rr(0, 25));    /* RES: a band-pass sings a little */
         } else if (e == ENGI_MACRO) {               /* (MACRO: dark, soft) */
             rnd_tp(tr, P_E0 + 3u, rnd_rr(80, 105)); /* TONE (80 Hz x 2^(TONE/16): 2.6 to 7 kHz) */
@@ -1935,9 +1946,9 @@ static void rnd_tide_generators(void)
 static void rnd_tide_registers(void)
 {
     rnd_tp(RND_TD_KICK, P_TRANS, -24);              /* (FOLLOW: from the bed's note: C1 to B1) */
-    rnd_tp(RND_TD_MEL, P_TRANS, rnd_pct(rnd_td_lead ? 35 : 55) ? 12 : 0);   /* (lower than before: less bright) */
+    rnd_tp(RND_TD_MEL, P_TRANS, 12);                /* (over the bed, 2026-11-09: they shared 200-500 Hz, mud) */
     rnd_tp(RND_TD_BED, P_TRANS, 0);
-    rnd_tp(RND_TD_NOISE, P_TRANS, 0);
+    rnd_tp(RND_TD_NOISE, P_TRANS, 24);              /* (the texture over them all) */
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(64, 84));
 }
 static void rnd_key_tide(void)
@@ -2275,9 +2286,9 @@ static void rnd_crate_generators(void)
 static void rnd_crate_registers(void)
 {
     rnd_tp(RND_CR_KEYS, P_TRANS, 0);
-    rnd_tp(RND_CR_BASS, P_TRANS, -12);              /* (-24: down to MIDI 13, felt more than heard) */
-    rnd_tp(RND_CR_HEAD, P_TRANS, rnd_pct(60) ? 12 : 0);
-    rnd_tp(RND_CR_COUNTER, P_TRANS, rnd_pct(50) ? 0 : 12);
+    rnd_tp(RND_CR_BASS, P_TRANS, 0);                /* (-12: 23 to 74 Hz, measured, felt more than heard: mud) */
+    rnd_tp(RND_CR_HEAD, P_TRANS, 24);               /* (the hook on top, the strings an octave under it) */
+    rnd_tp(RND_CR_COUNTER, P_TRANS, trk[RND_CR_HEAD].p[P_TRANS] - 12);
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(80, 100));
 }
 static void rnd_key_crate(void)
@@ -2522,9 +2533,9 @@ static void rnd_static_generators(void)
 }
 static void rnd_static_registers(void)
 {
-    rnd_tp(RND_ST_BED, P_TRANS, rnd_pct(50) ? -12 : 0);
-    rnd_tp(RND_ST_NOISE, P_TRANS, rnd_pct(50) ? 12 : 24);
-    rnd_tp(RND_ST_FIZZ, P_TRANS, rnd_pct(50) ? 0 : 12);
+    rnd_tp(RND_ST_BED, P_TRANS, 0);                 /* (over the bass: each its own space, 2026-11-09) */
+    rnd_tp(RND_ST_NOISE, P_TRANS, 24);
+    rnd_tp(RND_ST_FIZZ, P_TRANS, 12);
     rnd_tp(RND_ST_DRIVE, P_TRANS, -24);             /* (the bass: SERIES' C3 and two octaves above, two down: C1 to C3,
                                                      * 33 to 130 Hz) */
     rnd_tp(RND_ST_BED, P_PAN, 0);
@@ -3070,10 +3081,21 @@ static void rnd_key(void)
 /* each track an octave of its own (TRN), dealt at random whatever its role: four of -24 -12 0 +12 +24, the one left
  * out most often +24 (a high drone or pad shrill), shuffled over the tracks; now and then one a fifth up from its
  * octave. The voices spread over the registers and none covers another */
+/* FALL's registers, by role (asked 2026-11-09: each its own space, warmer, no rumble): the drone an octave over the
+ * old low one (its body about 110 Hz), the chords where they were, the two melodies an octave over the chords (one of
+ * them two, now and then) */
+static void rnd_fall_registers(const uint8_t *role)
+{
+    uint32_t tr, mels = 0;
+    for (tr = 0; tr < NTRK; tr++)
+        rnd_tp(tr, P_TRANS, role[tr] == RND_ROLE_DRONE || role[tr] == RND_ROLE_CHORDS ? 0 :
+                            mels++ && rnd_pct(30) ? 24 : 12);
+}
 static void rnd_registers(void)
 {
     static const uint8_t nice_w[] = {0, 0, 0, 0, 1};    /* (NICE: +24 never) */
-    const uint8_t *drop_w = rnd_nice ? nice_w : (const uint8_t[]){2, 1, 1, 1, 5};
+    const uint8_t *drop_w = rnd_orbit ? (const uint8_t[]){1, 0, 0, 0, 0} : rnd_nice ? nice_w : (const uint8_t[]){2, 1, 1, 1, 5};   /* (ORBIT:
+                                                     * -24 never, the low one muddy, 2026-11-09) */
     static const uint8_t idx[] = {0, 1, 2, 3, 4};
     int8_t oct[5] = {-24, -12, 0, 12, 24}, deal[NTRK];
     uint32_t drop = rnd_pick(idx, drop_w, 5), k, n = 0;
@@ -3743,10 +3765,9 @@ static void rnd_mirror_move(void)
         rnd_tp(c, P_SDIV, d);
     } else if (kind == 2u) {                        /* the mirror: onto the chord, or in parallel */
         rnd_mr_tint_mode(t, trk[t].p[P_QUANT] != Q_CHRD);
-    } else if (trk[m].p[P_TRANS] > 0) {             /* the mirror's side */
-        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] < 0 ? 0 : -12);
-    } else {
-        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] > 0 ? -12 : 12);
+    } else {                                        /* the mirror's side: beside the line, or an octave over it (never
+                                                     * down into the halo's octave, 2026-11-09) */
+        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] > 0 ? 0 : 12);   /* (from the line's notes: it FOLLOWs them) */
     }
 }
 /* a TIDE movement: a quarter of the time the key to its relative or home (the sub kept in its octave: it follows the
@@ -3798,10 +3819,10 @@ static void rnd_halo_move(void)
         if (c < NTRK) rnd_tp(c, P_SDIV, mdiv == 1u ? 0 : mdiv == 0u ? 6 : 7);
         return;
     }
-    if (trk[m].p[P_TRANS] > 0)                      /* the bells: a high line's beside it or below */
-        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] < 0 ? 0 : -12);
-    else
-        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] > 0 ? -12 : 12);
+    {                                               /* the voice: beside the line, or an octave over it (never down
+                                                     * into the halo's octave, 2026-11-09) */
+        rnd_tp(t, P_TRANS, trk[t].p[P_TRANS] > 0 ? 0 : 12);   /* (from the line's notes: it FOLLOWs them) */
+    }
 }
 static int32_t rnd_nudge(int32_t v, int32_t lo, int32_t hi, int32_t small, int32_t big)
 {
@@ -4177,6 +4198,25 @@ static void rnd_expression(void)
             rnd_expr_one(tr, rnd_rr(22, 32), rnd_rr(25, 35), 0, rnd_rr(15, 25));
     }
 }
+/* the balance (asked 2026-11-09: the pads a bit quiet in every roll, the leads a bit loud, FALL and TIDE most): the
+ * pads, beds and strings up 3 dB (FALL, TIDE 4), the leads down 2 (FALL, TIDE 3); a level step half a dB */
+static void rnd_balance(void)
+{
+    uint32_t tr;
+    int32_t up = rnd_fall || rnd_tide ? 8 : 6, down = rnd_fall || rnd_tide ? -6 : -4;
+    for (tr = 0; tr < NTRK; tr++) {
+        uint8_t r = rnd_role_of[tr];
+        int32_t d = 0;
+        if (rnd_fall || rnd_wozza || rnd_halo || rnd_mirror)
+            d = r == RND_ROLE_CHORDS || r == RND_ROLE_DRONE ? up : r == RND_ROLE_MELODY ? down : 0;
+        else if (rnd_tide) d = tr == RND_TD_BED ? up : tr == RND_TD_MEL ? down : 0;
+        else if (rnd_crate) d = tr == RND_CR_COUNTER ? up : tr == RND_CR_HEAD ? down : 0;
+        else if (rnd_static) d = tr == RND_ST_BED ? up : 0;
+        else if (rnd_phase) d = tr == NTRK - 1u ? up : 0;
+        else if (rnd_loops) d = tr != rnd_lp_phys && tr != rnd_lp_glass ? up : 0;
+        if (d) rnd_tp(tr, P_LEVEL, clamp(trk[tr].p[P_LEVEL] + d, 0, 127));
+    }
+}
 static void rnd_drift_start(void);
 /* the tempo of the rolls that kept yours (asked 2026-11-09: every roll starts at its own): FALL slow, LOOPS slow,
  * ORBIT 100 to 120, RND anywhere from 80 to 130. (The others set theirs: TIDE 64-84, WOZZA 72-84, HALO MIRROR STATIC
@@ -4264,6 +4304,7 @@ static void rnd_roll(void)
     else if (rnd_phase) ;                           /* (PHASE: after its generators, rnd_phase_registers) */
     else if (rnd_static) rnd_static_registers();
     else rnd_registers();
+    if (rnd_fall) rnd_fall_registers(role);
     if (rnd_loops) rnd_loops_registers();           /* (LOOPS: spread wider, -24 to +24) */
     if (rnd_wozza) rnd_key_wozza();
     else if (rnd_halo) rnd_key_halo();
@@ -4335,6 +4376,7 @@ static void rnd_roll(void)
     rnd_expression();
     rnd_in_key();
     rnd_chord_prime();
+    rnd_balance();
     rnd_tempo();
     sync_reload = 1;
     rnd_say(rnd_name(), rnd_seed);

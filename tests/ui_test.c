@@ -6118,6 +6118,19 @@ static int rnd_registers_apart(void)
     }
     return 1;
 }
+/* FALL's registers (2026-11-09): the drone and the chords at 0 (the drone's notes under the chords' already), the
+ * melodies an octave over (one of them two, now and then) */
+static int rnd_fall_regs(void)
+{
+    uint32_t tr, high = 0;
+    for (tr = 0; tr < NTRK; tr++) {
+        int32_t t = trk[tr].p[P_TRANS];
+        uint8_t r = rnd_role_of[tr];
+        if (r == RND_ROLE_DRONE || r == RND_ROLE_CHORDS ? t != 0 : t != 12 && t != 24) return 0;
+        high += t == 24;
+    }
+    return high <= 1u;
+}
 /* how busy a roll is: the generators' gates opening a minute, over secs of play, summed over the tracks */
 static double rnd_note_rate(uint32_t secs)
 {
@@ -6403,15 +6416,14 @@ static int test_rnd(void)
                 uint32_t m = tessera.mode[tr], e = trk[tr].eng_req;
                 drones += m == TESS_ENG_TURING && trk[tr].p[P_SDIV] >= 7 && trk[tr].p[P_VOICE] == V_LEGATO;
                 chordt += m == TESS_ENG_CHORD;
-                regs &= trk[tr].p[P_TRANS] <= 19;
                 clean &= trk[tr].p[P_LD_AMP] == 0 && trk[tr].p[P_LWAVE] == 0 && trk[tr].p[P_ED_PIT] == 0;
                 if (e == 6u) clean &= trk[tr].p[P_E0] <= 5;
                 if (e == ENGI_ORACLE) clean &= or_patch[tr][OR_NOISE] <= 15u;
                 modal &= trk[tr].p[P_SCALE] >= 1 && trk[tr].p[P_SCALE] <= 9 && trk[tr].p[P_QUANT] == Q_CHRD;
+                if (tr == NTRK - 1u) regs &= rnd_fall_regs();
             }
             roles_ok &= drones >= 1u && chordt == 1u;
             fx_off &= rnd_fx_mode_ok(1) >= 1u;    /* (an effect in each slot the points allow; clean) */
-            regs &= rnd_registers_apart();
             if (r % 25u == 0u) {
                 int32_t o[2 * CTL], peak = 0;
                 uint32_t b, j, rail = 0;
@@ -6432,7 +6444,7 @@ static int test_rnd(void)
                      "points allow (no FORMANT or SPIT)", roles_ok && fx_off);
         bad += check("RND FALL: ..clean sounds: no tremolo, sine LFO, no pitch envelope, TRIO's clean waves, ORACLE's "
                      "noise low", clean);
-        bad += check("RND FALL: ..the modes only (no stranger tuning), QNT CHRD; an octave each, never +24", modal && regs);
+        bad += check("RND FALL: ..the modes only (no stranger tuning), QNT CHRD; the drone and chords at 0, the melodies over (+12, one +24 now and then)", modal && regs);
         bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
@@ -6454,7 +6466,7 @@ static int test_rnd(void)
                 falls += tessera.mode[tr] == TESS_ENG_BOUNCE && pid_get(PID_TESS(TX_BNC_BALLS), tr) == 5;
             }
             trio &= rnd_fx_mode_ok(1) >= 1u;
-            roles_ok &= chordt == 1u && rnd_registers_apart();
+            roles_ok &= chordt == 1u && rnd_fall_regs();
             if (r % 25u == 0u) {
                 int32_t o[2 * CTL], peak = 0;
                 uint32_t b, j, rail = 0;
@@ -6471,7 +6483,7 @@ static int test_rnd(void)
             }
         }
         bad += check("RND FALL: 200 rolls: every track TRIO on three triangles (TRI3, LP), no tremolo; effects (clean)", trio);
-        bad += check("RND FALL: ..the ambient roles, an octave each; the melodies falling (BOUNCE's FALL) often",
+        bad += check("RND FALL: ..the ambient roles, each its register; the melodies falling (BOUNCE's FALL) often",
                      roles_ok && falls >= 150u);
         bad += check("RND FALL: ..each roll listened to sounds within 15 s, none at the rail", !quiet && !clipped_n);
         transport_req = 2;
@@ -6614,18 +6626,19 @@ static int test_rnd(void)
                 nf += e == ENGI_FM6; np += e == ENGI_PHYS;
                 if (role == RND_ROLE_CHORDS)
                     halo_ok &= g == TESS_ENG_CHORD && (pid_get(PID_TESS(TX_CH_PROG), tr) == 5 || pid_get(PID_TESS(TX_CH_PROG), tr) == 4) &&
-                               pid_get(PID_TESS(TX_CH_HIT), tr) == 0 && e == 6u && p[P_ATK] >= 90 && p[P_LEVEL] <= 72;
+                               pid_get(PID_TESS(TX_CH_HIT), tr) == 0 && e == 6u && p[P_ATK] >= 90 && p[P_LEVEL] <= 78;   /* (up 3 dB, 2026-11-09) */
                 else if (role == RND_ROLE_MELODY)
                     m_ok &= (g == TESS_ENG_SERIES || g == TESS_ENG_BOUNCE || g == TESS_ENG_TURING) && e == 6u && p[P_E0] == 4 &&
                             !f && p[P_SDIV] <= 6 && rnd_speed((uint32_t)p[P_SDIV]) != RND_FAST;
                 else if (role == RND_ROLE_TINT)
                     t_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_QUANT] == Q_CHRD && p[P_SDIV] == trk[m].p[P_SDIV] &&
-                            p[P_ATK] >= 10 && p[P_ATK] <= 35 && p[P_TRANS] <= 12 &&
+                            p[P_ATK] >= 10 && p[P_ATK] <= 35 && p[P_TRANS] == 12 &&   /* (its own octave, over the line: from its notes) */
                             ((e == ENGI_ORACLE && (trk[tr].preset == 21u || trk[tr].preset == 18u)) ||
                              (e == 6u && (trk[tr].preset == 11u || trk[tr].preset == 10u)));
                 else if (role == RND_ROLE_CANON)
-                    c_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_VOICE] == V_LEGATO && p[P_TRANS] < trk[m].p[P_TRANS] &&
-                            p[P_TRANS] >= -12 && e != ENGI_PHYS;
+                    c_ok &= m < NTRK && f == (int32_t)m + 1 && p[P_VOICE] == V_LEGATO && p[P_TRANS] == -24 &&   /* (two octaves
+                                                     * under the line's notes: the halo between) */
+                            e != ENGI_PHYS;
                 cpu &= p[P_VOICE] != V_UNISON && rnd_speed((uint32_t)p[P_SDIV]) != RND_FAST;
             }
             roles_ok &= n[RND_ROLE_CHORDS] == 1u && n[RND_ROLE_MELODY] == 1u && n[RND_ROLE_TINT] == 1u && n[RND_ROLE_CANON] == 1u;
@@ -6654,8 +6667,8 @@ static int test_rnd(void)
         bad += check("RND HALO: ..the halo the tonic triad held (CHORD DRONE or TWO, HOLD), a warm pad swelling, quiet", halo_ok);
         bad += check("RND HALO: ..the M-voice a slow line (SERIES, FALL's leaves, TURING) on FALL's triangles", m_ok);
         bad += check("RND HALO: ..the T-voice follows it on its clock onto the triad (QNT CHRD), soft (ORACLE's FLUTE or "
-                     "VOX, TRIO's BREATH FLUTE or SOFT LEAD: no bells), never past +12", t_ok);
-        bad += check("RND HALO: ..the canon follows it slower, below, held", c_ok);
+                     "VOX, TRIO's BREATH FLUTE or SOFT LEAD: no bells), an octave over the line", t_ok);
+        bad += check("RND HALO: ..the canon follows it slower, two octaves below, held", c_ok);
         bad += check("RND HALO: ..the bells heard on the halo's triad (95 % and more of their notes)",
                      notes > 10u && on_triad * 100u >= notes * 95u);
         bad += check("RND HALO: ..dry, slow tracks only, FM6 and PHYS once each at most", dry && cpu);
@@ -6696,8 +6709,8 @@ static int test_rnd(void)
                         trk[c].p[P_SDIV] == (d == 1 ? 0 : d == 0 ? 6 : 7) &&
                         (tessera.mode[m] != TESS_ENG_BOUNCE || d != 6);
                 x = trk[t].p[P_TRANS];
-                held &= (x == 0 || x == 12 || x == -12) && trk[m].p[P_TRANS] + x <= 24;
                 (void)mt;
+                held &= x == 0 || x == 12;          /* (beside the line or an octave over its notes, 2026-11-09) */
                 {                                   /* the pivot: the relative's notes the home key's; home: as rolled */
                     uint32_t pcs = rnd_pcs_of(trk[0].p[P_SCALE], trk[0].p[P_ROOT]);
                     if (trk[0].p[P_SCALE] != home_sc || trk[0].p[P_ROOT] != home_rt) {
@@ -6772,7 +6785,8 @@ static int test_rnd(void)
                 } else if (role == RND_ROLE_CANON) {
                     t_ok &= 1;
                     c_ok &= m < NTRK && f == (int32_t)m + 1 && (p[P_VOICE] == V_LEGATO || p[P_VOICE] == V_MONO) &&
-                            p[P_TRANS] == -12 &&   /* (across, on 8T: rnd_cpu's one voice now and then) */
+                            p[P_TRANS] == -24 &&   /* (two octaves under the line's notes, 2026-11-09; across,
+                                                     * on 8T: rnd_cpu's one voice now and then) */
                             (p[P_SDIV] == rnd_mr_canon_div(trk[m].p[P_SDIV], 0) || p[P_SDIV] == rnd_mr_canon_div(trk[m].p[P_SDIV], 1));
                     cross += p[P_SDIV] != rnd_mr_canon_div(trk[m].p[P_SDIV], 0);
                 }
@@ -6807,7 +6821,7 @@ static int test_rnd(void)
         bad += check("RND MIRROR: ..the line its own (no FOLLOW, no wow)", m_ok);
         bad += check("RND MIRROR: ..the mirror follows it on its clock or twice as fast, onto the chord or in parallel",
                      t_ok && chordal > 30u && parallel > 30u);
-        bad += check("RND MIRROR: ..the canon follows it an octave down, half as fast or across in triplets",
+        bad += check("RND MIRROR: ..the canon follows it two octaves down, half as fast or across in triplets",
                      c_ok && cross > 20u);
         bad += check("RND MIRROR: ..ORACLE and TRIO only; dry; ORACLE never fast", sid == 800u && dry && cpu);
         bad += check("RND MIRROR: ..a chordal mirror's notes on the chord (95 % and more)", !notes || on_chord * 100u >= notes * 95u);
@@ -6892,7 +6906,8 @@ static int test_rnd(void)
                 gen_chord_load(&g, &gs);
                 walks &= g.prog == GEN_CH_WALK && g.rot == 0;
             }
-            bass_ok &= trk[RND_CR_BASS].p[P_QUANT] == Q_CHRD && trk[RND_CR_BASS].p[P_TRANS] <= -12 &&
+            bass_ok &= trk[RND_CR_BASS].p[P_QUANT] == Q_CHRD && trk[RND_CR_BASS].p[P_TRANS] == 0 &&   /* (an octave up,
+                                                     * 2026-11-09: 23 to 74 Hz was mud) */
                        (tessera.mode[RND_CR_BASS] == TESS_ENG_SERIES || (tessera.mode[RND_CR_BASS] == TESS_ENG_TURING &&
                         !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_BASS)));
             head_ok &= tessera.mode[RND_CR_HEAD] == TESS_ENG_TURING && !pid_get(PID_TESS(TX_TUR_PROB), RND_CR_HEAD) &&
@@ -6950,7 +6965,7 @@ static int test_rnd(void)
         bad += check("RND CRATE: ..a form (AABA ABAC ABCB) on every track alike, 4 or 8 bars a section, written at the roll",
                      form_ok && forms[4] > 40u && forms[2] > 30u && forms[3] > 30u && eights > 80u && eights < 160u);
         bad += check("RND CRATE: ..the keys diatonic sevenths, four chords a section from the book (WALK)", keys_ok && walks);
-        bad += check("RND CRATE: ..the bass onto the chord's notes, low, locked", bass_ok);
+        bad += check("RND CRATE: ..the bass onto the chord's notes, locked", bass_ok);
         bad += check("RND CRATE: ..the head locked; track 4 strings mostly (slow, swelling, by step), else a counter locked",
                      head_ok && strings > 120u && strings < 180u);
         bad += check("RND CRATE: ..the bass on sixteenths about half the rolls (funk), else eighths (soul)", funky > 75u && funky < 145u);
@@ -7191,12 +7206,12 @@ static int test_rnd(void)
             td_orc += trk[RND_TD_MEL].eng_req == ENGI_ORACLE;
             bounce += tessera.mode[RND_TD_MEL] == TESS_ENG_BOUNCE;
             bed_ok &= tessera.mode[RND_TD_BED] == TESS_ENG_CHORD && trk[RND_TD_BED].eng_req == 6u && bp_[P_E0] == 4 &&
-                      bp_[P_LEVEL] < mp[P_LEVEL];
+                      bp_[P_TRANS] < mp[P_TRANS];   /* (an octave under the melody, 2026-11-09) */
             nz_ok &= trk[RND_TD_NOISE].eng_req == 6u && (np[P_E0] == 8 || np[P_E0] == 7 || np[P_E0] == 0 || np[P_E0] == 4 ||
-                     np[P_E0] == 5) && (np[P_E0 + 4u] == 0 || np[P_E0 + 4u] == 1) && np[P_E0 + 5u] <= 62 &&
+                     np[P_E0] == 5) && (np[P_E0 + 4u] == 1 || np[P_E0 + 4u] == 2) && np[P_E0 + 5u] >= 70 &&
                      np[P_VOICE] == V_LEGATO && np[P_LD_FLT] >= 10 && np[P_LRATE] <= 28 && np[P_LEVEL] <= 68;
             noisy += np[P_E0] == 8;
-            bp += np[P_E0 + 4u] == 1; lp += np[P_E0 + 4u] == 0;
+            bp += np[P_E0 + 4u] == 1; lp += np[P_E0 + 4u] == 2;   /* (lp: HP now, 2026-11-09: the texture over it all) */
             for (tr = 0, k = 0; tr < CORD_LIVE; tr++) {   /* (the melody and the noise wander the stereo) */
                 const cord_t *c = cord_get(tr);
                 if (c && c->src && c->dst == CD_PAN && (c->dst_trk == RND_TD_MEL || c->dst_trk == RND_TD_NOISE)) k |= 1u << c->dst_trk;
@@ -7232,7 +7247,7 @@ static int test_rnd(void)
         bad += check("RND TIDE: ..half the melodies a lead, legato in places (two steps a note, gaps), gliding",
                      leads > 60u && leads < 140u);
         bad += check("RND TIDE: ..the bed TRIO's triangles holding the chords, under the melody", bed_ok);
-        bad += check("RND TIDE: ..the texture TRIO's noise mostly (other waves now and then), LP or BP low, soft, slow",
+        bad += check("RND TIDE: ..the texture TRIO's noise mostly (other waves now and then), BP or HP high, over the rest, soft, slow",
                      nz_ok && bp > 50u && lp > 50u && noisy > 70u && noisy < 160u);
         bad += check("RND TIDE: ..dry, the budget kept; each roll heard within 15 s, none at the rail",
                      dry && cpu && !quiet && !clipped_n);
