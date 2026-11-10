@@ -3053,7 +3053,7 @@ static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
             rnd_tp(tr, P_E0 + 4u, ch && rnd_pct(60) ? rnd_rr(2, 4) : 0);   /* BITS: CHAOS crushed */
             rnd_tp(tr, P_E0 + 7u, ch ? rnd_rr(40, 100) : rnd_rr(0, 25));   /* DRIVE */
         }
-        rnd_tp(tr, P_LEVEL, rnd_rr(104, 112));
+        rnd_tp(tr, P_LEVEL, rnd_rr(121, 127));      /* (louder, asked 2026-11-10: the rest 3 dB up, the kick 7) */
     } else if (tr == RND_FG_BASS && rnd_fg.metal) { /* CHAOS's metal: feedback or chaotic FM, struck, short */
         engine_load_of(t, ENGI_MACRO, rnd_pct(50) ? 8u : 9u);   /* FB GROWL, CHAOS FM */
         rnd_tp(tr, P_E0 + 1u, rnd_rr(50, 110)); rnd_tp(tr, P_E0 + 2u, rnd_rr(30, 120));
@@ -3061,7 +3061,7 @@ static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
         rnd_tp(tr, P_E0 + 6u, 1); rnd_tp(tr, P_E0 + 7u, rnd_rr(20, 70));
         rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, 0); rnd_tp(tr, P_DEC, rnd_rr(25, 45)); rnd_tp(tr, P_REL, 20);
         rnd_tp(tr, P_VOICE, V_MONO);
-        rnd_tp(tr, P_LEVEL, rnd_rr(94, 104));
+        rnd_tp(tr, P_LEVEL, rnd_rr(100, 110));
     } else if (tr == RND_FG_BASS) {                 /* the bass: stabs, short, dark, its filter's envelope */
         if (*oracles < 1u && eng_ok(ENGI_ORACLE) && rnd_pct(45)) {
             engine_load_of(t, ENGI_ORACLE, rnd_pct(50) ? 8u : rnd_pct(50) ? 6u : 7u);   /* ACID LINE, FUNK BASS, SUB BASS */
@@ -3076,8 +3076,8 @@ static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
         }
         rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, rnd_rr(0, 30)); rnd_tp(tr, P_DEC, rnd_rr(35, 55)); rnd_tp(tr, P_REL, 25);
         rnd_tp(tr, P_VOICE, V_MONO);
-        rnd_tp(tr, P_LEVEL, rnd_rr(90, 98));        /* (the levels, measured by their peaks: the kick about -10 dB, the
-                                                     * bass 6 under, the percussion 8, the hats 12) */
+        rnd_tp(tr, P_LEVEL, rnd_rr(96, 104));       /* (the levels, measured by their peaks: the kick about -6 dB, the
+                                                     * bass 10 under, the percussion 12, the hats 16) */
     } else if (tr == RND_FG_HAT) {                  /* the hats: Braids' cymbal short, clocked or data noise, TRIO's */
         uint32_t k = (uint32_t)rnd_rr(0, 99);
         if (mc && k < (ch ? 35u : 60u)) {
@@ -3094,7 +3094,7 @@ static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
             rnd_tp(tr, P_VOICE, V_MONO);
         }
         if (t->eng_req == ENGI_MACRO) rnd_tp(tr, P_E0 + 3u, rnd_rr(110, 127));
-        rnd_tp(tr, P_LEVEL, rnd_rr(92, 100) + (t->eng_req == ENGI_MACRO && t->p[P_E0] != 21 ? 10 : 0));   /* (the noises
+        rnd_tp(tr, P_LEVEL, rnd_rr(98, 106) + (t->eng_req == ENGI_MACRO && t->p[P_E0] != 21 ? 10 : 0));   /* (the noises
                                                      * 5 dB under the cymbal, measured) */
         rnd_tp(tr, P_PAN, rnd_rr(-12, 12));
     } else {                                        /* the percussion: FORGE's low tom answering the kick (asked
@@ -3124,7 +3124,7 @@ static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
             rnd_tp(tr, P_VOICE, V_MONO);
         }
         if (t->eng_req == ENGI_MACRO) rnd_tp(tr, P_E0 + 3u, t->p[P_E0] == 20 ? rnd_rr(84, 108) : rnd_rr(96, 124));
-        rnd_tp(tr, P_LEVEL, t->p[P_E0] == 20 ? rnd_rr(86, 96) : rnd_rr(106, 116));   /* (the low tom 4 dB under the kick,
+        rnd_tp(tr, P_LEVEL, t->p[P_E0] == 20 ? rnd_rr(92, 102) : rnd_rr(112, 122));   /* (the low tom 4 dB under the kick,
                                                      * FM's level the tom's, measured) */
         rnd_tp(tr, P_PAN, t->p[P_E0] == 20 ? rnd_rr(-12, 12) : rnd_pct(50) ? rnd_rr(18, 34) : -rnd_rr(18, 34));
     }
