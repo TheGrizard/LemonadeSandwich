@@ -3354,9 +3354,10 @@ static void rnd_forge_move(void)
 }
 
 /* COSMIC (asked 2026-11-10): instrumental synthwave after Com Truise: slow-motion, warm, driving, 84 to 92 BPM, a
- * minor key. Tracks fixed: 1 the bass, eighths (sixteenths now and then) on the chord's notes, never a rest;
- * 2 the warm pad, wide, holding a slow progression; 3 the lead, slow and melodic, long notes, its filter swept slowly;
- * 4 the arp, sixteenths on the chord's notes up high. Locked, they repeat and drive. DRIFT SLOW or FAST: the arp comes
+ * minor key; no drums (the player's own). Tracks fixed: 1 the bass, deep, syncopated, held, on the chord's notes;
+ * 2 the warm pad, wide, minor sevenths on a slow progression; 3 the lead, slow and melodic, long held notes, its
+ * filter swept slowly; 4 the arp, sixteenths with gaps on the chord's notes up high, dark, resonant. Locked, they
+ * repeat. DRIFT SLOW or FAST: the arp comes
  * and goes every 16 or 8 bars (OFF: as rolled) */
 #define RND_CS_BASS 0u
 #define RND_CS_PAD 1u
