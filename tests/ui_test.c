@@ -7148,7 +7148,7 @@ static int test_rnd(void)
     {                                               /* COSMIC: synthwave (Com Truise, asked 2026-11-10): the bass
                                                      * driving on the chord's notes, the pad's progression, a slow lead,
                                                      * the arp; DRIFT OFF: still, SLOW/FAST: the arp in and out */
-        uint32_t r, k, ok = 1, tempo_ok = 1, dry = 1, regs = 1, eighths = 0, still = 1, toggled = 0, key_ok = 1;
+        uint32_t r, k, ok = 1, tempo_ok = 1, dry = 1, regs = 1, still = 1, toggled = 0, key_ok = 1;
         rnd_mode_put(RND_COSMIC);
         settings_rnd_drift = 0;
         for (r = 0; r < 80u; r++) {
@@ -7157,13 +7157,14 @@ static int test_rnd(void)
             bpm = pid_get(PID_GLOBAL(G_BPM), 0);
             sc = trk[0].p[P_SCALE];
             tempo_ok &= bpm >= 92 && bpm <= 104;
-            key_ok &= sc == 2 || sc == 3;
+            key_ok &= sc == 2 || sc == 7;
             ok &= tessera.mode[RND_CS_BASS] == TESS_ENG_EUCLID && tessera.mode[RND_CS_ARP] == TESS_ENG_EUCLID &&
                   tessera.mode[RND_CS_PAD] == TESS_ENG_CHORD && tessera.mode[RND_CS_LEAD] == TESS_ENG_TURING;
-            ok &= pid_get(PID_TESS(TX_EUC_PULSES), RND_CS_BASS) == pid_get(PID_TESS(TX_EUC_STEPS), RND_CS_BASS) &&
+            k = (uint32_t)pid_get(PID_TESS(TX_EUC_PULSES), RND_CS_BASS);
+            ok &= k >= 5u && k <= 7u && pid_get(PID_TESS(TX_NL_MODE), RND_CS_BASS) == 2 &&
                   trk[RND_CS_BASS].p[P_QUANT] == Q_CHRD && trk[RND_CS_ARP].p[P_QUANT] == Q_CHRD &&
-                  trk[RND_CS_ARP].p[P_SDIV] == 2;
-            eighths += trk[RND_CS_BASS].p[P_SDIV] == 1;
+                  trk[RND_CS_ARP].p[P_SDIV] == 2 && trk[RND_CS_PAD].p[P_CHRD] == 2 &&
+                  trk[RND_CS_BASS].eng_req == 6u && trk[RND_CS_LEAD].eng_req == 6u;
             regs &= trk[RND_CS_BASS].p[P_TRANS] < trk[RND_CS_LEAD].p[P_TRANS] &&
                     trk[RND_CS_LEAD].p[P_TRANS] <= trk[RND_CS_ARP].p[P_TRANS];
             for (tr = 0; tr < NTRK; tr++) dry &= trk[tr].p[P_FXTYPE] == FX_OFF && trk[tr].p[P_LD_PIT] == 0;
@@ -7178,9 +7179,9 @@ static int test_rnd(void)
             toggled |= trk[RND_CS_ARP].p[P_MUTE] != (int16_t)k;
         }
         settings_rnd_drift = 0;
-        bad += check("RND COSMIC: 80 rolls: the bass EUCLID on every step (eighths mostly), the pad CHORD, the lead TURING, "
-                     "the arp sixteenths, both on the chord's notes; 92-104 BPM; MIN or DOR", ok && tempo_ok && key_ok &&
-                     eighths > 40u && eighths < 80u);
+        bad += check("RND COSMIC: 80 rolls: the bass EUCLID syncopated (5-7 of 16, held to the next), the pad CHORD's "
+                     "sevenths, the lead TURING, the arp sixteenths, both on the chord's notes; the bass and lead TRIO "
+                     "(held); 92-104 BPM; minor only (MIN, HARM)", ok && tempo_ok && key_ok);
         bad += check("RND COSMIC: ..the bass below the lead, the arp highest; dry, no vibrato", regs && dry);
         bad += check("RND COSMIC: ..DRIFT OFF: the arp as rolled 32 bars; FAST: it comes and goes", still && toggled);
         transport_req = 2;

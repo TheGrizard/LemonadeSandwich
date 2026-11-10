@@ -3277,8 +3277,10 @@ static void rnd_forge_registers(void)
 }
 static void rnd_key_forge(void)
 {
-    static const uint8_t sc[] = {2, 3, 8, 10}, sw[] = {4, 2, 3, 1};   /* MIN DOR PHRY LOC (COSMIC: MIN DOR) */
-    int32_t scale = (int32_t)rnd_pick(sc, sw, rnd_chaos ? 4u : rnd_cosmic ? 2u : 3u), root = rnd_rr(0, 11);
+    static const uint8_t sc[] = {2, 3, 8, 10}, sw[] = {4, 2, 3, 1}, cs[] = {2, 7}, cw[] = {4, 1};   /* MIN DOR PHRY LOC;
+                                                     * COSMIC: minor only (asked 2026-11-10), natural, harmonic */
+    int32_t scale = rnd_cosmic ? (int32_t)rnd_pick(cs, cw, 2u) : (int32_t)rnd_pick(sc, sw, rnd_chaos ? 4u : 3u);
+    int32_t root = rnd_rr(0, 11);
     uint32_t tr;
     rnd_tx(0, TX_KEY_LINK, 1);
     for (tr = 0; tr < NTRK; tr++) {
@@ -3367,27 +3369,28 @@ static void rnd_roles_cosmic(uint8_t *role)
 }
 static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, uint32_t role)
 {
-    static const uint8_t op[4][3] = {{6, 7, 8}, {1, 19, 22}, {5, 17, 4}, {20, 9, 20}};   /* ORACLE: FUNK SUB ACID BASS;
-                                                     * WARM SWEEP PAD, FAT POLY; SYNC SQUARE LEAD, BRASS; SEQ BLIP, PLUCK */
-    static const uint8_t tp[4][3] = {{0, 0, 9}, {5, 6, 8}, {10, 2, 13}, {1, 1, 10}};   /* TRIO: FAT, SUB BASS; WARM PAD,
-                                                     * STRING MACH, SOFT PAD; SOFT, SYNC LEAD, ANALOG BRASS; ARP LEAD */
-    int orc = *oracles < 2u && eng_ok(ENGI_ORACLE) && rnd_pct(tr == RND_CS_PAD ? 80 : 50);
+    static const uint8_t op[3] = {1, 19, 22};       /* ORACLE (the pad only): WARM SWEEP PAD, FAT POLY. (Its own
+                                                     * envelopes: the bass and the lead plucked, its blips jolly, heard
+                                                     * 2026-11-10: TRIO's, held, and dark) */
+    static const uint8_t tp[4][3] = {{0, 0, 9}, {5, 6, 8}, {10, 13, 10}, {1, 1, 0}};   /* TRIO: FAT, SUB BASS; WARM PAD,
+                                                     * STRING MACH, SOFT PAD; SOFT LEAD, ANALOG BRASS; ARP LEAD, FAT */
+    int orc = tr == RND_CS_PAD && eng_ok(ENGI_ORACLE) && rnd_pct(80);
     uint8_t nice = rnd_nice;
     rnd_want_e = orc ? ENGI_ORACLE : 6u;
-    rnd_want_pi = (orc ? op : tp)[tr][rnd_next() % 3u];
+    rnd_want_pi = orc ? op[rnd_next() % 3u] : tp[tr][rnd_next() % 3u];
     rnd_nice = 1;
     rnd_sound(tr, fm6s, phys, oracles, role);
     rnd_nice = nice;
     rnd_want_e = rnd_want_pi = 0xFFu;
     rnd_tp_still(tr);
-    if (tr == RND_CS_BASS) {                        /* (short, a bite, mono) */
-        if (trk[tr].eng_req == 6u) {
-            rnd_tp(tr, P_E0, rnd_pct(60) ? 0 : 1);  /* SAW3, PLS3 */
-            rnd_tp(tr, P_E0 + 1u, 0); rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? -12 : 0);
-            rnd_tp(tr, P_E0 + 5u, rnd_rr(36, 58)); rnd_tp(tr, P_ED_FLT, rnd_rr(30, 60));
-        }
+    if (tr == RND_CS_BASS) {                        /* (deep and held: a sub octave under it, the filter low, barely
+                                                     * opened by its envelope, sustained) */
+        rnd_tp(tr, P_E0, rnd_pct(60) ? 0 : 1);      /* SAW3, PLS3 */
+        rnd_tp(tr, P_E0 + 1u, 0); rnd_tp(tr, P_E0 + 2u, -12);
+        rnd_tp(tr, P_E0 + 4u, 0); rnd_tp(tr, P_E0 + 5u, rnd_rr(34, 48)); rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 30));
+        rnd_tp(tr, P_ED_FLT, rnd_rr(6, 16));
         rnd_tp(tr, P_VOICE, V_MONO);
-        rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_DEC, rnd_rr(40, 60)); rnd_tp(tr, P_SUS, rnd_rr(30, 70)); rnd_tp(tr, P_REL, 20);
+        rnd_tp(tr, P_ATK, 2); rnd_tp(tr, P_DEC, rnd_rr(70, 90)); rnd_tp(tr, P_SUS, rnd_rr(100, 118)); rnd_tp(tr, P_REL, 30);
         rnd_tp(tr, P_LEVEL, rnd_rr(96, 104));
     } else if (tr == RND_CS_PAD) {                  /* (warm, wide, slow in) */
         rnd_tp(tr, P_VOICE, V_POLY);
@@ -3396,8 +3399,19 @@ static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
         rnd_tp(tr, P_LEVEL, rnd_rr(98, 106));
     } else {                                        /* the lead: slow, its filter swept; the arp: short, panned */
         int lead = tr == RND_CS_LEAD;
+        rnd_tp(tr, P_E0 + 1u, rnd_pct(50) ? 0 : 12); rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? 0 : -12);
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(8, 16)); rnd_tp(tr, P_E0 + 4u, 0);
+        if (lead) {                                 /* (held, soft in: unison or an octave, the filter half open, no
+                                                     * envelope on it) */
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(58, 76)); rnd_tp(tr, P_E0 + 6u, rnd_rr(15, 35));
+            rnd_tp(tr, P_ED_FLT, 0);
+        } else {                                    /* (the arp: a saw or pulse, dark, resonant, squelched) */
+            rnd_tp(tr, P_E0, rnd_pct(50) ? 0 : 1);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(42, 60)); rnd_tp(tr, P_E0 + 6u, rnd_rr(55, 80));
+            rnd_tp(tr, P_ED_FLT, rnd_rr(16, 30));
+        }
         rnd_tp(tr, P_VOICE, lead ? V_LEGATO : V_MONO);
-        rnd_tp(tr, P_ATK, lead ? rnd_rr(20, 50) : 0); rnd_tp(tr, P_SUS, lead ? 110 : 0);
+        rnd_tp(tr, P_ATK, lead ? rnd_rr(45, 70) : 0); rnd_tp(tr, P_SUS, lead ? 120 : 0);
         rnd_tp(tr, P_DEC, lead ? 100 : rnd_rr(25, 40)); rnd_tp(tr, P_REL, lead ? rnd_rr(60, 80) : rnd_rr(20, 40));
         rnd_tp(tr, P_LSYNC, rnd_pct(50) ? 1 : 2); rnd_tp(tr, P_LTRIG, 1); rnd_tp(tr, P_LWAVE, 1);   /* (4 or 2 bars, free) */
         rnd_tp(tr, P_LD_FLT, rnd_rr(15, 30));
@@ -3407,18 +3421,23 @@ static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
 }
 static void rnd_cosmic_generators(const uint8_t *role)
 {
-    uint32_t tr, chords = 0, n = rnd_pct(70) ? 8u : 16u;
+    static const uint8_t pg[] = {0, 1, 4}, pgw[] = {3, 3, 2};   /* POP 50S TWO: i v VI iv, i VI iv v, i iv */
+    uint32_t tr, chords = 0;
     for (tr = 0; tr < TESSERA_TRACKS; tr++) {
         rnd_role_generator(tr, role[tr], &chords);
         rnd_tx(tr, TX_EV_EVERY, 0); rnd_tx(tr, TX_TW_DROP, 0); rnd_tx(tr, TX_TW_HUMAN, 0);
     }
-    for (tr = RND_CS_BASS; tr <= RND_CS_ARP; tr += RND_CS_ARP) {   /* the bass and the arp: every step, the chord's notes */
+    rnd_tx(RND_CS_PAD, TX_CH_PROG, rnd_pick(pg, pgw, 3u));
+    rnd_tp(RND_CS_PAD, P_CHRD, 2);                  /* (DIA7: minor sevenths, lush) */
+    for (tr = RND_CS_BASS; tr <= RND_CS_ARP; tr += RND_CS_ARP) {   /* the bass and the arp: Euclidean sixteenths on the
+                                                     * chord's notes; the bass syncopated (5 to 7 of 16, held to the next:
+                                                     * slow-motion funk, not four on the floor, heard 2026-11-10) */
         rnd_tx(tr, TX_MODE, TESS_ENG_EUCLID);
-        rnd_tx(tr, TX_EUC_STEPS, tr ? 16 : (int32_t)n);
-        rnd_tx(tr, TX_EUC_PULSES, tr ? rnd_rr(12, 16) : (int32_t)n);
-        rnd_tx(tr, TX_EUC_ROT, 0);
-        rnd_tp(tr, P_SDIV, tr || n == 16u ? 2 : 1); /* 1/16, 1/8 */
-        rnd_tp(tr, P_SGATE, tr ? rnd_rr(30, 50) : rnd_rr(45, 75));
+        rnd_tx(tr, TX_EUC_STEPS, 16);
+        rnd_tx(tr, TX_EUC_PULSES, tr ? rnd_rr(9, 13) : rnd_rr(5, 7));
+        rnd_tx(tr, TX_EUC_ROT, rnd_rr(0, 3));
+        rnd_tp(tr, P_SDIV, 2);                      /* 1/16 */
+        rnd_tp(tr, P_SGATE, tr ? rnd_rr(30, 50) : 100);
         rnd_tp(tr, P_QUANT, Q_CHRD);
     }
     rnd_tx(RND_CS_LEAD, TX_MODE, TESS_ENG_TURING);  /* the lead: a locked loop, long notes */
@@ -3516,7 +3535,7 @@ static void rnd_cpu(uint32_t tr)
                                                      * 74 a minute on all four, BUDGET keeping the voices) */
         rnd_cap(tr, P_SGATE, sp == RND_FAST ? 90 : 127);
         rnd_tx(tr, TX_SUB_RATCH, 0);                /* (ratchets only on a slow track) */
-        if (t->p[P_CHRD] && !(rnd_crate && tessera.mode[tr] == TESS_ENG_CHORD))
+        if (t->p[P_CHRD] && !((rnd_crate || rnd_cosmic) && tessera.mode[tr] == TESS_ENG_CHORD))
             rnd_tp(tr, P_CHRD, 0);                  /* (a chord: three voices a note; CRATE's keys' CHRD: their
                                                      * sevenths, a voice more, not a chord on every note) */
         if (tessera.mode[tr] == TESS_ENG_CHORD && pid_get(PID_TESS(TX_CH_HIT), tr) == 2)
@@ -4845,6 +4864,7 @@ static void rnd_roll(void)
     } else if (rnd_cosmic) {
         rnd_cosmic_generators(role);
         for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
+        rnd_tx(RND_CS_BASS, TX_NL_MODE, 2);         /* (HIT: each note held to the next) */
     } else if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate) {
         if (rnd_halo) rnd_halo_generators(role);
         else if (rnd_mirror) rnd_mirror_generators(role);
