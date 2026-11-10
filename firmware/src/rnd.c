@@ -406,11 +406,10 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
     engine_load_of(t, e, rnd_want_pi < en->npresets && e == rnd_want_e ? rnd_want_pi
                                                                      : (uint32_t)rnd_rr(0, (int32_t)en->npresets - 1));
     if (rnd_orbit) rnd_want_e = rnd_want_pi = 0xFFu;
-    if ((e == 6u && t->preset == 3u) || (e == ENGI_ORACLE && t->preset == 10u) ||
-        (e == ENGI_MACRO && (t->preset == 7u || t->preset == 3u)))   /* (no bells anywhere, asked 2026-11-08: TRIO's
-                                                     * RING BELL, ORACLE's POLY BELLS, MACRO's FM BELL out of every pick;
-                                                     * MACRO's TOY BOX too, chip-like: a lead, the keys, a wavetable) */
-        engine_load_of(t, e, e == 6u ? 1u : e == ENGI_ORACLE ? 11u : t->preset == 7u ? 16u : 17u);
+    if ((e == 6u && t->preset == 3u) || (e == ENGI_ORACLE && t->preset == 10u) || (e == ENGI_MACRO && t->preset == 7u))
+        engine_load_of(t, e, e == 6u ? 1u : e == ENGI_ORACLE ? 11u : 16u);   /* (no bells anywhere, asked 2026-11-08:
+                                                     * TRIO's RING BELL, ORACLE's POLY BELLS, MACRO's FM BELL out of
+                                                     * every pick: a lead, the keys, a wavetable) */
     for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
         const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + k), tr);
         if (!d || d->max <= d->min) continue;
@@ -3552,12 +3551,12 @@ static void rnd_cosmic_generators(const uint8_t *role)
  * and then) a new progression, every part on it */
 static void rnd_cosmic_move(void)
 {
-    static const uint8_t mw[] = {3, 3, 2, 1, 1, 2, 1}, mv[] = {0, 1, 2, 3, 4, 5, 6};
+    static const uint8_t mw[] = {3, 3, 2, 1, 1, 2, 1};
     if (bar_n == rnd_fg.bar) return;
     rnd_fg.bar = bar_n;
     if (trk[RND_CS_PAD].seq_idx >= 16u) return;      /* (the phrase's first bar) */
     if (++rnd_fg.phrase % (settings_rnd_drift == 2u ? 2u : 4u) != 0u) return;
-    switch (rnd_pick(mv, mw, NELEM(mw))) {
+    switch (rnd_pick((const uint8_t *)"\0\1\2\3\4\5\6", mw, NELEM(mw))) {
     case 0: rnd_tp(RND_CS_ARP, P_MUTE, !trk[RND_CS_ARP].p[P_MUTE]); break;
     case 1: rnd_cs_pick(2u); rnd_cs_write(1u << RND_CS_BASS); break;
     case 2: rnd_cs_pick(4u); rnd_cs_write(1u << RND_CS_LEAD); break;

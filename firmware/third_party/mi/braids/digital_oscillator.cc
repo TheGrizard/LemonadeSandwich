@@ -2537,7 +2537,7 @@ DigitalOscillator::RenderFn DigitalOscillator::fn_table_[] = {
   BRAIDS_X(&DigitalOscillator::RenderTripleRingMod),
   &DigitalOscillator::RenderSawSwarm,
   BRAIDS_X(&DigitalOscillator::RenderComb),
-  &DigitalOscillator::RenderToy,
+  BRAIDS_X(&DigitalOscillator::RenderToy),   // melodee-tess: TOY out (2026-11-10: flash; its place CSAW's)
   BRAIDS_X(&DigitalOscillator::RenderDigitalFilter),
   BRAIDS_X(&DigitalOscillator::RenderDigitalFilter),
   BRAIDS_X(&DigitalOscillator::RenderDigitalFilter),

@@ -3,7 +3,7 @@
 /* MACRO with Braids (LEMONADE SANDWICH, 2026-11-08): Mutable Instruments Braids' macro-oscillator by Emilie Gillet
  * (firmware/third_party/mi/braids, MIT; braids_glue.cc; at 44.1 kHz: tools/braids_44k.py) as an engine, in Plaits'
  * place (eng_macro.c: too heavy on the AC79, its floating point; Braids is integer throughout, a voice a third to a
- * half of an ORACLE voice). MODEL: the models kept (BRAIDS_LEAN: textures, voices, FM, CSAW, FOLD, the swarm, TOY); TIMBR and COLOR: Braids' two (the voice's SHAPE moves TIMBR); TONE: a low-pass after it (the voice's
+ * half of an ORACLE voice). MODEL: the models kept (BRAIDS_LEAN: textures, voices, FM, CSAW, FOLD, the swarm; TOY out 2026-11-10); TIMBR and COLOR: Braids' two (the voice's SHAPE moves TIMBR); TONE: a low-pass after it (the voice's
  * CUTOFF moves it); BITS, RATE: Braids' own bit and rate reduction; STRIK: a note strikes it (VOWEL's consonant, the
  * grains and FM restarted; DRUM: struck at a fixed pitch, the key's root, for KICK DRUM CYMB and FM hits); DRIVE: a soft clip. The track's ADSR shapes it. Four voices a part, each a Braids
  * oscillator (688 bytes) from the audio arena. MELODEE_BRAIDS 0: none of it. */
@@ -17,7 +17,8 @@
  * 2.5x: its grains' peaks) and its voice budget units (its cost against Plaits'
  * VA, 4 units: 1 at most a quarter of it, else 2) */
 static const struct { uint8_t shape, gain_q4, units; } BR_MODEL[] = {
-    {0, 9, 1},   {3, 8, 2},   {14, 16, 2}, {16, 9, 1},     /* CSAW FOLD SWARM TOY */
+    {0, 9, 1},   {3, 8, 2},   {14, 16, 2}, {0, 9, 1},      /* CSAW FOLD SWARM CSAW (TOY's place, 2026-11-10: TOY out
+                                                             * for flash, the saved models' numbers kept) */
     {21, 7, 1},  {22, 13, 1}, {23, 28, 2},                  /* VOSIM VOWEL VFOF */
     {25, 6, 1},  {26, 6, 2},  {27, 6, 2},                   /* FM FBFM WTFM */
     {41, 21, 2}, {42, 16, 1}, {43, 8, 1}, {44, 24, 2}, {45, 40, 1}, {46, 6, 1},   /* NOISE TWINQ CLKN CLOUD DUST QPSK */
@@ -26,7 +27,7 @@ static const struct { uint8_t shape, gain_q4, units; } BR_MODEL[] = {
                                                              * drums, its 808-like kick, a struck drum, a metal cymbal;
                                                              * at the end, the saved models' numbers kept) */
 };
-static const char *const N_BR_MODEL[] = {"CSAW", "FOLD", "SWARM", "TOY", "VOSIM", "VOWEL", "VFOF", "FM", "FBFM",
+static const char *const N_BR_MODEL[] = {"CSAW", "FOLD", "SWARM", "CSAW", "VOSIM", "VOWEL", "VFOF", "FM", "FBFM",
                                          "WTFM", "NOISE", "TWINQ", "CLKN", "CLOUD", "DUST",
                                          "QPSK", "WTBL", "WMAP", "WLINE", "KICK", "DRUM", "CYMB"};
 _Static_assert(NELEM(BR_MODEL) == NELEM(N_BR_MODEL), "BR_MODEL / N_BR_MODEL");
@@ -124,13 +125,13 @@ static uint32_t mc_units(const struct track *t) { return BR_MODEL[br_model(t)].u
 #define BRP(n, mo, ti, co, to, a, d, s, r, mono) {n, {mo, ti, co, to, 0, 0, 1, 0}, {a, d, s, r}, 0, mono}
 #define BRD(n, mo, ti, co, to, a, d, s, r) {n, {mo, ti, co, to, 0, 0, 2, 0}, {a, d, s, r}, 0, 1}   /* (a drum: DRUM, mono) */
 static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the rest POLY; model: 0 CSAW 1 FOLD
-                                             * 2 SWARM 3 TOY 4 VOSIM 5 VOWEL 6 VFOF 7 FM 8 FBFM 9 WTFM 10 NOISE
+                                             * 2 SWARM 3 CSAW (was TOY) 4 VOSIM 5 VOWEL 6 VFOF 7 FM 8 FBFM 9 WTFM 10 NOISE
                                              * 11 TWINQ 12 CLKN 13 CLOUD 14 DUST 15 QPSK 16 WTBL 17 WMAP
                                              * 18 WLINE) */
     BRP("INIT CSAW",     0,  64,  64, 127,   0,  64, 127,  30, 0),   /* (the tests' pitch: a saw held) */
     BRP("FOLD LEAD",     1,  70,  40, 110,   2,  64, 110,  35, 1),
     BRP("SAW SWARM",     2,  80,  60,  90,  40,  64, 127,  70, 0),
-    BRP("TOY BOX",       3,  40,  60, 110,   0,  50,  60,  40, 0),
+    BRP("SAW PAD",       0,  40,  30,  90,  70,  64, 120,  90, 0),   /* (TOY BOX's place, TOY out) */
     BRP("VOSIM VOX",     4,  50,  60, 110,   4,  64, 110,  40, 1),
     BRP("VOWEL AH",      5,  30,  64, 120,   2,  64, 110,  40, 1),
     BRP("CHOIR FOF",     6,  40,  60, 115,  60,  64, 127,  80, 0),

@@ -80,7 +80,7 @@ int main(void)
             printf("    model %u (%s): peak %.0f rms %.0f\n", k, ENGINES[ENGI_MACRO]->edit[0].names[k], peak, rms);
         }
     }
-    check("every model plays (22: textures, voices, FM, wavetables, CSAW FOLD SWARM TOY, KICK DRUM CYMB): sound, finite, "
+    check("every model plays (22: textures, voices, FM, wavetables, CSAW FOLD SWARM CSAW, KICK DRUM CYMB): sound, finite, "
           "in range", ok && models == 22u);
     for (k = 0, ok = 1; k < NELEM(MC_PRESETS); k++) {
         sound(k);
@@ -143,9 +143,10 @@ int main(void)
     {                                                 /* STRIK DRUM: struck at the key's root, whatever the note */
         double z1, z2, z3, r;
         uint32_t k;
-        for (k = 0; k < 3u; k++) {                    /* (CSAW held, struck as a drum: its pitch in its crossings; FM's
-                                                     * phase carried from the last note in the arena muddles them) */
-            sound(0);
+        for (k = 0; k < 3u; k++) {                    /* (FOLD unfolded, a sine: two crossings a cycle; CSAW's turned
+                                                     * with the oscillator's state left in the arena, 2026-11-10) */
+            sound(1);
+            trk[0].p[P_E0 + 1u] = 0; trk[0].p[P_E0 + 2u] = 0;
             trk[0].p[P_E6] = k == 2u ? 1 : 2;         /* (DRUM; ON: the note's pitch) */
             trk[0].p[P_TRANS] = 24;                   /* (C4: at C2 its crossings once or twice a cycle) */
             play(k ? 67 : 48, 1.0, 0.9, &peak, &r, k == 0u ? &z1 : k == 1u ? &z2 : &z3, &tail);

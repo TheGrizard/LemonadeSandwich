@@ -143,7 +143,7 @@ macro-oscillator, by Emilie Gillet (MIT licence; not her product). FM6 is out (i
 is PHYS (too many cheap sounds), and so is DRUM (drums come from another machine). A saved track on any of them loads
 TRIO's first voice. MACRO is cheap: Braids works in whole numbers, so a voice costs a third
 to a half of an ORACLE voice, and a track plays four. Its **MODEL** picks one of 19: **CSAW**, **FOLD** (a wavefolder),
-**SWARM** (seven detuned saws), **TOY**; the voices **VOSIM**, **VOWEL** (a note strikes a consonant) and **VFOF**;
+**SWARM** (seven detuned saws), **CSAW** again (TOY's place: TOY is gone, for flash); the voices **VOSIM**, **VOWEL** (a note strikes a consonant) and **VFOF**;
 **FM**, **FBFM** (feedback FM) and **WTFM** (chaotic FM); and the noises **NOISE** (filtered), **TWINQ** (two resonant peaks), **CLKN** (clocked, digital), **CLOUD** (granular),
 **DUST** (particles) and **QPSK** (modem data); the wavetables **WTBL**, **WMAP** and **WLINE**; and Braids' drums
 **KICK** (808-like: TIMBR its decay, COLOR its tone), **DRUM** (a struck drum: a tom) and **CYMB** (metal). **TIMBR** and **COLOR** are Braids' two knobs, each model's own
@@ -867,7 +867,7 @@ What a roll writes, every one an ordinary setting you can then change on its pag
 - **MACRO in the rolls** (Braids): RND puts one track a roll (two now and then) on MACRO's VOWEL, CHOIR FOF or
   VOSIM, a consonant every note, its vowel anywhere: chopped speech among the rest; three rolls in five one track
   on a wavetable (WAVE TABLE, WAVE MAP or WAVE LINE, anywhere on the table, now and then crushed); and it picks
-  MACRO's other models now and then (never FM BELL or TOY BOX). MIRROR's four parts are often MACRO's wavetables,
+  MACRO's other models now and then (never FM BELL). MIRROR's four parts are often MACRO's wavetables,
   CRATE's hook now and then a sung vowel and its strings a choir. STATIC's noise layer is MACRO's GRAIN CLOUD, WIND, TWIN PEAKS, DUST, BIT NOISE or QPSK most rolls,
   and its fizz now and then SAW SWARM, FB GROWL, CHAOS FM, BIT NOISE or QPSK, crushed or driven a little. TIDE's texture is MACRO's
   WIND, DUST or TWIN PEAKS half the time.
