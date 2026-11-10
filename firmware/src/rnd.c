@@ -3353,8 +3353,8 @@ static void rnd_forge_move(void)
     }
 }
 
-/* COSMIC (asked 2026-11-10): instrumental synthwave after Com Truise: slow-motion, warm, driving, 92 to 104 BPM, a
- * minor or dorian key. Tracks fixed: 1 the bass, eighths (sixteenths now and then) on the chord's notes, never a rest;
+/* COSMIC (asked 2026-11-10): instrumental synthwave after Com Truise: slow-motion, warm, driving, 84 to 92 BPM, a
+ * minor key. Tracks fixed: 1 the bass, eighths (sixteenths now and then) on the chord's notes, never a rest;
  * 2 the warm pad, wide, holding a slow progression; 3 the lead, slow and melodic, long notes, its filter swept slowly;
  * 4 the arp, sixteenths on the chord's notes up high. Locked, they repeat and drive. DRIFT SLOW or FAST: the arp comes
  * and goes every 16 or 8 bars (OFF: as rolled) */
@@ -3386,8 +3386,9 @@ static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
     if (tr == RND_CS_BASS) {                        /* (deep and held: a sub octave under it, the filter low, barely
                                                      * opened by its envelope, sustained) */
         rnd_tp(tr, P_E0, rnd_pct(60) ? 0 : 1);      /* SAW3, PLS3 */
-        rnd_tp(tr, P_E0 + 1u, 0); rnd_tp(tr, P_E0 + 2u, -12);
-        rnd_tp(tr, P_E0 + 4u, 0); rnd_tp(tr, P_E0 + 5u, rnd_rr(34, 48)); rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 30));
+        rnd_tp(tr, P_E0 + 1u, 12); rnd_tp(tr, P_E0 + 2u, 0);   /* (an octave over it for its edge: it two down, the
+                                                     * references' bass about 40 Hz, measured 2026-11-10) */
+        rnd_tp(tr, P_E0 + 4u, 0); rnd_tp(tr, P_E0 + 5u, rnd_rr(40, 54)); rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 30));
         rnd_tp(tr, P_ED_FLT, rnd_rr(6, 16));
         rnd_tp(tr, P_VOICE, V_MONO);
         rnd_tp(tr, P_ATK, 2); rnd_tp(tr, P_DEC, rnd_rr(70, 90)); rnd_tp(tr, P_SUS, rnd_rr(100, 118)); rnd_tp(tr, P_REL, 30);
@@ -3403,11 +3404,12 @@ static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
         rnd_tp(tr, P_E0 + 3u, rnd_rr(8, 16)); rnd_tp(tr, P_E0 + 4u, 0);
         if (lead) {                                 /* (held, soft in: unison or an octave, the filter half open, no
                                                      * envelope on it) */
-            rnd_tp(tr, P_E0 + 5u, rnd_rr(58, 76)); rnd_tp(tr, P_E0 + 6u, rnd_rr(15, 35));
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(76, 94)); rnd_tp(tr, P_E0 + 6u, rnd_rr(15, 35));   /* (brighter: the
+                                                     * references' saws) */
             rnd_tp(tr, P_ED_FLT, 0);
         } else {                                    /* (the arp: a saw or pulse, dark, resonant, squelched) */
             rnd_tp(tr, P_E0, rnd_pct(50) ? 0 : 1);
-            rnd_tp(tr, P_E0 + 5u, rnd_rr(42, 60)); rnd_tp(tr, P_E0 + 6u, rnd_rr(55, 80));
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(58, 76)); rnd_tp(tr, P_E0 + 6u, rnd_rr(55, 80));
             rnd_tp(tr, P_ED_FLT, rnd_rr(16, 30));
         }
         rnd_tp(tr, P_VOICE, lead ? V_LEGATO : V_MONO);
@@ -3446,9 +3448,9 @@ static void rnd_cosmic_generators(const uint8_t *role)
     rnd_tx(RND_CS_LEAD, TX_TUR_SPAN, 2);
     rnd_tp(RND_CS_LEAD, P_SDIV, rnd_pct(60) ? 0 : 6);   /* 1/4, 1/2 */
     rnd_tp(RND_CS_LEAD, P_SGATE, rnd_rr(100, 127));
-    rnd_tp(RND_CS_BASS, P_TRANS, -12); rnd_tp(RND_CS_PAD, P_TRANS, 0);
+    rnd_tp(RND_CS_BASS, P_TRANS, -24); rnd_tp(RND_CS_PAD, P_TRANS, 0);
     rnd_tp(RND_CS_LEAD, P_TRANS, 12); rnd_tp(RND_CS_ARP, P_TRANS, rnd_pct(50) ? 12 : 24);
-    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(92, 104));
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(84, 92));   /* (VHS Sex, Cathode Girls: about 86) */
     for (tr = 0; tr < TESSERA_TRACKS; tr++) tess_roll_apply(tr);
     rnd_fg.bar = bar_n;
     rnd_fg.phrase = 0;

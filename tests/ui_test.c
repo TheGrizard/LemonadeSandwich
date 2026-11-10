@@ -7156,7 +7156,7 @@ static int test_rnd(void)
             rnd_roll();
             bpm = pid_get(PID_GLOBAL(G_BPM), 0);
             sc = trk[0].p[P_SCALE];
-            tempo_ok &= bpm >= 92 && bpm <= 104;
+            tempo_ok &= bpm >= 84 && bpm <= 92;
             key_ok &= sc == 2 || sc == 7;
             ok &= tessera.mode[RND_CS_BASS] == TESS_ENG_EUCLID && tessera.mode[RND_CS_ARP] == TESS_ENG_EUCLID &&
                   tessera.mode[RND_CS_PAD] == TESS_ENG_CHORD && tessera.mode[RND_CS_LEAD] == TESS_ENG_TURING;
@@ -7181,7 +7181,7 @@ static int test_rnd(void)
         settings_rnd_drift = 0;
         bad += check("RND COSMIC: 80 rolls: the bass EUCLID syncopated (5-7 of 16, held to the next), the pad CHORD's "
                      "sevenths, the lead TURING, the arp sixteenths, both on the chord's notes; the bass and lead TRIO "
-                     "(held); 92-104 BPM; minor only (MIN, HARM)", ok && tempo_ok && key_ok);
+                     "(held); 84-92 BPM; minor only (MIN, HARM)", ok && tempo_ok && key_ok);
         bad += check("RND COSMIC: ..the bass below the lead, the arp highest; dry, no vibrato", regs && dry);
         bad += check("RND COSMIC: ..DRIFT OFF: the arp as rolled 32 bars; FAST: it comes and goes", still && toggled);
         transport_req = 2;
