@@ -28,7 +28,7 @@
  * sections, without drums, to sample: rnd_crate_sound), RND_STATIC STATIC (a wall of noise, ambient: it builds, overloads
  * and collapses: rnd_static_move), RND_PHASE PHASE (after Steve Reich: one cell on two tracks, one
  * moving a step ahead every few bars: rnd_phase_move). (tessera-rnd: AMBIENT, NICE, GLITCH and PULSE gone; their codes,
- * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE STATIC FORGE CHAOS RND.) Saved as RND_CODE:
+ * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE STATIC FORGE CHAOS COSMIC RND.) Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
  * beside them (0..7: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
@@ -36,10 +36,10 @@
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
 enum { RND_OFF, RND_FALL, RND_TIDE, RND_WOZZA, RND_ORBIT, RND_LOOPS, RND_HALO, RND_MIRROR, RND_PHASE, RND_CRATE,
-       RND_STATIC, RND_FORGE, RND_CHAOS, RND_FREE, RND_MODES };           /* (the menu's order, asked 2026-11-08; the codes each mode's own) */
+       RND_STATIC, RND_FORGE, RND_CHAOS, RND_COSMIC, RND_FREE, RND_MODES };           /* (the menu's order, asked 2026-11-08; the codes each mode's own) */
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
     {0x00u, 0}, {0x80u, 1}, {0x40u, 4}, {0x40u, 3}, {0xC0u, 1}, {0x80u, 2}, {0x80u, 3}, {0xC0u, 3}, {0x40u, 5},
-    {0x80u, 4}, {0x80u, 5}, {0xC0u, 4}, {0xC0u, 5}, {0x40u, 0},   /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
+    {0x80u, 4}, {0x80u, 5}, {0xC0u, 4}, {0xC0u, 5}, {0xC0u, 6}, {0x40u, 0},   /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
                                                      * 0x80 0, GLITCH 0x40 1, PULSE 0x40 2: gone) */
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
@@ -234,6 +234,8 @@ static void rnd_take(void)
 
 /* ------------------------------------------------------------ the roll: sound --- */
 /* PHYS: in no roll (heard: its sounds skewed the tracks, cheap; the engine stays to play by hand) */
+/* the engines a build leaves out never match (an engine number is 8 bits: the compiler drops what they guard; the
+ * comparisons only, so a roll for a build without them costs nothing: room for COSMIC, 2026-11-10) */
 #define RND_FM6 (MELODEE_FM6 ? ENGI_FM6 : 0x100u)
 #define RND_PHYS (MELODEE_PHYS ? ENGI_PHYS : 0x100u)
 static int rnd_phys_ok(void) { return 0; }
@@ -323,7 +325,7 @@ static uint8_t rnd_tide;                           /* 1: this roll is TIDE's */
 static uint8_t rnd_crate;                          /* 1: this roll is CRATE's */
 static uint8_t rnd_phase;                          /* 1: this roll is PHASE's */
 static uint8_t rnd_static;                         /* 1: this roll is STATIC's */
-static uint8_t rnd_forge, rnd_chaos;               /* 1: this roll is FORGE's or CHAOS's (rnd_forge both, rnd_chaos
+static uint8_t rnd_forge, rnd_chaos, rnd_cosmic;               /* 1: this roll is FORGE's or CHAOS's (rnd_forge both, rnd_chaos
                                                      * CHAOS's) */
 static uint8_t rnd_wz_lead = NTRK;                 /* WOZZA: the first melody's track (a second one sparser, higher) */
 static uint8_t rnd_want_e = 0xFFu, rnd_want_pi = 0xFFu;   /* PULSE: the engine and preset its role wants (0xFF: rolled) */
@@ -3275,8 +3277,8 @@ static void rnd_forge_registers(void)
 }
 static void rnd_key_forge(void)
 {
-    static const uint8_t sc[] = {2, 8, 3, 10}, sw[] = {4, 3, 2, 1};   /* MIN PHRY DOR LOC */
-    int32_t scale = (int32_t)rnd_pick(sc, sw, rnd_chaos ? 4u : 3u), root = rnd_rr(0, 11);
+    static const uint8_t sc[] = {2, 3, 8, 10}, sw[] = {4, 2, 3, 1};   /* MIN DOR PHRY LOC (COSMIC: MIN DOR) */
+    int32_t scale = (int32_t)rnd_pick(sc, sw, rnd_chaos ? 4u : rnd_cosmic ? 2u : 3u), root = rnd_rr(0, 11);
     uint32_t tr;
     rnd_tx(0, TX_KEY_LINK, 1);
     for (tr = 0; tr < NTRK; tr++) {
@@ -3347,6 +3349,97 @@ static void rnd_forge_move(void)
         }
         break;
     }
+}
+
+/* COSMIC (asked 2026-11-10): instrumental synthwave after Com Truise: slow-motion, warm, driving, 92 to 104 BPM, a
+ * minor or dorian key. Tracks fixed: 1 the bass, eighths (sixteenths now and then) on the chord's notes, never a rest;
+ * 2 the warm pad, wide, holding a slow progression; 3 the lead, slow and melodic, long notes, its filter swept slowly;
+ * 4 the arp, sixteenths on the chord's notes up high. Locked, they repeat and drive. DRIFT SLOW or FAST: the arp comes
+ * and goes every 16 or 8 bars (OFF: as rolled) */
+#define RND_CS_BASS 0u
+#define RND_CS_PAD 1u
+#define RND_CS_LEAD 2u
+#define RND_CS_ARP 3u
+static void rnd_roles_cosmic(uint8_t *role)
+{
+    role[RND_CS_BASS] = RND_ROLE_BASS; role[RND_CS_PAD] = RND_ROLE_CHORDS;
+    role[RND_CS_LEAD] = RND_ROLE_MELODY; role[RND_CS_ARP] = RND_ROLE_TINT;
+}
+static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, uint32_t role)
+{
+    static const uint8_t op[4][3] = {{6, 7, 8}, {1, 19, 22}, {5, 17, 4}, {20, 9, 20}};   /* ORACLE: FUNK SUB ACID BASS;
+                                                     * WARM SWEEP PAD, FAT POLY; SYNC SQUARE LEAD, BRASS; SEQ BLIP, PLUCK */
+    static const uint8_t tp[4][3] = {{0, 0, 9}, {5, 6, 8}, {10, 2, 13}, {1, 1, 10}};   /* TRIO: FAT, SUB BASS; WARM PAD,
+                                                     * STRING MACH, SOFT PAD; SOFT, SYNC LEAD, ANALOG BRASS; ARP LEAD */
+    int orc = *oracles < 2u && eng_ok(ENGI_ORACLE) && rnd_pct(tr == RND_CS_PAD ? 80 : 50);
+    uint8_t nice = rnd_nice;
+    rnd_want_e = orc ? ENGI_ORACLE : 6u;
+    rnd_want_pi = (orc ? op : tp)[tr][rnd_next() % 3u];
+    rnd_nice = 1;
+    rnd_sound(tr, fm6s, phys, oracles, role);
+    rnd_nice = nice;
+    rnd_want_e = rnd_want_pi = 0xFFu;
+    rnd_tp_still(tr);
+    if (tr == RND_CS_BASS) {                        /* (short, a bite, mono) */
+        if (trk[tr].eng_req == 6u) {
+            rnd_tp(tr, P_E0, rnd_pct(60) ? 0 : 1);  /* SAW3, PLS3 */
+            rnd_tp(tr, P_E0 + 1u, 0); rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? -12 : 0);
+            rnd_tp(tr, P_E0 + 5u, rnd_rr(36, 58)); rnd_tp(tr, P_ED_FLT, rnd_rr(30, 60));
+        }
+        rnd_tp(tr, P_VOICE, V_MONO);
+        rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_DEC, rnd_rr(40, 60)); rnd_tp(tr, P_SUS, rnd_rr(30, 70)); rnd_tp(tr, P_REL, 20);
+        rnd_tp(tr, P_LEVEL, rnd_rr(96, 104));
+    } else if (tr == RND_CS_PAD) {                  /* (warm, wide, slow in) */
+        rnd_tp(tr, P_VOICE, V_POLY);
+        rnd_tp(tr, P_ATK, rnd_rr(50, 80)); rnd_tp(tr, P_SUS, 120); rnd_tp(tr, P_REL, rnd_rr(80, 100));
+        rnd_tp(tr, P_SPRD, rnd_rr(80, 120)); rnd_tp(tr, P_DETUNE, rnd_rr(20, 50));
+        rnd_tp(tr, P_LEVEL, rnd_rr(98, 106));
+    } else {                                        /* the lead: slow, its filter swept; the arp: short, panned */
+        int lead = tr == RND_CS_LEAD;
+        rnd_tp(tr, P_VOICE, lead ? V_LEGATO : V_MONO);
+        rnd_tp(tr, P_ATK, lead ? rnd_rr(20, 50) : 0); rnd_tp(tr, P_SUS, lead ? 110 : 0);
+        rnd_tp(tr, P_DEC, lead ? 100 : rnd_rr(25, 40)); rnd_tp(tr, P_REL, lead ? rnd_rr(60, 80) : rnd_rr(20, 40));
+        rnd_tp(tr, P_LSYNC, rnd_pct(50) ? 1 : 2); rnd_tp(tr, P_LTRIG, 1); rnd_tp(tr, P_LWAVE, 1);   /* (4 or 2 bars, free) */
+        rnd_tp(tr, P_LD_FLT, rnd_rr(15, 30));
+        rnd_tp(tr, P_PAN, lead ? 0 : rnd_pct(50) ? rnd_rr(16, 30) : -rnd_rr(16, 30));
+        rnd_tp(tr, P_LEVEL, lead ? rnd_rr(80, 88) : rnd_rr(94, 102));
+    }
+}
+static void rnd_cosmic_generators(const uint8_t *role)
+{
+    uint32_t tr, chords = 0, n = rnd_pct(70) ? 8u : 16u;
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+        rnd_role_generator(tr, role[tr], &chords);
+        rnd_tx(tr, TX_EV_EVERY, 0); rnd_tx(tr, TX_TW_DROP, 0); rnd_tx(tr, TX_TW_HUMAN, 0);
+    }
+    for (tr = RND_CS_BASS; tr <= RND_CS_ARP; tr += RND_CS_ARP) {   /* the bass and the arp: every step, the chord's notes */
+        rnd_tx(tr, TX_MODE, TESS_ENG_EUCLID);
+        rnd_tx(tr, TX_EUC_STEPS, tr ? 16 : (int32_t)n);
+        rnd_tx(tr, TX_EUC_PULSES, tr ? rnd_rr(12, 16) : (int32_t)n);
+        rnd_tx(tr, TX_EUC_ROT, 0);
+        rnd_tp(tr, P_SDIV, tr || n == 16u ? 2 : 1); /* 1/16, 1/8 */
+        rnd_tp(tr, P_SGATE, tr ? rnd_rr(30, 50) : rnd_rr(45, 75));
+        rnd_tp(tr, P_QUANT, Q_CHRD);
+    }
+    rnd_tx(RND_CS_LEAD, TX_MODE, TESS_ENG_TURING);  /* the lead: a locked loop, long notes */
+    rnd_tx(RND_CS_LEAD, TX_TUR_LEN, rnd_pct(50) ? 8 : 16);
+    rnd_tx(RND_CS_LEAD, TX_TUR_PROB, 0);
+    rnd_tx(RND_CS_LEAD, TX_TUR_SPAN, 2);
+    rnd_tp(RND_CS_LEAD, P_SDIV, rnd_pct(60) ? 0 : 6);   /* 1/4, 1/2 */
+    rnd_tp(RND_CS_LEAD, P_SGATE, rnd_rr(100, 127));
+    rnd_tp(RND_CS_BASS, P_TRANS, -12); rnd_tp(RND_CS_PAD, P_TRANS, 0);
+    rnd_tp(RND_CS_LEAD, P_TRANS, 12); rnd_tp(RND_CS_ARP, P_TRANS, rnd_pct(50) ? 12 : 24);
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(92, 104));
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) tess_roll_apply(tr);
+    rnd_fg.bar = bar_n;
+    rnd_fg.phrase = 0;
+}
+static void rnd_cosmic_move(void)                   /* (the arp in and out, a phrase at a time) */
+{
+    if (bar_n == rnd_fg.bar) return;
+    rnd_fg.bar = bar_n;
+    if (++rnd_fg.phrase % (settings_rnd_drift == 2u ? 8u : 16u) == 0u && rnd_pct(60))
+        rnd_tp(RND_CS_ARP, P_MUTE, !trk[RND_CS_ARP].p[P_MUTE]);
 }
 
 /* a CHORD track's chord known at once, before it first strikes (its lowest note for FOLLOW, its notes for QNT CHRD):
@@ -4391,10 +4484,11 @@ static void rnd_drift(void)
         if (rnd_snap.valid && !rnd_backed && song.playing) rnd_static_move();
         return;
     }
-    if (rnd_forge) {                                /* (FORGE, CHAOS: their set's arc, DRIFT SLOW or FAST; OFF: the
-                                                     * loops as rolled) */
-        if (settings_rnd_drift && rnd_snap.valid && !rnd_backed && song.playing) rnd_forge_move();
-        else rnd_fg.bar = bar_n;
+    if (rnd_forge || rnd_cosmic) {                  /* (FORGE, CHAOS: their set's arc, COSMIC: the arp in and out;
+                                                     * DRIFT SLOW or FAST; OFF: the loops as rolled) */
+        if (settings_rnd_drift && rnd_snap.valid && !rnd_backed && song.playing) {
+            if (rnd_cosmic) rnd_cosmic_move(); else rnd_forge_move();
+        } else rnd_fg.bar = bar_n;
         return;
     }
     if (!settings_rnd_drift || !rnd_snap.valid || rnd_backed || !song.playing || rnd_crate) {   /* (CRATE: a record,
@@ -4458,7 +4552,7 @@ static void rnd_roles(uint8_t *role, uint32_t ambient)
 /* the roll's mode as the screen says it, with the seed after */
 static const char *rnd_name(void)
 {
-    return rnd_chaos ? "CHAOS " : rnd_forge ? "FORGE " : rnd_static ? "STATIC " : rnd_phase ? "PHASE " : rnd_crate ? "CRATE " : rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " :
+    return rnd_cosmic ? "COSMIC " : rnd_chaos ? "CHAOS " : rnd_forge ? "FORGE " : rnd_static ? "STATIC " : rnd_phase ? "PHASE " : rnd_crate ? "CRATE " : rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " :
            rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " :
            "RND ";
 }
@@ -4665,7 +4759,9 @@ static void rnd_roll(void)
     rnd_static = (uint8_t)(rnd_setting() == RND_STATIC);
     rnd_chaos = (uint8_t)(rnd_setting() == RND_CHAOS);
     rnd_forge = (uint8_t)(rnd_setting() == RND_FORGE || rnd_chaos);
-    if (rnd_wozza || rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_static || rnd_forge) rnd_nice = 1;   /* (WOZZA HALO MIRROR TIDE: NICE's gentle
+    rnd_cosmic = (uint8_t)(rnd_setting() == RND_COSMIC);
+    if (rnd_wozza || rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_static || rnd_forge || rnd_cosmic)
+        rnd_nice = 1;   /* (WOZZA HALO MIRROR TIDE: NICE's gentle
                                                      * drift) */
     if (rnd_loops || rnd_orbit) rnd_nice = 1;       /* (LOOPS, ORBIT: NICE's gentle voices too) */
     rnd_roles(role, ambient && !rnd_loops && !rnd_orbit);
@@ -4679,6 +4775,7 @@ static void rnd_roll(void)
     if (rnd_phase) rnd_roles_phase(role);
     if (rnd_static) rnd_roles_static(role);
     if (rnd_forge) rnd_roles_forge(role);
+    if (rnd_cosmic) rnd_roles_cosmic(role);
     memcpy(rnd_role_of, role, sizeof rnd_role_of);
     rnd_lp_phys = rnd_lp_glass = NTRK;
     if (rnd_loops) {                                /* (LOOPS: the piano's track, the glass') */
@@ -4703,6 +4800,7 @@ static void rnd_roll(void)
                 else if (rnd_phase) rnd_phase_sound(tr, &fm6s, &phys, &oracles);
                 else if (rnd_static) rnd_static_sound(tr, &fm6s, &phys, &oracles);
                 else if (rnd_forge) rnd_forge_sound(tr, &oracles);
+                else if (rnd_cosmic) rnd_cosmic_sound(tr, &fm6s, &phys, &oracles, role[tr]);
                 else if (rnd_loops) rnd_loops_voice(tr, &fm6s, &phys, &oracles);
                 else rnd_sound(tr, &fm6s, &phys, &oracles, role[tr]);
     }
@@ -4716,7 +4814,7 @@ static void rnd_roll(void)
     else if (rnd_phase) ;                           /* (PHASE: after its generators, rnd_phase_registers) */
     else if (rnd_static) rnd_static_registers();
     else if (rnd_forge) rnd_forge_registers();
-    else rnd_registers();
+    else if (!rnd_cosmic) rnd_registers();          /* (COSMIC: its generators set them) */
     if (rnd_fall) rnd_fall_registers(role);
     if (rnd_loops) rnd_loops_registers();           /* (LOOPS: spread wider, -24 to +24) */
     if (rnd_wozza) rnd_key_wozza();
@@ -4726,7 +4824,7 @@ static void rnd_roll(void)
     else if (rnd_crate) rnd_key_crate();
     else if (rnd_phase) rnd_key_phase();
     else if (rnd_static) rnd_key_static();
-    else if (rnd_forge) rnd_key_forge();
+    else if (rnd_forge || rnd_cosmic) rnd_key_forge();
     else if (rnd_loops || rnd_orbit) rnd_key_loops();
     else if (ambient) rnd_key_ambient();
     else rnd_key();
@@ -4743,6 +4841,9 @@ static void rnd_roll(void)
         for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
     } else if (rnd_forge) {
         rnd_forge_generators();
+        for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
+    } else if (rnd_cosmic) {
+        rnd_cosmic_generators(role);
         for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
     } else if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate) {
         if (rnd_halo) rnd_halo_generators(role);
@@ -4765,13 +4866,13 @@ static void rnd_roll(void)
     }
     rnd_tails();
     rnd_budget();
-    if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_forge) {
+    if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_forge || rnd_cosmic) {
         rnd_fx_dry();
         if (rnd_halo) rnd_cords_halo(role);
         else if (rnd_mirror) rnd_cords_mirror(role);
         else if (rnd_tide) rnd_cords_tide();
         else if (rnd_forge) rnd_cords_forge();
-        else rnd_cords_crate();                     /* (CRATE, PHASE: none) */
+        else rnd_cords_crate();                     /* (CRATE, PHASE, COSMIC: none) */
     } else if (rnd_static) {                        /* (its own: SPIT's drive, the fizz) */
         rnd_static_fx();
         rnd_cords_static();
