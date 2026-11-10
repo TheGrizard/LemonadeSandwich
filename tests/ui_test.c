@@ -7145,29 +7145,44 @@ static int test_rnd(void)
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
     }
-    {                                               /* COSMIC: synthwave (Com Truise, asked 2026-11-10): the bass
-                                                     * driving on the chord's notes, the pad's progression, a slow lead,
-                                                     * the arp; DRIFT OFF: still, SLOW/FAST: the arp in and out */
-        uint32_t r, k, ok = 1, tempo_ok = 1, dry = 1, regs = 1, still = 1, toggled = 0, key_ok = 1;
+    {                                               /* COSMIC: synthwave (Com Truise, asked 2026-11-10), its phrase
+                                                     * composed on STEP: a chord a bar, the bass its root, the pad its
+                                                     * seventh, the lead on its notes, the arp late; DRIFT OFF: still,
+                                                     * SLOW/FAST: the arp in and out */
+        uint32_t r, k, ok = 1, tempo_ok = 1, dry = 1, regs = 1, still = 1, toggled = 0, key_ok = 1, roots = 1, inkey = 1;
+        uint32_t lands = 1, arp_late = 0, held = 1;
         rnd_mode_put(RND_COSMIC);
         settings_rnd_drift = 0;
         for (r = 0; r < 80u; r++) {
-            int32_t bpm, sc;
+            int32_t bpm, rt;
+            uint32_t b, i, mask;
             rnd_roll();
             bpm = pid_get(PID_GLOBAL(G_BPM), 0);
-            sc = trk[0].p[P_SCALE];
-            tempo_ok &= bpm >= 84 && bpm <= 92;
-            key_ok &= sc == 2 || sc == 7;
-            ok &= tessera.mode[RND_CS_BASS] == TESS_ENG_EUCLID && tessera.mode[RND_CS_ARP] == TESS_ENG_EUCLID &&
-                  tessera.mode[RND_CS_PAD] == TESS_ENG_CHORD && tessera.mode[RND_CS_LEAD] == TESS_ENG_TURING;
-            k = (uint32_t)pid_get(PID_TESS(TX_EUC_PULSES), RND_CS_BASS);
-            ok &= k >= 5u && k <= 7u && pid_get(PID_TESS(TX_NL_MODE), RND_CS_BASS) == 2 &&
-                  trk[RND_CS_BASS].p[P_QUANT] == Q_CHRD && trk[RND_CS_ARP].p[P_QUANT] == Q_CHRD &&
-                  trk[RND_CS_ARP].p[P_SDIV] == 2 && trk[RND_CS_PAD].p[P_CHRD] == 2 &&
-                  trk[RND_CS_BASS].eng_req == 6u && trk[RND_CS_LEAD].eng_req == 6u;
-            regs &= trk[RND_CS_BASS].p[P_TRANS] < trk[RND_CS_LEAD].p[P_TRANS] &&
-                    trk[RND_CS_LEAD].p[P_TRANS] <= trk[RND_CS_ARP].p[P_TRANS];
-            for (tr = 0; tr < NTRK; tr++) dry &= trk[tr].p[P_FXTYPE] == FX_OFF && trk[tr].p[P_LD_PIT] == 0;
+            rt = trk[0].p[P_ROOT] % 12;
+            mask = scale_mask(&trk[0]);
+            tempo_ok &= bpm >= 108 && bpm <= 118;
+            key_ok &= trk[0].p[P_SCALE] == 2;
+            for (tr = 0; tr < NTRK; tr++) {
+                ok &= tessera.mode[tr] == TESS_ENG_OFF && trk[tr].p[P_SLEN] == 64 && trk[tr].p[P_SDIV] == 2;
+                dry &= trk[tr].p[P_FXTYPE] == FX_OFF && trk[tr].p[P_LD_PIT] == 0;
+                for (i = 0; i < 64u; i++) {
+                    const step_t *st = &trk[tr].step[i];
+                    for (k = 0; st->time == ST_NOTE && k < st->n; k++)
+                        inkey &= (mask >> ((st->note[k] - rt + 120) % 12) & 1u) != 0;
+                }
+            }
+            for (b = 0; b < 4u; b++) {
+                const step_t *pb = &trk[RND_CS_PAD].step[16u * b], *bs = &trk[RND_CS_BASS].step[16u * b];
+                const step_t *ld = &trk[RND_CS_LEAD].step[16u * b];
+                ok &= pb->time == ST_NOTE && pb->n == 4u;
+                roots &= bs->time == ST_NOTE && bs->note[0] % 12 == pb->note[0] % 12 && bs->note[0] < 48u;
+                for (k = 0; ld->time == ST_NOTE && k < 4u; k++) if (ld->note[0] % 12 == pb->note[k] % 12) break;
+                lands &= ld->time != ST_NOTE || k < 4u;
+                regs &= ld->time != ST_NOTE || ld->note[0] > pb->note[0];
+                if (b == 3u) arp_late += trk[RND_CS_ARP].step[48].time == ST_NOTE || trk[RND_CS_ARP].step[49].time == ST_NOTE;
+                for (i = 1; i < 16u; i++) held &= pb[i].time != ST_REST;
+            }
+            ok &= trk[RND_CS_BASS].eng_req == 6u && trk[RND_CS_LEAD].eng_req == 6u && trk[RND_CS_ARP].eng_req == 6u;
         }
         rnd_play_bars(2);
         k = trk[RND_CS_ARP].p[P_MUTE];
@@ -7179,10 +7194,12 @@ static int test_rnd(void)
             toggled |= trk[RND_CS_ARP].p[P_MUTE] != (int16_t)k;
         }
         settings_rnd_drift = 0;
-        bad += check("RND COSMIC: 80 rolls: the bass EUCLID syncopated (5-7 of 16, held to the next), the pad CHORD's "
-                     "sevenths, the lead TURING, the arp sixteenths, both on the chord's notes; the bass and lead TRIO "
-                     "(held); 84-92 BPM; minor only (MIN, HARM)", ok && tempo_ok && key_ok);
-        bad += check("RND COSMIC: ..the bass below the lead, the arp highest; dry, no vibrato", regs && dry);
+        bad += check("RND COSMIC: 80 rolls: four bars on STEP at 1/16, a seventh a bar on the pad, held; TRIO bass, lead, "
+                     "arp; 108-118 BPM; MIN", ok && held && tempo_ok && key_ok);
+        bad += check("RND COSMIC: ..the bass on each chord's root on its downbeat, low; every note in the key; the lead's "
+                     "first note on the chord, above the pad; the arp in the last bar mostly", roots && inkey && lands &&
+                     regs && arp_late > 50u);
+        bad += check("RND COSMIC: ..dry, no vibrato", dry);
         bad += check("RND COSMIC: ..DRIFT OFF: the arp as rolled 32 bars; FAST: it comes and goes", still && toggled);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }

@@ -3277,9 +3277,9 @@ static void rnd_forge_registers(void)
 }
 static void rnd_key_forge(void)
 {
-    static const uint8_t sc[] = {2, 3, 8, 10}, sw[] = {4, 2, 3, 1}, cs[] = {2, 7}, cw[] = {4, 1};   /* MIN DOR PHRY LOC;
-                                                     * COSMIC: minor only (asked 2026-11-10), natural, harmonic */
-    int32_t scale = rnd_cosmic ? (int32_t)rnd_pick(cs, cw, 2u) : (int32_t)rnd_pick(sc, sw, rnd_chaos ? 4u : 3u);
+    static const uint8_t sc[] = {2, 3, 8, 10}, sw[] = {4, 2, 3, 1};   /* MIN DOR PHRY LOC; COSMIC: MIN (its phrase
+                                                     * composed on it) */
+    int32_t scale = rnd_cosmic ? 2 : (int32_t)rnd_pick(sc, sw, rnd_chaos ? 4u : 3u);
     int32_t root = rnd_rr(0, 11);
     uint32_t tr;
     rnd_tx(0, TX_KEY_LINK, 1);
@@ -3353,12 +3353,11 @@ static void rnd_forge_move(void)
     }
 }
 
-/* COSMIC (asked 2026-11-10): instrumental synthwave after Com Truise: slow-motion, warm, driving, 84 to 92 BPM, a
- * minor key; no drums (the player's own). Tracks fixed: 1 the bass, deep, syncopated, held, on the chord's notes;
- * 2 the warm pad, wide, minor sevenths on a slow progression; 3 the lead, slow and melodic, long held notes, its
- * filter swept slowly; 4 the arp, sixteenths with gaps on the chord's notes up high, dark, resonant. Locked, they
- * repeat. DRIFT SLOW or FAST: the arp comes
- * and goes every 16 or 8 bars (OFF: as rolled) */
+/* COSMIC (asked 2026-11-10): instrumental synthwave after Com Truise and 80s Stallone: warm, driving, 108 to 118 BPM,
+ * a minor key; no drums (the player's own). Its phrase composed (rnd_cosmic_generators), four bars on STEP: 1 the
+ * bass, deep, driving eighths on each chord's root; 2 the pad, a seventh a bar, spread, held; 3 the lead, melodic, on
+ * the chord's notes, its filter swept slowly; 4 the arp, the chord up and down late in the phrase. Locked, they
+ * repeat. DRIFT SLOW or FAST: the arp comes and goes every 16 or 8 bars (OFF: as rolled) */
 #define RND_CS_BASS 0u
 #define RND_CS_PAD 1u
 #define RND_CS_LEAD 2u
@@ -3387,8 +3386,8 @@ static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
     if (tr == RND_CS_BASS) {                        /* (deep and held: a sub octave under it, the filter low, barely
                                                      * opened by its envelope, sustained) */
         rnd_tp(tr, P_E0, rnd_pct(60) ? 0 : 1);      /* SAW3, PLS3 */
-        rnd_tp(tr, P_E0 + 1u, 12); rnd_tp(tr, P_E0 + 2u, 0);   /* (an octave over it for its edge: it two down, the
-                                                     * references' bass about 40 Hz, measured 2026-11-10) */
+        rnd_tp(tr, P_E0 + 1u, rnd_pct(40) ? 12 : 0); rnd_tp(tr, P_E0 + 2u, 0);   /* (an octave over it now and then for
+                                                     * its edge; the references' bass 40 to 90 Hz, measured 2026-11-10) */
         rnd_tp(tr, P_E0 + 4u, 0); rnd_tp(tr, P_E0 + 5u, rnd_rr(40, 54)); rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 30));
         rnd_tp(tr, P_ED_FLT, rnd_rr(6, 16));
         rnd_tp(tr, P_VOICE, V_MONO);
@@ -3398,7 +3397,7 @@ static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
         rnd_tp(tr, P_VOICE, V_POLY);
         rnd_tp(tr, P_ATK, rnd_rr(50, 80)); rnd_tp(tr, P_SUS, 120); rnd_tp(tr, P_REL, rnd_rr(80, 100));
         rnd_tp(tr, P_SPRD, rnd_rr(80, 120)); rnd_tp(tr, P_DETUNE, rnd_rr(20, 50));
-        rnd_tp(tr, P_LEVEL, rnd_rr(98, 106));
+        rnd_tp(tr, P_LEVEL, rnd_rr(104, 112));
     } else {                                        /* the lead: slow, its filter swept; the arp: short, panned */
         int lead = tr == RND_CS_LEAD;
         rnd_tp(tr, P_E0 + 1u, rnd_pct(50) ? 0 : 12); rnd_tp(tr, P_E0 + 2u, rnd_pct(50) ? 0 : -12);
@@ -3419,39 +3418,100 @@ static void rnd_cosmic_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32
         rnd_tp(tr, P_LSYNC, rnd_pct(50) ? 1 : 2); rnd_tp(tr, P_LTRIG, 1); rnd_tp(tr, P_LWAVE, 1);   /* (4 or 2 bars, free) */
         rnd_tp(tr, P_LD_FLT, rnd_rr(15, 30));
         rnd_tp(tr, P_PAN, lead ? 0 : rnd_pct(50) ? rnd_rr(16, 30) : -rnd_rr(16, 30));
-        rnd_tp(tr, P_LEVEL, lead ? rnd_rr(80, 88) : rnd_rr(94, 102));
+        rnd_tp(tr, P_LEVEL, lead ? rnd_rr(80, 88) : rnd_rr(100, 108));
     }
+}
+/* COSMIC's phrase, composed (heard 2026-11-10: the generators' notes, at random among the chord's, aimless): four bars
+ * of 16ths on the STEP sequencer, a chord a bar of a minor progression, every part on it: the bass its root in a
+ * slow-funk riff (octaves, fifths, the next chord's root a 16th early), the pad its seventh voiced near the last, the
+ * lead long notes landing on the chord's notes and stepping between them, the arp its notes up and down, late in the
+ * phrase. Notes as played (STEP: TRANS not added) */
+static const uint8_t RND_CS_MIN[7] = {0, 2, 3, 5, 7, 8, 10};
+static const uint16_t RND_CS_PROG[] = {0x0526, 0x0656, 0x0354, 0x5600, 0x0056, 0x0534, 0x3056, 0x0256};   /* degrees,
+                                 * bar 1 the top nibble: i VI III VII, i VII VI VII, i iv VI v, VI VII i i, i i VI VII,
+                                 * i VI iv v, iv i VI VII, i III VI VII */
+static const char RND_CS_BASSR[][17] = {             /* R root, O its octave, F fifth, N the next chord's root, - held,
+                                                     * . rest; the driving eighths of 80s Stallone (asked 2026-11-10) */
+    "R.R.R.R.R.R.R.O.", "R.O.R.O.R.O.R.O.", "R.RRR.RRR.RRR.RR", "R.R.O.R.R.R.F.O.", "R.R.R.R.O.O.R.R.",
+    "R.R.R.R.R.R.O.RN", "R.R.O.R.R.O.R.RN", "R--O--R--F--R-O-"};
+static const char RND_CS_LEADR[][17] = {
+    "N---------------", "N-------N-------", "N-----N-----N---", "N-----------N---", "........N-------",
+    "N-------....N---", "N-N-N---N-N-N---", "N---N-N-N-------"};
+static int32_t rnd_cs_deg(int32_t root, int32_t d) { return root + 12 * (d / 7) + RND_CS_MIN[d % 7]; }
+static int32_t rnd_cs_in(int32_t pc, int32_t lo) { return lo + ((pc - lo) % 12 + 12) % 12; }   /* pc in lo..lo+11 */
+static void rnd_cs_step(uint32_t tr, uint32_t i, const int32_t *n, uint32_t k, uint32_t vel)
+{
+    step_t *st = &trk[tr].step[i];
+    uint32_t j;
+    st->time = ST_NOTE;
+    st->n = (uint8_t)k;
+    for (j = 0; j < k; j++) st->note[j] = (uint8_t)n[j];
+    st->vel = (uint8_t)vel;
 }
 static void rnd_cosmic_generators(const uint8_t *role)
 {
-    static const uint8_t pg[] = {0, 1, 4}, pgw[] = {3, 3, 2};   /* POP 50S TWO: i v VI iv, i VI iv v, i iv */
-    uint32_t tr, chords = 0;
+    static const uint8_t arpo[][8] = {{0, 1, 2, 3, 0, 1, 2, 3}, {0, 1, 2, 3, 4, 3, 2, 1}, {0, 2, 1, 3, 0, 2, 1, 3},
+                                      {4, 3, 2, 1, 4, 3, 2, 1}};
+    static const uint8_t arpb[] = {0xC, 0x8, 0xA, 0xF}, bars_w[] = {4, 2, 2, 1};
+    static const uint16_t arpg[] = {0xFFFF, 0xFFFF, 0x7777, 0xDBDB};
+    uint32_t tr, b, i, prog = RND_CS_PROG[rnd_next() % NELEM(RND_CS_PROG)];
+    uint32_t br[2] = {rnd_next() % NELEM(RND_CS_BASSR), rnd_next() % NELEM(RND_CS_BASSR)};
+    uint32_t lr[3] = {rnd_next() % NELEM(RND_CS_LEADR), rnd_next() % NELEM(RND_CS_LEADR), rnd_next() % 4u};
+    uint32_t ao = rnd_next() % 4u, ab = rnd_pick(arpb, bars_w, 4u), ag = arpg[rnd_next() % 4u], restrike = rnd_pct(30);
+    int32_t root = trk[0].p[P_ROOT] % 12, cur = 40 + rnd_rr(0, 2);   /* (the lead: degrees 38..44 of the key) */
+    (void)role;
+    fm1_irq_off();
     for (tr = 0; tr < TESSERA_TRACKS; tr++) {
-        rnd_role_generator(tr, role[tr], &chords);
-        rnd_tx(tr, TX_EV_EVERY, 0); rnd_tx(tr, TX_TW_DROP, 0); rnd_tx(tr, TX_TW_HUMAN, 0);
+        for (i = 0; i < NSTEP; i++) { memset(&trk[tr].step[i], 0, sizeof(step_t)); trk[tr].step[i].time = ST_REST; }
+        rnd_tx(tr, TX_MODE, TESS_ENG_OFF);
+        rnd_tx(tr, TX_EV_EVERY, 0); rnd_tx(tr, TX_TW_DROP, 0); rnd_tx(tr, TX_TW_HUMAN, 0); rnd_tx(tr, TX_NL_MODE, 0);
+        rnd_tp(tr, P_SDIV, 2); rnd_tp(tr, P_SLEN, 64); rnd_tp(tr, P_TRANS, 0); rnd_tp(tr, P_CHRD, 0);
+        rnd_tp(tr, P_SGATE, tr == RND_CS_ARP ? rnd_rr(35, 55) : tr == RND_CS_BASS ? rnd_rr(70, 90) : 100);
     }
-    rnd_tx(RND_CS_PAD, TX_CH_PROG, rnd_pick(pg, pgw, 3u));
-    rnd_tp(RND_CS_PAD, P_CHRD, 2);                  /* (DIA7: minor sevenths, lush) */
-    for (tr = RND_CS_BASS; tr <= RND_CS_ARP; tr += RND_CS_ARP) {   /* the bass and the arp: Euclidean sixteenths on the
-                                                     * chord's notes; the bass syncopated (5 to 7 of 16, held to the next:
-                                                     * slow-motion funk, not four on the floor, heard 2026-11-10) */
-        rnd_tx(tr, TX_MODE, TESS_ENG_EUCLID);
-        rnd_tx(tr, TX_EUC_STEPS, 16);
-        rnd_tx(tr, TX_EUC_PULSES, tr ? rnd_rr(9, 13) : rnd_rr(5, 7));
-        rnd_tx(tr, TX_EUC_ROT, rnd_rr(0, 3));
-        rnd_tp(tr, P_SDIV, 2);                      /* 1/16 */
-        rnd_tp(tr, P_SGATE, tr ? rnd_rr(30, 50) : 100);
-        rnd_tp(tr, P_QUANT, Q_CHRD);
+    for (b = 0; b < 4u; b++) {
+        int32_t d = (int32_t)(prog >> (12u - 4u * b) & 0xFu), nd = (int32_t)(prog >> (12u - 4u * ((b + 1u) & 3u)) & 0xFu);
+        int32_t ch[5], r = rnd_cs_in(rnd_cs_deg(root, d), 28), k, t;
+        const char *bp = RND_CS_BASSR[br[b == 3u]], *lp = RND_CS_LEADR[b == 3u ? lr[1] : b == 2u && lr[2] == 0u ? lr[1] : lr[0]];
+        uint32_t base = 16u * b;
+        t = rnd_cs_in(rnd_cs_deg(root, d), 48) - rnd_cs_deg(root, d);   /* (the pad: its seventh spread, 1 5 7 and the
+                                                     * third an octave up, the root 48..59, over the bass) */
+        for (k = 0; k < 4; k++) ch[k] = rnd_cs_deg(root, d + "\0\4\6\11"[k]) + t;
+        rnd_cs_step(RND_CS_PAD, base, ch, 4, 100);
+        if (restrike) rnd_cs_step(RND_CS_PAD, base + 10u, ch, 4, 84);
+        for (k = 0; k < 4; k++) ch[k] = rnd_cs_in(ch[k], 67);   /* (the arp: 67..78, in order, the root again on top) */
+        for (k = 1; k < 4; k++)
+            for (i = (uint32_t)k; i > 0u && ch[i - 1u] > ch[i]; i--) { t = ch[i]; ch[i] = ch[i - 1u]; ch[i - 1u] = t; }
+        ch[4] = ch[0] + 12;
+        for (i = 0; i < 16u; i++) {
+            char c = bp[i];
+            if (c == '-' || c == '.') trk[RND_CS_BASS].step[base + i].time = c == '-' ? ST_TIE : ST_REST;
+            else {
+                t = c == 'O' ? r + 12 : c == 'F' ? rnd_cs_in(rnd_cs_deg(root, d + 4), r) :
+                    c == 'N' ? rnd_cs_in(rnd_cs_deg(root, nd), 28) : r;
+                rnd_cs_step(RND_CS_BASS, base + i, &t, 1, i ? 96u : 116u);
+            }
+            if (i && trk[RND_CS_PAD].step[base + i].time == ST_REST) trk[RND_CS_PAD].step[base + i].time = ST_TIE;
+            if ((ab >> b & 1u) && (ag >> i & 1u)) rnd_cs_step(RND_CS_ARP, base + i, &ch[arpo[ao][i & 7u]], 1, i & 3u ? 88u : 104u);
+            c = lp[i];
+            if (c == '-') trk[RND_CS_LEAD].step[base + i].time = ST_TIE;
+            else if (c == 'N') {                    /* (the bar's first: the chord's note nearest, else a step or two) */
+                int32_t x = cur, o, dir = rnd_pct(50) ? 1 : -1;
+#define RND_CS_CT(x) ((((x) - d) % 7 + 7) % 7 % 2 == 0)   /* (a degree of the chord: its 1 3 5 7) */
+                if (i && lp[i - 1u] != '.') x = cur + (rnd_pct(70) ? 1 : 2) * (cur > 42 ? -1 : cur < 40 ? 1 : dir);
+                else if (!(RND_CS_CT(cur) && rnd_pct(40)))
+                    for (o = 1; o <= 3; o++) {
+                        if (RND_CS_CT(cur + dir * o)) { x = cur + dir * o; break; }
+                        if (RND_CS_CT(cur - dir * o)) { x = cur - dir * o; break; }
+                    }
+                cur = x > 44 ? x - 7 : x < 38 ? x + 7 : x;
+                t = rnd_cs_deg(root, x) - (root >= 7 ? 12 : 0);   /* (about the same height in every key, over the
+                                                     * pad: 60..81) */
+                rnd_cs_step(RND_CS_LEAD, base + i, &t, 1, 100);
+            }
+        }
     }
-    rnd_tx(RND_CS_LEAD, TX_MODE, TESS_ENG_TURING);  /* the lead: a locked loop, long notes */
-    rnd_tx(RND_CS_LEAD, TX_TUR_LEN, rnd_pct(50) ? 8 : 16);
-    rnd_tx(RND_CS_LEAD, TX_TUR_PROB, 0);
-    rnd_tx(RND_CS_LEAD, TX_TUR_SPAN, 2);
-    rnd_tp(RND_CS_LEAD, P_SDIV, rnd_pct(60) ? 0 : 6);   /* 1/4, 1/2 */
-    rnd_tp(RND_CS_LEAD, P_SGATE, rnd_rr(100, 127));
-    rnd_tp(RND_CS_BASS, P_TRANS, -24); rnd_tp(RND_CS_PAD, P_TRANS, 0);
-    rnd_tp(RND_CS_LEAD, P_TRANS, 12); rnd_tp(RND_CS_ARP, P_TRANS, rnd_pct(50) ? 12 : 24);
-    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(84, 92));   /* (VHS Sex, Cathode Girls: about 86) */
+    fm1_irq_on();
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(108, 118));   /* (driving, not too fast: 80s Stallone 115 to 126) */
     for (tr = 0; tr < TESSERA_TRACKS; tr++) tess_roll_apply(tr);
     rnd_fg.bar = bar_n;
     rnd_fg.phrase = 0;
@@ -4867,7 +4927,6 @@ static void rnd_roll(void)
     } else if (rnd_cosmic) {
         rnd_cosmic_generators(role);
         for (tr = 0; tr < TESSERA_TRACKS; tr++) rnd_cpu(tr);
-        rnd_tx(RND_CS_BASS, TX_NL_MODE, 2);         /* (HIT: each note held to the next) */
     } else if (rnd_halo || rnd_mirror || rnd_tide || rnd_crate) {
         if (rnd_halo) rnd_halo_generators(role);
         else if (rnd_mirror) rnd_mirror_generators(role);
