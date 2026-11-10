@@ -3448,52 +3448,54 @@ static void rnd_cs_step(uint32_t tr, uint32_t i, const int32_t *n, uint32_t k, u
     for (j = 0; j < k; j++) st->note[j] = (uint8_t)n[j];
     st->vel = (uint8_t)vel;
 }
-static void rnd_cosmic_generators(const uint8_t *role)
+static struct { uint16_t prog; uint8_t br[2], lr[3], ao, ab, ag, rs; } rnd_cs;   /* the phrase's choices (DRIFT changes
+                                                     * one, rnd_cs_write writes those parts again) */
+static void rnd_cs_write(uint32_t parts)           /* bit tr: track tr written again from rnd_cs */
 {
     static const uint8_t arpo[][8] = {{0, 1, 2, 3, 0, 1, 2, 3}, {0, 1, 2, 3, 4, 3, 2, 1}, {0, 2, 1, 3, 0, 2, 1, 3},
                                       {4, 3, 2, 1, 4, 3, 2, 1}};
-    static const uint8_t arpb[] = {0xC, 0x8, 0xA, 0xF}, bars_w[] = {4, 2, 2, 1};
     static const uint16_t arpg[] = {0xFFFF, 0xFFFF, 0x7777, 0xDBDB};
-    uint32_t tr, b, i, prog = RND_CS_PROG[rnd_next() % NELEM(RND_CS_PROG)];
-    uint32_t br[2] = {rnd_next() % NELEM(RND_CS_BASSR), rnd_next() % NELEM(RND_CS_BASSR)};
-    uint32_t lr[3] = {rnd_next() % NELEM(RND_CS_LEADR), rnd_next() % NELEM(RND_CS_LEADR), rnd_next() % 4u};
-    uint32_t ao = rnd_next() % 4u, ab = rnd_pick(arpb, bars_w, 4u), ag = arpg[rnd_next() % 4u], restrike = rnd_pct(30);
+    uint32_t tr, b, i, prog = rnd_cs.prog, ag = arpg[rnd_cs.ag];
     int32_t root = trk[0].p[P_ROOT] % 12, cur = 40 + rnd_rr(0, 2);   /* (the lead: degrees 38..44 of the key) */
-    (void)role;
     fm1_irq_off();
-    for (tr = 0; tr < TESSERA_TRACKS; tr++) {
-        for (i = 0; i < NSTEP; i++) { memset(&trk[tr].step[i], 0, sizeof(step_t)); trk[tr].step[i].time = ST_REST; }
-        rnd_tx(tr, TX_MODE, TESS_ENG_OFF);
-        rnd_tx(tr, TX_EV_EVERY, 0); rnd_tx(tr, TX_TW_DROP, 0); rnd_tx(tr, TX_TW_HUMAN, 0); rnd_tx(tr, TX_NL_MODE, 0);
-        rnd_tp(tr, P_SDIV, 2); rnd_tp(tr, P_SLEN, 64); rnd_tp(tr, P_TRANS, 0); rnd_tp(tr, P_CHRD, 0);
-        rnd_tp(tr, P_SGATE, tr == RND_CS_ARP ? rnd_rr(35, 55) : tr == RND_CS_BASS ? rnd_rr(70, 90) : 100);
-    }
+    for (tr = 0; tr < TESSERA_TRACKS; tr++)
+        for (i = 0; (parts >> tr & 1u) && i < NSTEP; i++) {
+            memset(&trk[tr].step[i], 0, sizeof(step_t));
+            trk[tr].step[i].time = ST_REST;
+        }
     for (b = 0; b < 4u; b++) {
         int32_t d = (int32_t)(prog >> (12u - 4u * b) & 0xFu), nd = (int32_t)(prog >> (12u - 4u * ((b + 1u) & 3u)) & 0xFu);
         int32_t ch[5], r = rnd_cs_in(rnd_cs_deg(root, d), 28), k, t;
-        const char *bp = RND_CS_BASSR[br[b == 3u]], *lp = RND_CS_LEADR[b == 3u ? lr[1] : b == 2u && lr[2] == 0u ? lr[1] : lr[0]];
+        const char *bp = RND_CS_BASSR[rnd_cs.br[b == 3u]];
+        const char *lp = RND_CS_LEADR[b == 3u || (b == 2u && rnd_cs.lr[2] == 0u) ? rnd_cs.lr[1] : rnd_cs.lr[0]];
         uint32_t base = 16u * b;
         t = rnd_cs_in(rnd_cs_deg(root, d), 48) - rnd_cs_deg(root, d);   /* (the pad: its seventh spread, 1 5 7 and the
                                                      * third an octave up, the root 48..59, over the bass) */
         for (k = 0; k < 4; k++) ch[k] = rnd_cs_deg(root, d + "\0\4\6\11"[k]) + t;
-        rnd_cs_step(RND_CS_PAD, base, ch, 4, 100);
-        if (restrike) rnd_cs_step(RND_CS_PAD, base + 10u, ch, 4, 84);
+        if (parts >> RND_CS_PAD & 1u) {
+            rnd_cs_step(RND_CS_PAD, base, ch, 4, 100);
+            if (rnd_cs.rs) rnd_cs_step(RND_CS_PAD, base + 10u, ch, 4, 84);
+            for (i = 1; i < 16u; i++)
+                if (trk[RND_CS_PAD].step[base + i].time == ST_REST) trk[RND_CS_PAD].step[base + i].time = ST_TIE;
+        }
         for (k = 0; k < 4; k++) ch[k] = rnd_cs_in(ch[k], 67);   /* (the arp: 67..78, in order, the root again on top) */
         for (k = 1; k < 4; k++)
             for (i = (uint32_t)k; i > 0u && ch[i - 1u] > ch[i]; i--) { t = ch[i]; ch[i] = ch[i - 1u]; ch[i - 1u] = t; }
         ch[4] = ch[0] + 12;
         for (i = 0; i < 16u; i++) {
             char c = bp[i];
-            if (c == '-' || c == '.') trk[RND_CS_BASS].step[base + i].time = c == '-' ? ST_TIE : ST_REST;
+            if (!(parts >> RND_CS_BASS & 1u)) ;
+            else if (c == '-' || c == '.') trk[RND_CS_BASS].step[base + i].time = c == '-' ? ST_TIE : ST_REST;
             else {
                 t = c == 'O' ? r + 12 : c == 'F' ? rnd_cs_in(rnd_cs_deg(root, d + 4), r) :
                     c == 'N' ? rnd_cs_in(rnd_cs_deg(root, nd), 28) : r;
                 rnd_cs_step(RND_CS_BASS, base + i, &t, 1, i ? 96u : 116u);
             }
-            if (i && trk[RND_CS_PAD].step[base + i].time == ST_REST) trk[RND_CS_PAD].step[base + i].time = ST_TIE;
-            if ((ab >> b & 1u) && (ag >> i & 1u)) rnd_cs_step(RND_CS_ARP, base + i, &ch[arpo[ao][i & 7u]], 1, i & 3u ? 88u : 104u);
+            if ((parts >> RND_CS_ARP & 1u) && (rnd_cs.ab >> b & 1u) && (ag >> i & 1u))
+                rnd_cs_step(RND_CS_ARP, base + i, &ch[arpo[rnd_cs.ao][i & 7u]], 1, i & 3u ? 88u : 104u);
             c = lp[i];
-            if (c == '-') trk[RND_CS_LEAD].step[base + i].time = ST_TIE;
+            if (!(parts >> RND_CS_LEAD & 1u)) ;
+            else if (c == '-') trk[RND_CS_LEAD].step[base + i].time = ST_TIE;
             else if (c == 'N') {                    /* (the bar's first: the chord's note nearest, else a step or two) */
                 int32_t x = cur, o, dir = rnd_pct(50) ? 1 : -1;
 #define RND_CS_CT(x) ((((x) - d) % 7 + 7) % 7 % 2 == 0)   /* (a degree of the chord: its 1 3 5 7) */
@@ -3511,17 +3513,59 @@ static void rnd_cosmic_generators(const uint8_t *role)
         }
     }
     fm1_irq_on();
+}
+static void rnd_cs_pick(uint32_t what)             /* bit 0 the progression, 1 the bass's riffs, 2 the lead's rhythms,
+                                                     * 3 the arp */
+{
+    static const uint8_t arpb[] = {0xC, 0x8, 0xA, 0xF}, bars_w[] = {4, 2, 2, 1};
+    if (what & 1u) rnd_cs.prog = RND_CS_PROG[rnd_next() % NELEM(RND_CS_PROG)];
+    if (what & 2u) { rnd_cs.br[0] = (uint8_t)(rnd_next() % NELEM(RND_CS_BASSR)); rnd_cs.br[1] = (uint8_t)(rnd_next() % NELEM(RND_CS_BASSR)); }
+    if (what & 4u) {
+        rnd_cs.lr[0] = (uint8_t)(rnd_next() % NELEM(RND_CS_LEADR)); rnd_cs.lr[1] = (uint8_t)(rnd_next() % NELEM(RND_CS_LEADR));
+        rnd_cs.lr[2] = (uint8_t)(rnd_next() % 4u);
+    }
+    if (what & 8u) {
+        rnd_cs.ao = (uint8_t)(rnd_next() % 4u); rnd_cs.ab = (uint8_t)rnd_pick(arpb, bars_w, 4u);
+        rnd_cs.ag = (uint8_t)(rnd_next() % 4u);
+    }
+}
+static void rnd_cosmic_generators(const uint8_t *role)
+{
+    uint32_t tr;
+    (void)role;
+    for (tr = 0; tr < TESSERA_TRACKS; tr++) {
+        rnd_tx(tr, TX_MODE, TESS_ENG_OFF);
+        rnd_tx(tr, TX_EV_EVERY, 0); rnd_tx(tr, TX_TW_DROP, 0); rnd_tx(tr, TX_TW_HUMAN, 0); rnd_tx(tr, TX_NL_MODE, 0);
+        rnd_tp(tr, P_SDIV, 2); rnd_tp(tr, P_SLEN, 64); rnd_tp(tr, P_TRANS, 0); rnd_tp(tr, P_CHRD, 0);
+        rnd_tp(tr, P_SGATE, tr == RND_CS_ARP ? rnd_rr(35, 55) : tr == RND_CS_BASS ? rnd_rr(70, 90) : 100);
+    }
+    rnd_cs_pick(15u);
+    rnd_cs.rs = (uint8_t)rnd_pct(30);
+    rnd_cs_write(15u);
     pid_set(PID_GLOBAL(G_BPM), 0, rnd_rr(108, 118));   /* (driving, not too fast: 80s Stallone 115 to 126) */
     for (tr = 0; tr < TESSERA_TRACKS; tr++) tess_roll_apply(tr);
     rnd_fg.bar = bar_n;
     rnd_fg.phrase = 0;
 }
-static void rnd_cosmic_move(void)                   /* (the arp in and out, a phrase at a time) */
+/* DRIFT SLOW or FAST: every 4 or 2 passes of the phrase (16 or 8 bars), as it starts again, one change: a new bass
+ * riff, a new lead melody, the arp or the lead out or back in, the pad struck again mid-bar or not, a new arp, or (now
+ * and then) a new progression, every part on it */
+static void rnd_cosmic_move(void)
 {
+    static const uint8_t mw[] = {3, 3, 2, 1, 1, 2, 1}, mv[] = {0, 1, 2, 3, 4, 5, 6};
     if (bar_n == rnd_fg.bar) return;
     rnd_fg.bar = bar_n;
-    if (++rnd_fg.phrase % (settings_rnd_drift == 2u ? 8u : 16u) == 0u && rnd_pct(60))
-        rnd_tp(RND_CS_ARP, P_MUTE, !trk[RND_CS_ARP].p[P_MUTE]);
+    if (trk[RND_CS_PAD].seq_idx >= 16u) return;      /* (the phrase's first bar) */
+    if (++rnd_fg.phrase % (settings_rnd_drift == 2u ? 2u : 4u) != 0u) return;
+    switch (rnd_pick(mv, mw, NELEM(mw))) {
+    case 0: rnd_tp(RND_CS_ARP, P_MUTE, !trk[RND_CS_ARP].p[P_MUTE]); break;
+    case 1: rnd_cs_pick(2u); rnd_cs_write(1u << RND_CS_BASS); break;
+    case 2: rnd_cs_pick(4u); rnd_cs_write(1u << RND_CS_LEAD); break;
+    case 3: rnd_tp(RND_CS_LEAD, P_MUTE, !trk[RND_CS_LEAD].p[P_MUTE]); break;
+    case 4: rnd_cs.rs ^= 1u; rnd_cs_write(1u << RND_CS_PAD); break;
+    case 5: rnd_cs_pick(8u); rnd_tp(RND_CS_ARP, P_MUTE, 0); rnd_cs_write(1u << RND_CS_ARP); break;
+    default: rnd_cs_pick(1u); rnd_cs_write(15u); break;
+    }
 }
 
 /* a CHORD track's chord known at once, before it first strikes (its lowest note for FOLLOW, its notes for QNT CHRD):

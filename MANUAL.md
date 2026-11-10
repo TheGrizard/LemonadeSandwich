@@ -1059,8 +1059,9 @@ FAT POLY, or a TRIO pad); **track 3, the lead**, a melody that lands on the chor
 soft in, its filter swept over 2 or 4 bars (TRIO's SOFT LEAD or ANALOG BRASS); **track 4, the arp**, the chord up and
 down in sixteenths, late in the phrase, panned to a side. The phrase loops, locked; edit it on the STEP pages as any
 pattern. The pad loudest with the bass, the lead under them, the arp under that. Dry. **DRIFT OFF**: as rolled, for
-ever. **SLOW** or **FAST**: the arp comes and goes, a phrase (16 or 8 bars) at a time. No drums: put them on your own
-drum machine. The screen shows **COSMIC** and the seed.
+ever. **SLOW** or **FAST**: every 16 or 8 bars, as the phrase starts again, one change: a new bass riff, a new lead
+melody, a new arp, the arp or the lead out or back in, the pad struck again mid-bar or not, or now and then a new
+progression with every part on it. No drums: put them on your own drum machine. The screen shows **COSMIC** and the seed.
 
 **PHASE.** With REC BUTTON on **PHASE**, a roll is a phase piece after Steve Reich (Piano Phase, Clapping Music,
 Drumming). **Tracks 1 and 2** play one short, bright cell, the same sound and the same notes (a EUCLID cell of 8 to 16

@@ -7184,14 +7184,30 @@ static int test_rnd(void)
             }
             ok &= trk[RND_CS_BASS].eng_req == 6u && trk[RND_CS_LEAD].eng_req == 6u && trk[RND_CS_ARP].eng_req == 6u;
         }
-        rnd_play_bars(2);
-        k = trk[RND_CS_ARP].p[P_MUTE];
-        rnd_play_bars(32);
-        still &= trk[RND_CS_ARP].p[P_MUTE] == (int16_t)k;
-        settings_rnd_drift = 2;
-        for (r = 0; r < 96u; r++) {
-            rnd_play_bars(1);
-            toggled |= trk[RND_CS_ARP].p[P_MUTE] != (int16_t)k;
+        {
+            static step_t before[NTRK][64];
+            uint32_t b, changes = 0, lmute = 0;
+            for (tr = 0; tr < NTRK; tr++) memcpy(before[tr], trk[tr].step, sizeof before[tr]);
+            k = (uint32_t)trk[RND_CS_ARP].p[P_MUTE];
+            rnd_play_bars(32);
+            for (tr = 0; tr < NTRK; tr++) still &= !memcmp(before[tr], trk[tr].step, sizeof before[tr]);
+            still &= trk[RND_CS_ARP].p[P_MUTE] == (int16_t)k;
+            settings_rnd_drift = 2;
+            for (r = 0; r < 128u; r++) {
+                rnd_play_bars(1);
+                for (tr = 0; tr < NTRK; tr++)
+                    if (memcmp(before[tr], trk[tr].step, sizeof before[tr]) || trk[tr].p[P_MUTE] != (int16_t)(tr == RND_CS_ARP ? k : 0)) {
+                        changes++;
+                        memcpy(before[tr], trk[tr].step, sizeof before[tr]);
+                        if (tr == RND_CS_ARP) k = (uint32_t)trk[tr].p[P_MUTE];
+                    }
+                lmute |= trk[RND_CS_LEAD].p[P_MUTE] != 0;
+                for (b = 0; b < 4u; b++)
+                    roots &= trk[RND_CS_BASS].step[16u * b].time == ST_NOTE &&
+                             trk[RND_CS_BASS].step[16u * b].note[0] % 12 == trk[RND_CS_PAD].step[16u * b].note[0] % 12;
+            }
+            toggled = changes >= 6u;
+            (void)lmute;
         }
         settings_rnd_drift = 0;
         bad += check("RND COSMIC: 80 rolls: four bars on STEP at 1/16, a seventh a bar on the pad, held; TRIO bass, lead, "
@@ -7200,7 +7216,9 @@ static int test_rnd(void)
                      "first note on the chord, above the pad; the arp in the last bar mostly", roots && inkey && lands &&
                      regs && arp_late > 50u);
         bad += check("RND COSMIC: ..dry, no vibrato", dry);
-        bad += check("RND COSMIC: ..DRIFT OFF: the arp as rolled 32 bars; FAST: it comes and goes", still && toggled);
+        bad += check("RND COSMIC: ..DRIFT OFF: the phrase as rolled 32 bars; FAST: a change every 8 bars (new riffs, "
+                     "melodies, arps, parts out and in, a progression), the bass still on the pad's roots", still && toggled &&
+                     roots);
         transport_req = 2;
         { int32_t o[2 * CTL]; for (k = 0; k < 8u; k++) mix_block(o, CTL); }
         rnd_mode_put(RND_FREE);
