@@ -28,7 +28,7 @@
  * sections, without drums, to sample: rnd_crate_sound), RND_STATIC STATIC (a wall of noise, ambient: it builds, overloads
  * and collapses: rnd_static_move), RND_PHASE PHASE (after Steve Reich: one cell on two tracks, one
  * moving a step ahead every few bars: rnd_phase_move). (tessera-rnd: AMBIENT, NICE, GLITCH and PULSE gone; their codes,
- * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE STATIC FORGE CHAOS COSMIC RND.) Saved as RND_CODE:
+ * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE STATIC FORGE CHAOS COSMIC FRACTURED RND.) Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
  * beside them (0..7: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
@@ -36,10 +36,10 @@
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
 enum { RND_OFF, RND_FALL, RND_TIDE, RND_WOZZA, RND_ORBIT, RND_LOOPS, RND_HALO, RND_MIRROR, RND_PHASE, RND_CRATE,
-       RND_STATIC, RND_FORGE, RND_CHAOS, RND_COSMIC, RND_FREE, RND_MODES };           /* (the menu's order, asked 2026-11-08; the codes each mode's own) */
+       RND_STATIC, RND_FORGE, RND_CHAOS, RND_COSMIC, RND_FRACTURED, RND_FREE, RND_MODES };           /* (the menu's order, asked 2026-11-08; the codes each mode's own) */
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
     {0x00u, 0}, {0x80u, 1}, {0x40u, 4}, {0x40u, 3}, {0xC0u, 1}, {0x80u, 2}, {0x80u, 3}, {0xC0u, 3}, {0x40u, 5},
-    {0x80u, 4}, {0x80u, 5}, {0xC0u, 4}, {0xC0u, 5}, {0xC0u, 6}, {0x40u, 0},   /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
+    {0x80u, 4}, {0x80u, 5}, {0xC0u, 4}, {0xC0u, 5}, {0xC0u, 6}, {0xC0u, 7}, {0x40u, 0},   /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
                                                      * 0x80 0, GLITCH 0x40 1, PULSE 0x40 2: gone) */
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
@@ -325,7 +325,7 @@ static uint8_t rnd_tide;                           /* 1: this roll is TIDE's */
 static uint8_t rnd_crate;                          /* 1: this roll is CRATE's */
 static uint8_t rnd_phase;                          /* 1: this roll is PHASE's */
 static uint8_t rnd_static;                         /* 1: this roll is STATIC's */
-static uint8_t rnd_forge, rnd_chaos, rnd_cosmic;               /* 1: this roll is FORGE's or CHAOS's (rnd_forge both, rnd_chaos
+static uint8_t rnd_forge, rnd_chaos, rnd_cosmic, rnd_frac;               /* 1: this roll is FORGE's or CHAOS's (rnd_forge both, rnd_chaos
                                                      * CHAOS's) */
 static uint8_t rnd_wz_lead = NTRK;                 /* WOZZA: the first melody's track (a second one sparser, higher) */
 static uint8_t rnd_want_e = 0xFFu, rnd_want_pi = 0xFFu;   /* PULSE: the engine and preset its role wants (0xFF: rolled) */
@@ -3027,7 +3027,7 @@ static void rnd_fg_drum(uint32_t tr, uint32_t pi, int32_t dec)
 static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
 {
     track_t *t = &trk[tr];
-    int mc = rnd_mc_ok(), ch = rnd_chaos;
+    int mc = rnd_mc_ok(), ch = rnd_chaos | rnd_frac;   /* (FRACTURED: crushed and FM as CHAOS's) */
     rnd_tp_still(tr);
     rnd_tp(tr, P_GLIDE, 0); rnd_tp(tr, P_DETUNE, 0); rnd_tp(tr, P_CHRD, 0); rnd_tp(tr, P_MUTE, 0);
     rnd_tp(tr, P_SPRD, 0); rnd_tp(tr, P_ED_PIT, 0); rnd_tp(tr, P_ED_FLT, 0); rnd_tp(tr, P_AMODE, 0);
@@ -3063,6 +3063,14 @@ static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
         rnd_tp(tr, P_ATK, 0); rnd_tp(tr, P_SUS, 0); rnd_tp(tr, P_DEC, rnd_rr(25, 45)); rnd_tp(tr, P_REL, 20);
         rnd_tp(tr, P_VOICE, V_MONO);
         rnd_tp(tr, P_LEVEL, rnd_rr(100, 110));
+    } else if (tr == RND_FG_BASS && rnd_frac) {     /* FRACTURED's pad: FALL's, TRIO's triangles, warm, slow in, wide */
+        engine_load_of(t, 6u, 5u);                  /* WARM PAD */
+        rnd_tide_tri(tr, 0);
+        rnd_tp(tr, P_E0 + 5u, rnd_rr(40, 62)); rnd_tp(tr, P_E0 + 6u, rnd_rr(5, 25));
+        rnd_tp(tr, P_ATK, rnd_rr(60, 90)); rnd_tp(tr, P_DEC, 100); rnd_tp(tr, P_SUS, rnd_rr(110, 124));
+        rnd_tp(tr, P_REL, rnd_rr(90, 110)); rnd_tp(tr, P_SPRD, rnd_rr(60, 100));
+        rnd_tp(tr, P_VOICE, V_POLY);
+        rnd_tp(tr, P_LEVEL, rnd_rr(96, 104));
     } else if (tr == RND_FG_BASS) {                 /* the bass: stabs, short, dark, its filter's envelope */
         if (*oracles < 1u && eng_ok(ENGI_ORACLE) && rnd_pct(45)) {
             engine_load_of(t, ENGI_ORACLE, rnd_pct(50) ? 8u : rnd_pct(50) ? 6u : 7u);   /* ACID LINE, FUNK BASS, SUB BASS */
@@ -3194,7 +3202,7 @@ static void rnd_fg_euc(uint32_t tr, uint32_t n, uint32_t hits, uint32_t rot)
 }
 static void rnd_forge_patterns(void)
 {
-    uint32_t kick, krat = 0, n, h, best;
+    uint32_t kick, krat = 0, n, h, best, ch = rnd_chaos | rnd_frac;
     static const uint8_t pl[] = {5, 7, 9, 11, 13}, plw[] = {2, 3, 2, 2, 1};
     rnd_fg.len[RND_FG_KICK] = 16;
     switch (rnd_fg.idea) {                          /* (the patterns asked for, 2026-11-09, and no busier) */
@@ -3212,10 +3220,12 @@ static void rnd_forge_patterns(void)
     case FG_THREE: rnd_fg.len[RND_FG_KICK] = 3; kick = 1u; break;   /* K-- on eighths: three over four, a dotted quarter */
     default: kick = 0x0001u; break;                 /* (the accent: once a bar, the low tom rolling under) */
     }
-    if (rnd_chaos && rnd_pct(50)) krat = kick & (0u - kick);   /* (CHAOS: a ratchet on the first kick now and then) */
+    if (ch && rnd_pct(50)) krat = kick & (0u - kick);   /* (CHAOS, FRACTURED: a ratchet on the first kick now and then) */
     rnd_fg.mask[RND_FG_KICK] = (uint16_t)kick;
     rnd_fg_write(RND_FG_KICK, kick, kick & 1u, krat, 0, 1);
-    if (rnd_fg.metal) {                             /* (CHAOS's metal: a short loop of its own against the bar) */
+    rnd_fg.mask[RND_FG_BASS] = 0;
+    if (rnd_frac) ;                                 /* (FRACTURED: the pad, its chords: rnd_forge_generators) */
+    else if (rnd_fg.metal) {                        /* (CHAOS's metal: a short loop of its own against the bar) */
         n = rnd_pct(50) ? 5u : 7u;
         rnd_fg_euc(RND_FG_BASS, n, 2u + rnd_next() % 2u, rnd_next() % n);
     } else {                                        /* the bass: in the kick's gaps, the turn that meets it least */
@@ -3225,7 +3235,10 @@ static void rnd_forge_patterns(void)
         if (rnd_fg.idea == FG_LOCK) h = 3, best = rnd_fg_gap(16, 3, 0xFFFFu & ~0x4420u);   /* (the bass on 5, 10, 14, near) */
         rnd_fg_euc(RND_FG_BASS, 16, h, best);
     }
-    if (rnd_chaos) rnd_fg_euc(RND_FG_HAT, rnd_pct(50) ? 16u : 12u, (uint32_t)rnd_rr(9, 12), rnd_next() % 4u);   /* (broken) */
+    if (rnd_frac) {                                 /* (FRACTURED: the hats a loop of 11, 13 or 15, sliding) */
+        n = 11u + 2u * (rnd_next() % 3u);
+        rnd_fg_euc(RND_FG_HAT, n, (uint32_t)rnd_rr((int32_t)n / 2, (int32_t)n - 3), rnd_next() % n);
+    } else if (rnd_chaos) rnd_fg_euc(RND_FG_HAT, rnd_pct(50) ? 16u : 12u, (uint32_t)rnd_rr(9, 12), rnd_next() % 4u);   /* (broken) */
     else if (rnd_pct(65)) rnd_fg_euc(RND_FG_HAT, 16, 16, 0);   /* (every sixteenth: the tempo) */
     else rnd_fg_euc(RND_FG_HAT, 16, 8, 1);          /* (the offbeats) */
     if (trk[RND_FG_PERC].eng_req == ENGI_MACRO && trk[RND_FG_PERC].p[P_E0] == 20 && rnd_pct(rnd_fg.idea == FG_ACCENT ? 100 : 65)) {
@@ -3255,16 +3268,28 @@ static void rnd_forge_generators(void)
     }
     {                                               /* the idea: the sparse ones most (less busy, asked 2026-11-09) */
         static const uint8_t iw[FG_IDEAS] = {4, 3, 2, 2, 1, 1, 1, 1};   /* BROKEN LOCK MISSING ODD TRIPLET ANSWER THREE ACCENT */
+        static const uint8_t fw[FG_IDEAS] = {2, 0, 2, 4, 3, 1, 3, 0};   /* (FRACTURED: the odd, the broken, the triplets) */
         static const uint8_t ix[FG_IDEAS] = {0, 1, 2, 3, 4, 5, 6, 7};
-        rnd_fg.idea = (uint8_t)rnd_pick(ix, iw, FG_IDEAS);
+        rnd_fg.idea = (uint8_t)rnd_pick(ix, rnd_frac ? fw : iw, FG_IDEAS);
     }
     rnd_forge_patterns();
-    if (rnd_chaos) rnd_tx(RND_FG_PERC, TX_SUB_CHANCE, rnd_rr(20, 50)), rnd_tx(RND_FG_PERC, TX_SUB_RATCH, rnd_rr(2, 3));   /* (CHAOS:
-                                                     * the percussion rattling now and then) */
+    if (rnd_chaos | rnd_frac) rnd_tx(RND_FG_PERC, TX_SUB_CHANCE, rnd_rr(20, 50)), rnd_tx(RND_FG_PERC, TX_SUB_RATCH, rnd_rr(2, 3));
+                                                    /* (CHAOS, FRACTURED: the percussion rattling now and then) */
+    if (rnd_frac) {                                 /* FRACTURED (asked 2026-11-12): glitchy, Autechre's way: the hats
+                                                     * stuttering and dropping hits, the percussion off the grid; the pad
+                                                     * FALL's, slow minor chords (the bass's track) */
+        rnd_tx(RND_FG_HAT, TX_SUB_CHANCE, rnd_rr(15, 40)); rnd_tx(RND_FG_HAT, TX_SUB_RATCH, rnd_rr(2, 4));
+        rnd_tx(RND_FG_HAT, TX_TW_DROP, rnd_rr(10, 30)); rnd_tx(RND_FG_PERC, TX_TW_DROP, rnd_rr(10, 30));
+        rnd_tp(RND_FG_PERC, P_SSWING, rnd_rr(0, 40));
+        tr = 0;
+        rnd_role_generator(RND_FG_BASS, RND_ROLE_CHORDS, &tr);
+        rnd_tx(RND_FG_BASS, TX_CH_PROG, rnd_rr(0, 2)); rnd_tx(RND_FG_BASS, TX_CH_HIT, 0);
+    }
     if (rnd_fg.idea == FG_TRIPLET) rnd_tp(RND_FG_KICK, P_SDIV, 5);   /* 16T: the kick's triplets, the hats straight */
     if (rnd_fg.idea == FG_THREE) rnd_tp(RND_FG_KICK, P_SDIV, 1);     /* 1/8: three of them over four */
     if (rnd_fg.idea == FG_TRIPLET || (!rnd_chaos && rnd_pct(25))) rnd_tp(RND_FG_HAT, P_SSWING, rnd_rr(18, 34));
-    pid_set(PID_GLOBAL(G_BPM), 0, rnd_chaos ? rnd_rr(130, 134) : rnd_rr(128, 132));   /* (about 130, 2026-11-09) */
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_frac ? rnd_rr(96, 112) : rnd_chaos ? rnd_rr(130, 134) : rnd_rr(128, 132));   /* (about
+                                                     * 130, 2026-11-09; FRACTURED slower, broken) */
     for (tr = 0; tr < TESSERA_TRACKS; tr++) tess_roll_apply(tr);   /* (the loops together from now) */
     rnd_fg.phrase = rnd_fg.down = rnd_fg.fill = 0;
     rnd_fg.bar = bar_n;
@@ -3295,7 +3320,7 @@ static void rnd_roles_forge(uint8_t *role)
 {
     rnd_fg.metal = (uint8_t)(rnd_chaos && rnd_pct(50));
     role[RND_FG_KICK] = RND_ROLE_LOWPERC;
-    role[RND_FG_BASS] = rnd_fg.metal ? RND_ROLE_GLITCH : RND_ROLE_BASS;
+    role[RND_FG_BASS] = rnd_frac ? RND_ROLE_CHORDS : rnd_fg.metal ? RND_ROLE_GLITCH : RND_ROLE_BASS;
     role[RND_FG_HAT] = RND_ROLE_NOISE;
     role[RND_FG_PERC] = RND_ROLE_GLITCH;
 }
@@ -3311,7 +3336,7 @@ static void rnd_forge_move(void)
     at = ++rnd_fg.phrase % len;
     if (rnd_fg.down && !--rnd_fg.down) {            /* (the slam back) */
         rnd_tp(RND_FG_KICK, P_MUTE, 0);
-        rnd_tp(RND_FG_BASS, P_MUTE, 0);
+        rnd_tp(rnd_frac ? RND_FG_HAT : RND_FG_BASS, P_MUTE, 0);
     }
     if (at == len - 1u && rnd_pct(60)) {            /* a fill: the phrase's last bar */
         rnd_fg.fill = 1;
@@ -3330,7 +3355,7 @@ static void rnd_forge_move(void)
         if (rnd_pct(50)) {
             rnd_fg.down = (uint8_t)(len / (rnd_pct(50) ? 4u : 2u));
             rnd_tp(RND_FG_KICK, P_MUTE, 1);
-            rnd_tp(RND_FG_BASS, P_MUTE, 1);
+            rnd_tp(rnd_frac ? RND_FG_HAT : RND_FG_BASS, P_MUTE, 1);   /* (FRACTURED: the pad alone, the percussion) */
         }
         break;
     case 1: case 2:                                 /* the percussion's loop turned a step */
@@ -4679,7 +4704,7 @@ static void rnd_roles(uint8_t *role, uint32_t ambient)
 /* the roll's mode as the screen says it, with the seed after */
 static const char *rnd_name(void)
 {
-    return rnd_cosmic ? "COSMIC " : rnd_chaos ? "CHAOS " : rnd_forge ? "FORGE " : rnd_static ? "STATIC " : rnd_phase ? "PHASE " : rnd_crate ? "CRATE " : rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " :
+    return rnd_frac ? "FRACTURED " : rnd_cosmic ? "COSMIC " : rnd_chaos ? "CHAOS " : rnd_forge ? "FORGE " : rnd_static ? "STATIC " : rnd_phase ? "PHASE " : rnd_crate ? "CRATE " : rnd_tide ? "TIDE " : rnd_mirror ? "MIRROR " : rnd_halo ? "HALO " : rnd_wozza ? "WOZZA " :
            rnd_orbit ? "ORBIT " : rnd_loops ? "LOOPS " : rnd_fall ? "FALL " :
            "RND ";
 }
@@ -4885,7 +4910,8 @@ static void rnd_roll(void)
     rnd_phase = (uint8_t)(rnd_setting() == RND_PHASE);
     rnd_static = (uint8_t)(rnd_setting() == RND_STATIC);
     rnd_chaos = (uint8_t)(rnd_setting() == RND_CHAOS);
-    rnd_forge = (uint8_t)(rnd_setting() == RND_FORGE || rnd_chaos);
+    rnd_frac = (uint8_t)(rnd_setting() == RND_FRACTURED);
+    rnd_forge = (uint8_t)(rnd_setting() == RND_FORGE || rnd_chaos || rnd_frac);
     rnd_cosmic = (uint8_t)(rnd_setting() == RND_COSMIC);
     if (rnd_wozza || rnd_halo || rnd_mirror || rnd_tide || rnd_crate || rnd_phase || rnd_static || rnd_forge || rnd_cosmic)
         rnd_nice = 1;   /* (WOZZA HALO MIRROR TIDE: NICE's gentle

@@ -6363,7 +6363,8 @@ static int test_rnd(void)
             {RND_ORBIT, 0xC0, 1, "ORBIT"}, {RND_LOOPS, 0x80, 2, "LOOPS"}, {RND_HALO, 0x80, 3, "HALO"},
             {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_PHASE, 0x40, 5, "PHASE"}, {RND_CRATE, 0x80, 4, "CRATE"},
             {RND_STATIC, 0x80, 5, "STATIC"}, {RND_FORGE, 0xC0, 4, "FORGE"}, {RND_CHAOS, 0xC0, 5, "CHAOS"},
-            {RND_COSMIC, 0xC0, 6, "COSMIC"}, {RND_FREE, 0x40, 0, "RND"}};
+            {RND_COSMIC, 0xC0, 6, "COSMIC"}, {RND_FRACTURED, 0xC0, 7, "FRACTURED"},
+            {RND_FREE, 0x40, 0, "RND"}};
         uint32_t steps_ok = 1, saved_ok = 1;
         rnd_mode_put(RND_OFF);
         hold(B_HOME); ui.menu_sel = MI_REC_BTN;
@@ -6384,7 +6385,7 @@ static int test_rnd(void)
         }
         settings_rnd_drift = 0;
         bad += check("RND MENU: REC BUTTON turned right from RECORD: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE "
-                     "STATIC FORGE CHAOS COSMIC RND (their bits and variants)", steps_ok);
+                     "STATIC FORGE CHAOS COSMIC FRACTURED RND (their bits and variants)", steps_ok);
         bad += check("RND MENU: ..each saved and loaded with the settings, DRIFT beside it", saved_ok);
         turn(EN_K2, 1);
         bad += check("RND MENU: ..RND is the last (right again: stays)", rnd_setting() == RND_FREE);
@@ -7084,17 +7085,22 @@ static int test_rnd(void)
         uint32_t odd = 0, ideas = 0, no_four = 1;
         static step_t s0[NSTEP], mine[NSTEP];
         int16_t e0[NTRK][2];
-        for (m = 0; m < 2u; m++) {
-            rnd_mode_put(m ? RND_CHAOS : RND_FORGE);
+        uint32_t pad_ok = 1;
+        for (m = 0; m < 3u; m++) {
+            rnd_mode_put(m == 2u ? RND_FRACTURED : m ? RND_CHAOS : RND_FORGE);
             settings_rnd_drift = 0;
             for (r = 0; r < 80u; r++) {
                 int32_t bpm;
                 uint32_t hits = 0, mask = 0;
                 rnd_roll();
                 bpm = pid_get(PID_GLOBAL(G_BPM), 0);
-                tempo_ok &= m ? bpm >= 130 && bpm <= 134 : bpm >= 128 && bpm <= 132;   /* (about 130, 2026-11-09) */
+                tempo_ok &= m == 2u ? bpm >= 96 && bpm <= 112 : m ? bpm >= 130 && bpm <= 134 : bpm >= 128 && bpm <= 132;
                 ok &= tessera.mode[RND_FG_KICK] == TESS_ENG_OFF;
-                for (tr = 1; tr < NTRK; tr++) ok &= tessera.mode[tr] == TESS_ENG_EUCLID;
+                for (tr = 1; tr < NTRK; tr++)
+                    ok &= tessera.mode[tr] == (m == 2u && tr == RND_FG_BASS ? TESS_ENG_CHORD : TESS_ENG_EUCLID);
+                if (m == 2u)                        /* (FRACTURED's pad: TRIO's triangles, POLY, slow in) */
+                    pad_ok &= trk[RND_FG_BASS].eng_req == 6u && trk[RND_FG_BASS].p[P_E0] == 4 &&
+                              trk[RND_FG_BASS].p[P_VOICE] == V_POLY && trk[RND_FG_BASS].p[P_ATK] >= 60;
                 for (k = 0; k < (uint32_t)trk[RND_FG_KICK].p[P_SLEN]; k++)
                     if (trk[RND_FG_KICK].step[k].n) hits++, mask |= 1u << k;
                 kick_ok &= hits >= 1u && trk[RND_FG_KICK].p[P_SLEN] == rnd_fg.len[RND_FG_KICK];
@@ -7133,8 +7139,9 @@ static int test_rnd(void)
             rnd_back();
             back_ok &= !memcmp(trk[RND_FG_KICK].step, s0, sizeof s0);
         }
-        bad += check("RND FORGE, CHAOS: 80 rolls each: the kick STEP (its pattern written, its length), the bass, hats and "
-                     "percussion EUCLID; FORGE 128-132, CHAOS 130-134 BPM", ok && kick_ok && tempo_ok);
+        bad += check("RND FORGE, CHAOS, FRACTURED: 80 rolls each: the kick STEP (its pattern written, its length), the "
+                     "bass, hats and percussion EUCLID (FRACTURED: a CHORD pad of TRIO's triangles); FORGE 128-132, CHAOS "
+                     "130-134, FRACTURED 96-112 BPM", ok && kick_ok && tempo_ok && pad_ok);
         bad += check("RND FORGE, CHAOS: ..never four on the floor; every kick idea; the percussion an odd length now and then "
                      "(polymeter)", no_four && ideas == (1u << FG_IDEAS) - 1u && odd);
         bad += check("RND FORGE, CHAOS: ..dry, no vibrato, the bass no pitch drop (the drums' kept)", dry);
@@ -7574,7 +7581,7 @@ static int test_rnd(void)
                     const track_t *t = &trk[tr];
                     no_pit &= (m == RND_WOZZA ? t->p[P_LD_PIT] <= 1 : t->p[P_LD_PIT] == 0) &&
                               (t->p[P_ED_PIT] == 0 || (m == RND_TIDE && tr == RND_TD_KICK) ||
-                               ((m == RND_FORGE || m == RND_CHAOS) && tr != RND_FG_BASS)) &&   /* (the drums' drop) */
+                               ((m == RND_FORGE || m == RND_CHAOS || m == RND_FRACTURED) && tr != RND_FG_BASS)) &&   /* (the drums' drop) */
                               (t->eng_req != ENGI_ORACLE || (!or_patch[tr][OR_POLY_FREQ] && !or_patch[tr][OR_WHEEL_FREQ_A] &&
                                                              !or_patch[tr][OR_WHEEL_FREQ_B])) &&
                               (t->eng_req != ENGI_FM6 || (!fm6_patch[tr][FP_LPMD] && !fm6_patch[tr][FP_LPMS])) &&
