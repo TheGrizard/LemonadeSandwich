@@ -571,6 +571,8 @@ static void rnd_role_sound(uint32_t tr, uint32_t e, uint32_t role)
  * RND_FX_POINTS, and only the light ones are rolled (rnd_fx_light: ECHO FILTER ROOM TAPE CHORUS; never REVERB,
  * FORMANT, WIDTH, PHASER or SPIT). Inserts: FX 1 only. */
 #define RND_FX_BUS 2u
+#define RND_ROOM (MELODEE_FX_LEAN ? FX_OFF : FX_ROOM)       /* (ROOM, CHORUS out of the device build 2026-11-12: none) */
+#define RND_CHORUS (MELODEE_FX_LEAN ? FX_OFF : FX_CHORUS)
 static int rnd_fx_light(uint32_t type)
 {
     return type == FX_OFF || type == FX_ECHO || type == FX_FILTER || type == FX_ROOM || type == FX_TAPE ||
@@ -615,8 +617,8 @@ static uint32_t rnd_sends(void)
 {
     uint32_t used = 0, s;
     uint32_t type[3];
-    type[0] = rnd_pct(65) ? FX_ROOM : FX_ECHO;
-    type[1] = rnd_pct(50) ? (type[0] == FX_ROOM ? FX_ECHO : FX_ROOM) : FX_OFF;
+    type[0] = rnd_pct(65) ? RND_ROOM : FX_ECHO;
+    type[1] = rnd_pct(50) ? (type[0] == RND_ROOM ? FX_ECHO : RND_ROOM) : FX_OFF;
     type[2] = FX_OFF;
     pid_set(PID_GLOBAL(G_FXMODE), 0, 1);
     for (s = 0; s < 3u; s++) {
@@ -634,7 +636,7 @@ static uint32_t rnd_sends(void)
 /* the inserts: FX 1 on RND_INSERT_TRACKS tracks at most, each kind if the points left allow it; FX 2 and 3 off */
 static void rnd_inserts(uint32_t used)
 {
-    static const uint8_t fx[] = {FX_FILTER, FX_ECHO, FX_TAPE, FX_CHORUS};
+    static const uint8_t fx[] = {FX_FILTER, FX_ECHO, FX_TAPE, RND_CHORUS};
     static const uint8_t fw[] = {18, 12, 8, 6};
     uint8_t ok[NELEM(fx)], tracks[TESSERA_TRACKS] = {0, 1, 2, 3};
     uint32_t tr, k, n = 0, want = (uint32_t)rnd_rr(0, (int32_t)RND_INSERT_TRACKS);
@@ -3934,7 +3936,7 @@ static int rnd_cord_add(const cord_t *c)           /* (the first free cord) */
 }
 static void rnd_fx_mode(void)
 {
-    static const uint8_t fx[] = {FX_ECHO, FX_ROOM, FX_TAPE, FX_CHORUS, FX_FILTER};
+    static const uint8_t fx[] = {FX_ECHO, RND_ROOM, FX_TAPE, RND_CHORUS, FX_FILTER};
     /*                                   ECH ROO TAP CHO FIL */
     static const uint8_t gs[5] = {8, 10, 3, 4, 0}, gi[5] = {5, 0, 6, 6, 6};    /* gentle */
     static const uint8_t es[5] = {10, 6, 3, 1, 3}, ei[5] = {6, 0, 4, 2, 10};   /* GLITCH PULSE */
@@ -4014,7 +4016,7 @@ static void rnd_fx_wozza(const uint8_t *role)
     pid_set(PID_GLOBAL(G_FXMODE), 0, 1);
     for (s = 0; s < 3u; s++) {
         uint32_t base = G_MFXTYPE + s * 4u;
-        pid_set(PID_GLOBAL(base), 0, s == 0u ? FX_ROOM : s == 1u && echo ? FX_ECHO : FX_OFF);
+        pid_set(PID_GLOBAL(base), 0, s == 0u ? RND_ROOM : s == 1u && echo ? FX_ECHO : FX_OFF);
         pid_set(PID_GLOBAL(base + 1u), 0, s == 0u ? rnd_rr(70, 110) : rnd_rr(40, 75));
         pid_set(PID_GLOBAL(base + 2u), 0, s == 0u ? rnd_rr(60, 115) : rnd_rr(20, 70));
         pid_set(PID_GLOBAL(base + 3u), 0, s == 0u ? rnd_rr(40, 100) : rnd_rr(20, 60));
@@ -4207,7 +4209,7 @@ static int rnd_trim(void)
 {
     uint32_t tr;
     if (song.g[G_MFXTYPE] == FX_REVERB) {
-        pid_set(PID_GLOBAL(G_MFXTYPE), 0, FX_ROOM);
+        pid_set(PID_GLOBAL(G_MFXTYPE), 0, RND_ROOM);
         return 1;
     }
     if ((tr = rnd_dearest_insert()) < NTRK) {

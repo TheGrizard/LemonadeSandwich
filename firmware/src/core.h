@@ -68,6 +68,10 @@
 #define MELODEE_DRUM 1           /* DRUM (eng_drum.c): out of the LEMONADE SANDWICH device build 2026-11-07 (build.py; the
                                   * drums are another machine's): its tracks load FM's first voice, its grid never shows */
 #endif
+#ifndef MELODEE_FX_LEAN
+#define MELODEE_FX_LEAN 0        /* 1: PHASER WIDTH FORMANT ROOM CHORUS out, playing as OFF (fx.c; the LEMONADE SANDWICH
+                                  * device build 2026-11-12, for flash: build.py; the host tests keep them) */
+#endif
 #ifndef MELODEE_LOOK
 #define MELODEE_LOOK 1           /* 1: Mono (ui_mono.c), what ships and the host tests build; 0: the detailed look,
                                   * no longer kept up (2026-10-31; branch detailed-look) */

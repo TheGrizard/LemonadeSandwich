@@ -7,6 +7,22 @@
 #define FX_RATE (FS/4u)
 #define FX_REV_DIV 8u
 enum { FX_OFF, FX_PHASER, FX_WIDTH, FX_FORMANT, FX_TAPE, FX_SPIT, FX_ECHO, FX_ROOM, FX_REVERB, FX_CHORUS, FX_FILTER, FX_COUNT };
+/* LEMONADE SANDWICH (2026-11-12, for flash): MELODEE_FX_LEAN 1 (the device build) leaves PHASER WIDTH FORMANT ROOM
+ * CHORUS out; their stored IDs kept, they play as OFF. FXL_*: the type to compare with, one no type has when it is out,
+ * so the compiler drops its code */
+#if MELODEE_FX_LEAN
+#define FXL_PHASER 0x100u
+#define FXL_WIDTH 0x100u
+#define FXL_FORMANT 0x100u
+#define FXL_ROOM 0x100u
+#define FXL_CHORUS 0x100u
+#else
+#define FXL_PHASER FX_PHASER
+#define FXL_WIDTH FX_WIDTH
+#define FXL_FORMANT FX_FORMANT
+#define FXL_ROOM FX_ROOM
+#define FXL_CHORUS FX_CHORUS
+#endif
 typedef struct { float b0,b1,b2,a1,a2,z1,z2; } fx_bq_t;
 typedef struct {
     fx_bq_t q[2][4];
@@ -98,13 +114,13 @@ static void fx_design(fx_state_t *f,uint32_t n)
     f->age=1;
     /* Reverb's coefficient cache is idle in the filter modes. Histories keep
      * running, but coefficients change only when their actual inputs change. */
-    int moving=f->type==FX_PHASER || f->type==FX_WIDTH;
+    int moving=f->type==FXL_PHASER || f->type==FXL_WIDTH;
     if(!first && f->rev_char==cha && (moving?f->rev_rate==sweep:previous==f->random))return;
     f->rev_rate=(int16_t)sweep;f->rev_char=(int16_t)cha;
     for(uint32_t k=0;k<4u;k++){
         fx_bq_t *q=&f->q[0][k];
         if(moving)fx_coeff(q,0,180+(int32_t)k*310+sweep*(3+cha/8),0.65f,1);
-        else if(f->type==FX_FORMANT && k<3u)fx_coeff(q,3,vowel[(uint32_t)f->random%5u][k]*(80+cha)/144,4.0f,1.8f);
+        else if(f->type==FXL_FORMANT && k<3u)fx_coeff(q,3,vowel[(uint32_t)f->random%5u][k]*(80+cha)/144,4.0f,1.8f);
         else if(f->type==FX_SPIT && k==0u)fx_coeff(q,2,180+f->random*45,1.0f+cha*0.15f,1);
         else fx_identity(q);
         /* Both stereo sides use these coefficients and independent histories.
@@ -207,7 +223,7 @@ static __attribute__((noinline,section(FX_FILTER_SECTION),aligned(16))) void fx_
         fx_hw_status=2;
     }
 #endif
-    uint32_t sections=f->type==FX_SPIT?1u:f->type==FX_FORMANT?3u:4u;
+    uint32_t sections=f->type==FX_SPIT?1u:f->type==FXL_FORMANT?3u:4u;
     for(uint32_t i=0;i<n;i++){
         float x=(float)b[i];for(uint32_t k=0;k<sections;k++)x=fx_tick(&f->q[ch][k],x);b[i]=(int32_t)x;
     }
@@ -221,11 +237,11 @@ static __attribute__((noinline,section(FX_FILTER_SECTION),aligned(16))) void fx_
 static inline __attribute__((always_inline)) void fx_return(int32_t target,uint32_t type,uint32_t mono,uint32_t i,int32_t wl,int32_t wr,int32_t *mix)
 {
     int32_t l=fx_dry_l[i],r=fx_dry_r[i];
-    if(type==FX_PHASER){wl=fx_div_pow2(wl+l,1);wr=fx_div_pow2(wr+r,1);}
-    if(type==FX_FORMANT){wl=fx_div_pow2(wl,1);wr=fx_div_pow2(wr,1);}
+    if(type==FXL_PHASER){wl=fx_div_pow2(wl+l,1);wr=fx_div_pow2(wr+r,1);}
+    if(type==FXL_FORMANT){wl=fx_div_pow2(wl,1);wr=fx_div_pow2(wr,1);}
     if(*mix!=target)*mix+=fx_limit(target-*mix,-128,128);
     fx_left[i]=l+fx_scale(wl-l,(uint32_t)*mix*2u);
-    fx_right[i]=mono?fx_left[i]:type==FX_WIDTH?r:r+fx_scale(wr-r,(uint32_t)*mix*2u);
+    fx_right[i]=mono?fx_left[i]:type==FXL_WIDTH?r:r+fx_scale(wr-r,(uint32_t)*mix*2u);
 }
 /* FILTER: a resonant 12 dB low-pass (Cytomic's trapezoidal state-variable filter) at the full rate, so it is open
  * at the top: RATE the cutoff (CUT, 30 Hz .. 16 kHz, an engine's CUTOFF scale), CHAR the resonance (RES). The
@@ -268,7 +284,7 @@ static __attribute__((noinline,section(".dsp_text"))) void fx_time(fx_state_t *r
     static const uint16_t len[4]={149,211,263,293};
     int32_t mix=f->mix,want=(int32_t)(110u+(uint32_t)f->rate*31u)<<8,at=f->glide?f->glide:want;
     int32_t feedback=f->type==FX_ECHO?f->character*220:12000+f->character*120;
-    if(f->type==FX_ROOM && (!f->rev_span[0] || f->rev_rate!=f->rate)){
+    if(f->type==FXL_ROOM && (!f->rev_span[0] || f->rev_rate!=f->rate)){
         f->rev_rate=f->rate;for(uint32_t k=0;k<4u;k++)f->rev_span[k]=(uint16_t)((uint32_t)len[k]*(64u+(uint32_t)f->rate)/191u);
     }
     for(uint32_t i=0;i<n;i++){
@@ -294,7 +310,7 @@ static __attribute__((noinline,section(".dsp_text"))) void fx_time(fx_state_t *r
             }
         }
         f->decim=(f->decim+1u)&3u;
-        fx_return(target,0,f->mono,i,f->echo,f->type==FX_ROOM?f->damp[1]+f->damp[3]:f->echo,&mix);
+        fx_return(target,0,f->mono,i,f->echo,f->type==FXL_ROOM?f->damp[1]+f->damp[3]:f->echo,&mix);
     }
     f->mix=mix;f->glide=at;
 }
@@ -477,7 +493,7 @@ static inline __attribute__((always_inline)) int32_t fx_filter_input(fx_state_t 
 }
 static __attribute__((noinline,section(".dsp_text"))) uint32_t fx_down(fx_state_t *restrict f,uint32_t n)
 {
-    uint32_t count=0,channels=f->mono || f->type==FX_WIDTH?1u:2u;
+    uint32_t count=0,channels=f->mono || f->type==FXL_WIDTH?1u:2u;
     for(uint32_t ch=0;ch<channels;ch++){
         int32_t *input=ch?fx_right:fx_left,*output=ch?fx_low_r:fx_low_l,*h=f->rev_damp+ch*4u;
         int32_t a=h[0],b=h[1],previous=h[2],difference=h[3],low=f->rev_bass[ch];
@@ -514,7 +530,7 @@ static __attribute__((noinline,section(".dsp_text"))) void fx_up(fx_state_t *f,u
 }
 static __attribute__((noinline,section(".dsp_text"))) void fx_copy(fx_state_t *f,uint32_t n)
 {
-    uint32_t mono=(f->type<=FX_ECHO && f->type!=FX_WIDTH) || f->type==FX_FILTER;
+    uint32_t mono=(f->type<=FX_ECHO && f->type!=FXL_WIDTH) || f->type==FX_FILTER;
     for(uint32_t i=0;i<n;i++){
         fx_dry_l[i]=fx_left[i];fx_dry_r[i]=fx_right[i];if(fx_left[i]!=fx_right[i])mono=0;
     }
@@ -577,6 +593,9 @@ static void fx_slot_prepare(fx_plan_t *plan,uint32_t si,const int16_t *p)
 {
     plan->active=0;
     uint32_t type=(uint32_t)fx_limit(p[0],0,FX_COUNT-1);
+#if MELODEE_FX_LEAN
+    if(type==FX_PHASER || type==FX_WIDTH || type==FX_FORMANT || type==FX_ROOM || type==FX_CHORUS)type=FX_OFF;   /* (out) */
+#endif
     fx_state_t *f=&fx_state[si];
     int32_t amount=fx_limit(p[1],0,127);
     int32_t target=type?(amount+(amount==127))*256:0;
@@ -601,7 +620,7 @@ static void fx_slot_prepare(fx_plan_t *plan,uint32_t si,const int16_t *p)
 #endif
     int16_t *mem=0;
     if(f->type>=FX_ECHO && f->type!=FX_FILTER){
-        uint32_t bytes=f->type==FX_CHORUS?FX_CHORUS_BYTES:f->type==FX_ROOM?2048u:f->type==FX_REVERB?FX_REVERB_BYTES:8192u;
+        uint32_t bytes=f->type==FXL_CHORUS?FX_CHORUS_BYTES:f->type==FXL_ROOM?2048u:f->type==FX_REVERB?FX_REVERB_BYTES:8192u;
         if(!f->failed && !resource[RES_FX0+si].size){
             void *(*volatile allocate)(uint32_t,uint32_t)=fx_memory;mem=allocate(RES_FX0+si,bytes);if(!mem)f->failed=1;
         }else if(resource[RES_FX0+si].size)mem=resource[RES_FX0+si].ptr;
@@ -618,7 +637,7 @@ static __attribute__((noinline,section(".audio_text"),aligned(16))) int fx_slot_
         float c[3];void (*volatile design)(const fx_state_t *,float *)=fx_svf_design;design(f,c);
         if(!f->age){f->q[0][1].b0=c[0];f->q[0][1].b1=c[1];f->q[0][1].b2=c[2];f->age=1;}
         void (*volatile run)(fx_state_t *,uint32_t,const float *,int32_t)=fx_svf;run(f,n,c,target);
-    }else if(f->type==FX_CHORUS){
+    }else if(f->type==FXL_CHORUS){
         if(!n)return 1;
         if(!f->age){f->rev_l=f->rev_r=256*65536;f->age=1;}
         f->phase+=LFO_INC[f->rate]*n/CTL;
@@ -641,7 +660,7 @@ static __attribute__((noinline,section(".audio_text"),aligned(16))) int fx_slot_
             void (*volatile run)(fx_state_t *,uint32_t,int32_t *,uint32_t)=fx_filter;
             run(f,0,fx_low_l,count);
             if(f->mono){for(uint32_t k=0;k<4u;k++){f->q[1][k].z1=f->q[0][k].z1;f->q[1][k].z2=f->q[0][k].z2;}}
-            else if(f->type!=FX_WIDTH)run(f,1,fx_low_r,count);
+            else if(f->type!=FXL_WIDTH)run(f,1,fx_low_r,count);
         }
         void (*volatile up)(fx_state_t *,uint32_t,int32_t)=fx_up;up(f,n,target);
     }

@@ -12,7 +12,11 @@ static const uint8_t N_DIV_ORDER[10] = {9, 8, 7, 6, 0, 4, 1, 5, 2, 3};
 static const char *const N_RECQ[] = {"OFF", "1/4", "1/8", "1/16", "1/32", "8T", "16T", "1/2", "1/1", "2BAR", "4BAR"};
 static const char *const N_LTRIG[] = {"NOTE", "FREE"};
 static const char *const N_LPOL[] = {"BI", "UNI"};
+#if MELODEE_FX_LEAN                         /* (out: fx.c's MELODEE_FX_LEAN; their IDs kept, shown as -) */
+static const char *const N_FX[] = {"OFF", "-", "-", "-", "TAPE", "SPIT", "ECHO", "-", "REVERB", "-", "FILTER"};
+#else
 static const char *const N_FX[] = {"OFF", "PHASER", "WIDTH", "FORMANT", "TAPE", "SPIT", "ECHO", "ROOM", "REVERB", "CHORUS", "FILTER"};
+#endif
 static const char *const N_ONOFF[] = {"OFF", "ON"};
 static const char *const N_QUANT[] = {"OFF", "SNAP", "WHITE", "ALL", "MPC", "CHRD"};   /* Q_OFF .. Q_CHRD (seq.c kb_map, midi_map) */
 /* chord keys (chord.c): OFF, the diatonic triad / seventh of the track's ROOT and SCALE on the key, fixed shapes */

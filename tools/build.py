@@ -289,13 +289,13 @@ def build_app(stub):
     subprocess.run([sys.executable, SRC / "tools/gen_909_tables.py", GEN / "x0x_drum_tables.h"], check=True)
     flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
     os.environ.setdefault("MELODEE_HELP_PACKED", "1")   # melodee-tess: the help texts byte-pair coded (tools/gen_help.py)
-    for flag, v in (("MELODEE_FM6", "0"), ("MELODEE_SID", "0"), ("MELODEE_SID_KIT", "0"), ("MELODEE_PHYS", "0"), ("MELODEE_DRUM", "0"), ("MELODEE_PLAITS", "0"), ("MELODEE_BRAIDS", "1")):
+    for flag, v in (("MELODEE_FM6", "0"), ("MELODEE_SID", "0"), ("MELODEE_SID_KIT", "0"), ("MELODEE_PHYS", "0"), ("MELODEE_DRUM", "0"), ("MELODEE_PLAITS", "0"), ("MELODEE_BRAIDS", "1"), ("MELODEE_FX_LEAN", "1")):
         os.environ.setdefault(flag, v)   # melodee-tess: FM back, SID out (2026-10-21; PHYS too until it came back 2026-10-31), DRUM's SID KIT out (2026-10-28), CZ-1 and Prophet stores and MACRO out, TRIO in; set =1 / =0
                                          # to build the old set (the host tests keep all engines: firmware/src/core.h)
     os.environ.setdefault("MELODEE_LOOK", "1")   # melodee-tess: the Mono look, what 3.0 ships (2026-10-30); =0 the detailed
                                                  # look (the host tests keep it: firmware/src/core.h)
     for flag in ("MELODEE_HELP_PACKED", "MELODEE_FLASH", "MELODEE_OTA", "MELODEE_OTA_DRYRUN", "MELODEE_OTA_RAMONLY", "MELODEE_CDC",
-                 "MELODEE_UART", "MELODEE_USB_AUDIO", "MELODEE_USB_HOST", "MELODEE_ICONS", "MELODEE_FM6", "MELODEE_SID", "MELODEE_SID_KIT", "MELODEE_PLAITS", "MELODEE_BRAIDS", "MELODEE_TRIO", "MELODEE_PHYS", "MELODEE_DRUM", "MELODEE_LOOK",
+                 "MELODEE_UART", "MELODEE_USB_AUDIO", "MELODEE_USB_HOST", "MELODEE_ICONS", "MELODEE_FM6", "MELODEE_SID", "MELODEE_SID_KIT", "MELODEE_PLAITS", "MELODEE_BRAIDS", "MELODEE_TRIO", "MELODEE_PHYS", "MELODEE_DRUM", "MELODEE_LOOK", "MELODEE_FX_LEAN",
                  "MELODEE_BENCH_SILENT", "MELODEE_FX_PROFILE", "MELODEE_AUDIO_PROFILE", "MELODEE_BATCH_AUDIO", "MELODEE_ADMISSION", "MELODEE_AUDIO_BENCH", "MELODEE_DUAL_CORE", "MELODEE_CACHE_RAM", "MELODEE_CORE1_TEST", "MELODEE_RAM_AUDIO", "MELODEE_HW_EQ"):
         v = os.environ.get(flag)    # unset: the default in firmware/src/melodee.c
         if v in ("0", "1"):
