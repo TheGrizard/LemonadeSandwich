@@ -3288,8 +3288,8 @@ static void rnd_forge_generators(void)
     if (rnd_fg.idea == FG_TRIPLET) rnd_tp(RND_FG_KICK, P_SDIV, 5);   /* 16T: the kick's triplets, the hats straight */
     if (rnd_fg.idea == FG_THREE) rnd_tp(RND_FG_KICK, P_SDIV, 1);     /* 1/8: three of them over four */
     if (rnd_fg.idea == FG_TRIPLET || (!rnd_chaos && rnd_pct(25))) rnd_tp(RND_FG_HAT, P_SSWING, rnd_rr(18, 34));
-    pid_set(PID_GLOBAL(G_BPM), 0, rnd_frac ? rnd_rr(96, 112) : rnd_chaos ? rnd_rr(130, 134) : rnd_rr(128, 132));   /* (about
-                                                     * 130, 2026-11-09; FRACTURED slower, broken) */
+    pid_set(PID_GLOBAL(G_BPM), 0, rnd_frac ? rnd_rr(130, 150) : rnd_chaos ? rnd_rr(130, 134) : rnd_rr(128, 132));   /* (about
+                                                     * 130, 2026-11-09; FRACTURED 130 to 150, asked 2026-11-16) */
     for (tr = 0; tr < TESSERA_TRACKS; tr++) tess_roll_apply(tr);   /* (the loops together from now) */
     rnd_fg.phrase = rnd_fg.down = rnd_fg.fill = 0;
     rnd_fg.bar = bar_n;
