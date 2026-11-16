@@ -23,10 +23,10 @@ effects (WOZZA keeps its tape wear, STATIC its distortion).
 | **MIRROR** | HALO's mirror: glassy and digital, MACRO's wavetables, microtonal now and then |
 | **PHASE** | After Steve Reich: one bright cell on two tracks, one moving a step ahead every few bars |
 | **CRATE** | An old funk or soul record to sample, no drums: keys, bass, a hook, strings or a choir |
+| **COSMIC** | Synthwave at 108 to 118 BPM: a composed minor phrase, driving bass on the roots, wide pads, a lead, an arp |
 | **STATIC** | A wall of atonal noise in four held layers with a brooding Reese bass, building and dropping back |
 | **FORGE** | Dark polyrhythmic techno at about 130 BPM: a deep kick, never four on the floor, Euclidean bass, hats, a low tom |
 | **CHAOS** | FORGE noisier and more synthetic: crushed FM kicks, metal and noise |
-| **COSMIC** | Synthwave at 108 to 118 BPM: a composed minor phrase, driving bass on the roots, wide pads, a lead, an arp |
 | **FRACTURED** | Glitchy, broken beats after Autechre under FALL's warm pad, 130 to 150 BPM |
 | **RND** | A whole new piece, random and strange |
 

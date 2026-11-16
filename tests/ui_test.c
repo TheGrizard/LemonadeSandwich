@@ -6362,8 +6362,8 @@ static int test_rnd(void)
             {RND_FALL, 0x80, 1, "FALL"}, {RND_TIDE, 0x40, 4, "TIDE"}, {RND_WOZZA, 0x40, 3, "WOZZA"},
             {RND_ORBIT, 0xC0, 1, "ORBIT"}, {RND_LOOPS, 0x80, 2, "LOOPS"}, {RND_HALO, 0x80, 3, "HALO"},
             {RND_MIRROR, 0xC0, 3, "MIRROR"}, {RND_PHASE, 0x40, 5, "PHASE"}, {RND_CRATE, 0x80, 4, "CRATE"},
-            {RND_STATIC, 0x80, 5, "STATIC"}, {RND_FORGE, 0xC0, 4, "FORGE"}, {RND_CHAOS, 0xC0, 5, "CHAOS"},
-            {RND_COSMIC, 0xC0, 6, "COSMIC"}, {RND_FRACTURED, 0xC0, 7, "FRACTURED"},
+            {RND_COSMIC, 0xC0, 6, "COSMIC"}, {RND_STATIC, 0x80, 5, "STATIC"}, {RND_FORGE, 0xC0, 4, "FORGE"},
+            {RND_CHAOS, 0xC0, 5, "CHAOS"}, {RND_FRACTURED, 0xC0, 7, "FRACTURED"},
             {RND_FREE, 0x40, 0, "RND"}};
         uint32_t steps_ok = 1, saved_ok = 1;
         rnd_mode_put(RND_OFF);
@@ -6385,7 +6385,7 @@ static int test_rnd(void)
         }
         settings_rnd_drift = 0;
         bad += check("RND MENU: REC BUTTON turned right from RECORD: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE "
-                     "STATIC FORGE CHAOS COSMIC FRACTURED RND (their bits and variants)", steps_ok);
+                     "COSMIC STATIC FORGE CHAOS FRACTURED RND (their bits and variants)", steps_ok);
         bad += check("RND MENU: ..each saved and loaded with the settings, DRIFT beside it", saved_ok);
         turn(EN_K2, 1);
         bad += check("RND MENU: ..RND is the last (right again: stays)", rnd_setting() == RND_FREE);
@@ -7516,7 +7516,8 @@ static int test_rnd(void)
                               p[P_ATK] <= 30 && p[P_TRANS] >= 0 && pid_get(PID_TESS(TX_TW_DROP), tr) <= 70 &&
                               (e == 6u || e == ENGI_ORACLE) && !(e == ENGI_ORACLE && (trk[tr].preset == 9u || trk[tr].preset == 10u));
                 else if (role == RND_ROLE_NOISE)
-                    tex_ok &= e == 6u && p[P_E0] == 8 && m == TESS_ENG_SERIES && p[P_SDIV] == 9 && p[P_LEVEL] <= 66 &&
+                    tex_ok &= ((e == 6u && p[P_E0] == 8 && p[P_LEVEL] <= 54) || (e == ENGI_MACRO && p[P_E0] == 14)) &&
+                              m == TESS_ENG_SERIES && p[P_SDIV] == 9 && p[P_LEVEL] <= 66 &&
                               p[P_VOICE] == V_LEGATO;
                 wow &= role == RND_ROLE_NOISE ? p[P_LD_PIT] == 0 : p[P_LD_PIT] >= 0 && p[P_LD_PIT] <= 1 && p[P_LWAVE] == 0;
                 human &= role == RND_ROLE_NOISE || pid_get(PID_TESS(TX_SUB_HUMAN), tr) <= (int32_t)TESS_HUMAN_MS;
@@ -7546,7 +7547,7 @@ static int test_rnd(void)
         bad += check("RND WOZZA: ..the ostinato two notes taking turns (SERIES on two steps), a beat or two each", osti_ok);
         bad += check("RND WOZZA: ..the melody a soft synth line (TURING AWAKE MARKOV, gaps) on ORACLE's leads or keys or TRIO's "
                      "leads, no plucks or tines; the ostinato ORACLE's KEYS or TRIO's pads; never below", mel_ok);
-        bad += check("RND WOZZA: ..the texture TRIO's noise, held and low", tex_ok);
+        bad += check("RND WOZZA: ..the texture MACRO's DUST (or TRIO's hiss), held and low", tex_ok);
         bad += check("RND WOZZA: ..the wow (a sine on the pitch, a fifth of a semitone at most), a player's timing", wow && human);
         bad += check("RND WOZZA: ..dry, the CPU rules (ORACLE twice at most, no FM6, no PHYS)", dry && cpu);
         bad += check("RND WOZZA: ..ORACLE often (its leads and keys), FM6 and PHYS never", !fm6 && orcs > 100u && !phys);

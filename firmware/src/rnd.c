@@ -28,7 +28,7 @@
  * sections, without drums, to sample: rnd_crate_sound), RND_STATIC STATIC (a wall of noise, ambient: it builds, overloads
  * and collapses: rnd_static_move), RND_PHASE PHASE (after Steve Reich: one cell on two tracks, one
  * moving a step ahead every few bars: rnd_phase_move). (tessera-rnd: AMBIENT, NICE, GLITCH and PULSE gone; their codes,
- * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE STATIC FORGE CHAOS COSMIC FRACTURED RND.) Saved as RND_CODE:
+ * saved, read as FALL: rnd_setting. The order the menu's: FALL TIDE WOZZA ORBIT LOOPS HALO MIRROR PHASE CRATE COSMIC STATIC FORGE CHAOS FRACTURED RND.) Saved as RND_CODE:
  * favorites.factory[15][24] bits 6 and 7 (free: settings_test.c), as the panel gamma's bits are, and a variant 0..2
  * beside them (0..7: settings_rnd_variant, panel.c: the settings record's retired lowcut word), so it comes back at power-on
  * with the other device settings. Room left: 0xC0's variant 2 (tessera-rnd's PLAITS, on its own branch). MENU > DRIFT beside it
@@ -36,10 +36,11 @@
 #define RND_SET_BIT 0x40u
 #define RND_AMB_BIT 0x80u
 enum { RND_OFF, RND_FALL, RND_TIDE, RND_WOZZA, RND_ORBIT, RND_LOOPS, RND_HALO, RND_MIRROR, RND_PHASE, RND_CRATE,
-       RND_STATIC, RND_FORGE, RND_CHAOS, RND_COSMIC, RND_FRACTURED, RND_FREE, RND_MODES };           /* (the menu's order, asked 2026-11-08; the codes each mode's own) */
+       RND_COSMIC, RND_STATIC, RND_FORGE, RND_CHAOS, RND_FRACTURED, RND_FREE, RND_MODES };   /* (the menu's order, asked
+                                                     * 2026-11-08, COSMIC after CRATE 2026-11-16; the codes each mode's own) */
 static const struct { uint8_t bits, variant; } RND_CODE[RND_MODES] = {
     {0x00u, 0}, {0x80u, 1}, {0x40u, 4}, {0x40u, 3}, {0xC0u, 1}, {0x80u, 2}, {0x80u, 3}, {0xC0u, 3}, {0x40u, 5},
-    {0x80u, 4}, {0x80u, 5}, {0xC0u, 4}, {0xC0u, 5}, {0xC0u, 6}, {0xC0u, 7}, {0x40u, 0},   /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
+    {0x80u, 4}, {0xC0u, 6}, {0x80u, 5}, {0xC0u, 4}, {0xC0u, 5}, {0xC0u, 7}, {0x40u, 0},   /* (0xC0's variant 2: PLAITS, on its branch; AMBIENT 0xC0 0, NICE
                                                      * 0x80 0, GLITCH 0x40 1, PULSE 0x40 2: gone) */
 };
 static uint32_t rnd_mode(void) { return (favorites.factory[15][24] & (RND_SET_BIT | RND_AMB_BIT)) != 0u; }
@@ -846,9 +847,10 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
 {
     uint8_t nice = rnd_nice;
     uint32_t e;
-    if (role == RND_ROLE_NOISE) {
-        rnd_want_e = eng_ok(11u) ? 11u : 6u;        /* (NOISE; TRIO's noise wave without it) */
-        rnd_want_pi = 0;
+    if (role == RND_ROLE_NOISE) {                   /* (NOISE; else MACRO's DUST, a record's crackle: TRIO's hiss too loud
+                                                     * in some rolls, heard 2026-11-16; else that hiss, quieter) */
+        rnd_want_e = eng_ok(11u) ? 11u : eng_ok(ENGI_MACRO) ? ENGI_MACRO : 6u;
+        rnd_want_pi = rnd_want_e == ENGI_MACRO ? 14u : 0u;   /* (DUST) */
     } else if (role == RND_ROLE_MELODY) {           /* ORACLE's synth leads and its keys, or TRIO's leads (no plucks,
                                                      * no tines, no FM6: heard, toy-like) */
         static const uint8_t op[] = {11, 17, 21, 5}, ow[] = {4, 3, 2, 1};   /* KEYS SQUARE LEAD FLUTE SYNC LEAD */
@@ -887,6 +889,10 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
             rnd_tp(tr, P_E0 + 5u, rnd_pct(65) ? rnd_rr(10, 60) : 0);   /* DENS: crackle */
             rnd_tp(tr, P_E0 + 6u, rnd_rr(20, 70));  /* DRFT */
             rnd_tp(tr, P_E0 + 7u, rnd_pct(30) ? rnd_rr(5, 30) : 0);    /* CRSH */
+        } else if (e == ENGI_MACRO) {               /* DUST: sparse, dark, a little crushed */
+            rnd_tp(tr, P_E0, 14);
+            rnd_tp(tr, P_E0 + 1u, rnd_rr(15, 45));  /* TIMBR: how often */
+            rnd_tp(tr, P_E0 + 3u, rnd_rr(50, 80));  /* TONE: dark */
         } else {
             rnd_tp(tr, P_E0, 8);                    /* (TRIO: NOIS; NOISE is retired on the FM-1's build) */
             rnd_tp(tr, P_E0 + 4u, 2);               /* MODE HP: a hiss over it all (the rumble gone, 2026-11-09: mud) */
@@ -898,7 +904,7 @@ static void rnd_wozza_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t
         rnd_tp(tr, P_SUS, 127);
         rnd_tp(tr, P_REL, rnd_rr(90, 110));
         rnd_tp(tr, P_VOICE, V_LEGATO);
-        rnd_tp(tr, P_LEVEL, rnd_rr(50, 66));
+        rnd_tp(tr, P_LEVEL, e == 6u ? rnd_rr(40, 54) : rnd_rr(50, 66));   /* (TRIO's hiss 6 dB down, 2026-11-16) */
         rnd_tp(tr, P_PAN, 0);
         rnd_tp(tr, P_SPRD, rnd_rr(60, 127));
         return;
@@ -3070,7 +3076,7 @@ static void rnd_forge_sound(uint32_t tr, uint32_t *oracles)
         rnd_tp(tr, P_ATK, rnd_rr(60, 90)); rnd_tp(tr, P_DEC, 100); rnd_tp(tr, P_SUS, rnd_rr(110, 124));
         rnd_tp(tr, P_REL, rnd_rr(90, 110)); rnd_tp(tr, P_SPRD, rnd_rr(60, 100));
         rnd_tp(tr, P_VOICE, V_POLY);
-        rnd_tp(tr, P_LEVEL, rnd_rr(96, 104));
+        rnd_tp(tr, P_LEVEL, rnd_rr(76, 84));        /* (10 dB down, asked 2026-11-16) */
     } else if (tr == RND_FG_BASS) {                 /* the bass: stabs, short, dark, its filter's envelope */
         if (*oracles < 1u && eng_ok(ENGI_ORACLE) && rnd_pct(45)) {
             engine_load_of(t, ENGI_ORACLE, rnd_pct(50) ? 8u : rnd_pct(50) ? 6u : 7u);   /* ACID LINE, FUNK BASS, SUB BASS */
