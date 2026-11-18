@@ -84,7 +84,11 @@
 #define MIDI_TIME_NOW() fm1_ticks()
 #define MIDI_TICKS_PER_MS (1000u * FM1_TICKS_PER_US)
 #include "usb.c"
-#if MELODEE_ACCESS && MELODEE_OTA                /* the screen reader (issue #430): fm1-reader's protocol, said by ui_speak.c */
+#ifndef MELODEE_SPEAK
+#define MELODEE_SPEAK 1                          /* 0: no screen reader (LEMONADE SANDWICH's device build, tools/build.py: its
+                                                  * 6 KB for flash on 3.7.1, 2026-11-18) */
+#endif
+#if MELODEE_ACCESS && MELODEE_OTA && MELODEE_SPEAK   /* the screen reader (issue #430): fm1-reader's protocol, said by ui_speak.c */
 #define ANN_NAME "Tessera " MELODEE_VERSION
 #define ANN_MAX 160u                            /* (a SAY, (160 + 9) / 3 packets, fits usb.c's SysEx queue of 64 as it is) */
 #include "ann_words.h"                                  /* ANN_WORDS_URL: firmware/words.tsv's link (tools/gen_words.py) */

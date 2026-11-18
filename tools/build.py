@@ -270,7 +270,8 @@ def build_app(stub):
     subprocess.run([sys.executable, SRC / "tools/gen_909_tables.py", GEN / "x0x_drum_tables.h"], check=True)
     flags = [*CFLAGS, "-Ifirmware/hal", "-Ifirmware/src", "-Ibuild/gen"]
     os.environ.setdefault("MELODEE_HELP_PACKED", "1")   # melodee-tess: the help texts byte-pair coded (tools/gen_help.py)
-    for flag, v in (("MELODEE_FM6", "0"), ("MELODEE_PHYS", "0"), ("MELODEE_DRUM", "0"), ("MELODEE_BRAIDS", "1"), ("MELODEE_FX_LEAN", "1")):
+    for flag, v in (("MELODEE_FM6", "0"), ("MELODEE_PHYS", "0"), ("MELODEE_DRUM", "0"), ("MELODEE_BRAIDS", "1"), ("MELODEE_FX_LEAN", "1"),
+                    ("MELODEE_SPEAK", "0")):
         os.environ.setdefault(flag, v)   # LEMONADE SANDWICH's device set (2026-11-07..12): FM6, PHYS and DRUM out, MACRO
                                          # (Braids) in, five effects out; set =1 / =0 to build another (the host tests keep
                                          # all engines: firmware/src/core.h). SID and Plaits' MACRO left the code upstream
@@ -280,7 +281,7 @@ def build_app(stub):
                                                  # look (the host tests keep it: firmware/src/core.h)
     for flag in ("MELODEE_HELP_PACKED", "MELODEE_ACCESS", "MELODEE_FLASH", "MELODEE_OTA", "MELODEE_OTA_DRYRUN", "MELODEE_OTA_RAMONLY", "MELODEE_CDC",
                  "MELODEE_UART", "MELODEE_USB_AUDIO", "MELODEE_USB_HOST", "MELODEE_ICONS", "MELODEE_FM6", "MELODEE_TRIO", "MELODEE_PHYS", "MELODEE_LOOK",
-                 "MELODEE_DRUM", "MELODEE_BRAIDS", "MELODEE_FX_LEAN",
+                 "MELODEE_DRUM", "MELODEE_BRAIDS", "MELODEE_FX_LEAN", "MELODEE_SPEAK",
                  "MELODEE_BENCH_SILENT", "MELODEE_FX_PROFILE", "MELODEE_AUDIO_PROFILE", "MELODEE_BATCH_AUDIO", "MELODEE_ADMISSION", "MELODEE_AUDIO_BENCH", "MELODEE_DUAL_CORE", "MELODEE_CACHE_RAM", "MELODEE_CORE1_TEST", "MELODEE_RAM_AUDIO", "MELODEE_HW_EQ"):
         v = os.environ.get(flag)    # unset: the default in firmware/src/melodee.c
         if v in ("0", "1"):
