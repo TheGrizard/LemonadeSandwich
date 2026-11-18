@@ -35,6 +35,11 @@ static const engine_t ENG_RETIRED = {         /* 13 without MELODEE_SLICE: reser
 /* Each track owns only its selected engine's working state. Simple engines
  * use voice_t alone. State is released after the old engine's switch fade. */
 #include "resources.c"
+#if MELODEE_BRAIDS
+#include "eng_braids.c"         /* MACRO: Braids' synthesis (MELODEE_BRAIDS; braids_glue.cc, third_party/mi/braids) */
+#else
+#define ENGI_MACRO 21u          /* (MACRO's ID, reserved: no MACRO in this build) */
+#endif
 static uint32_t eng_state_size(uint32_t e)
 {
     switch (e) {
@@ -43,6 +48,9 @@ static uint32_t eng_state_size(uint32_t e)
 #endif
 #if MELODEE_LEGACY_EXTRAS
     case 7: return sizeof(drw_part_t);
+#endif
+#if MACRO_ON
+    case ENGI_MACRO: return mc_bytes();             /* MACRO: Braids' four oscillators (eng_braids.c) */
 #endif
     case ENGI_DRUM: return sizeof(drum909_part_t);
     case ENGI_FM6: return sizeof(fm6_part_t);
@@ -103,7 +111,11 @@ static const engine_t *const ENGINES[NENGINES] = {
 #else
     &ENG_RETIRED,                /* 9: retired PHYS; stored ID reserved */
 #endif
+#if MELODEE_DRUM
     &ENG_DRUM,                   /* 10 (ENGI_DRUM) */
+#else
+    &ENG_RETIRED,                /* 10: DRUM left out of the build; stored ID reserved */
+#endif
 #if MELODEE_LEGACY_EXTRAS
     &ENG_NOISE,                  /* 11 */
 #else
@@ -128,7 +140,11 @@ static const engine_t *const ENGINES[NENGINES] = {
     &ENG_RETIRED,                /* 19: ORACLE left out of the build; stored ID reserved */
 #endif
     &ENG_RETIRED,                /* 20: reserved (USER_NATIVE_P5, the browser's Prophet user bank) */
+#if MACRO_ON
+    &ENG_MACRO,                  /* 21: MACRO, Braids' synthesis (LEMONADE SANDWICH) */
+#else
     &ENG_RETIRED,                /* 21: retired MACRO (a Plaits prototype); stored ID reserved */
+#endif
 };
 
 /* a track's engine number as an index (the audio paths: a compare, cheaper than % NENGINES; a bad number: 0) */
@@ -173,10 +189,15 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
     9,                           /* PHYS */
 #endif
 #endif
+#if MACRO_ON
+    ENGI_MACRO,                  /* MACRO */
+#endif
 #if MELODEE_SLICE
     13,                          /* SLICE */
 #endif
+#if MELODEE_DRUM
     10,                          /* DRUM */
+#endif
 };
 
 /* Retired synth records (ANALOG and DIGITAL since 2.0 too) retain their stored identity and render silence.
@@ -202,7 +223,7 @@ static uint32_t eng_rank(uint32_t e)
 {
     uint32_t n;
     if (!eng_ok(e))
-        e = ENGI_FALLBACK;                       /* (a retired or reserved engine: FM6's place) */
+        e = ENGI_FALLBACK;                       /* (a retired or reserved engine: FM6's place, or TRIO's) */
     for (n = 0; n < NENG_SHOWN && ENGINE_ORDER[n] != e; n++)
         ;
     return n < NENG_SHOWN ? n : 0u;
@@ -221,11 +242,31 @@ static uint32_t eng_step(uint32_t e, int32_t dir)
 #endif
 /* the parts at power-on (engine, preset; the steps empty): bass (TRK_START_TESS: a drone), pad, lead, drums */
 static const uint8_t TRK_DEF[NPART][2] = {
+#if MELODEE_FM6
     {ENGI_FM6, 39},                                 /* FM6 KUGO HARP (3.5: CEDAR RAIN's four, Theo 2026-11-12; was GLASS PAD) */
     {ENGI_FM6, 38},                                 /* FM6 KOTO WARM (was TRIO STRING MACH: two FM6 pads under generators
                                                      * crackled, 2026-10-28; these are plucks, which ring out) */
     {ENGI_FM6, 20},                                 /* FM6 FLUTE (was BELLS) */
+#else                                               /* (LEMONADE SANDWICH's device build: FM6 out, 2026-11-07) */
+#if MELODEE_ORACLE
+    {ENGI_ORACLE, 1},                               /* ORACLE WARM PAD */
+#else
+    {6, 15},                                        /* TRIO SWEEP PAD */
+#endif
+    {6, 6},                                         /* TRIO STRING MACH */
+#if MELODEE_ORACLE
+    {ENGI_ORACLE, 17},                              /* ORACLE SQUARE LEAD */
+#else
+    {6, 10},                                        /* TRIO SOFT LEAD */
+#endif
+#endif
+#if MELODEE_DRUM
     {ENGI_DRUM, 0}};                                /* DRUM KIT */
+#elif MELODEE_FM6
+    {ENGI_FM6, 6}};                                 /* FM6 ORGAN, a bass (without DRUM) */
+#else
+    {6, 9}};                                        /* TRIO SUB BASS (without DRUM and FM6) */
+#endif
 /* the power-on presets when project format 1 was written (project.c PROJ_DEF_SOUND): fixed, whatever TRK_DEF becomes */
 static const uint8_t TRK_DEF_V1[NPART] = {4, 4, 0, 0};
 #if TRK_START_TESS

@@ -37,6 +37,9 @@ static const char *const PRESET_CAT[NENGINES] = {
 #if MELODEE_ORACLE
     [19] = "OPPSRLBBBUEKKUPFFLPPUWKK",                     /* ORACLE (oracle_sounds.h): INIT ORACLE .. DUB CHORD */
 #endif
+#if MELODEE_BRAIDS
+    [21] = "OLPOLLPEBFFFFPFFLPP",                  /* MACRO (eng_braids.c MC_PRESETS: INIT CSAW .. QPSK DATA) */
+#endif
 };
 static uint32_t cat_of_engine(uint32_t e) { return e == ENGI_DRUM ? CAT_DRUM : e == 11u ? CAT_FX : CAT_OTHER; }
 static uint32_t preset_cat(uint32_t e, uint32_t k)           /* factory preset k of engine e */

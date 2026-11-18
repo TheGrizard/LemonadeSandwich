@@ -2220,6 +2220,8 @@ static void ui_input(void)
     if (sim_input())
         return;
     if(ui.import_refresh){pop.on=0;brw.on=0;ui.import_refresh=0;ui.force=1;}
+    voice_soft_fade = (uint8_t)rnd_mode();              /* (voice.c: the budget's gentle fades) */
+    if (voice_soft_fade) { rnd_guard(); rnd_drift(); }                        /* (rnd.c: a roll too heavy for the FM-1 lightens itself) */
     cu_adopt();                                         /* (Tessera: MOD's routes into MODS, ui_cords.c) */
     if (scr_input(pressed, notes)) return;
     if (notes)
@@ -2377,6 +2379,10 @@ static void ui_input(void)
     }
     if (ui.menu || ui.confirm || name_on()) {
         /* REC does nothing in the menu, a dialog or NAME (no transport start there) */
+    } else if (rnd_mode() && rec == BT_TAP) {           /* RND (MENU > REC BUTTON): a tap rolls, a hold swaps back */
+        rnd_roll();
+    } else if (rnd_mode() && rec == BT_HOLD) {
+        rnd_back();
     } else if (chain_busy() && rec == BT_TAP) {
         ui_message("STOP TO RECORD");
     } else if (rec == BT_TAP) {
@@ -2517,7 +2523,7 @@ static void ui_input(void)
         b = panel_btn_of(id);
         switch (b) {
         case B_PLAY:
-            if ((fm1_in.buttons >> panel.btn[B_REC]) & 1u) {   /* REC + PLAY: record now */
+            if (!rnd_mode() && ((fm1_in.buttons >> panel.btn[B_REC]) & 1u)) {   /* REC + PLAY: record now */
                 rec_play();
                 break;
             }

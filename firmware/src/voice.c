@@ -141,7 +141,7 @@ static uint32_t voice_units(const track_t *t)
 {
     const engine_t *e = ENGINES[t->engine];
 #if MELODEE_ADMISSION
-    if(e==&ENG_FM6 || e==&ENG_DRUM)return 2u;
+    if(e==&ENG_FM6 || (MELODEE_DRUM&&e==&ENG_DRUM))return 2u;
 #endif
     return e->units ? e->units(t) : trk_nvoice(t) > NPOLY ? 1u : 2u;
 }
@@ -335,10 +335,23 @@ static void voice_kill(voice_t *v)                      /* fade out over the nex
     if (part < NPART) voice_kills_part[part]++;
 }
 
+/* RND's modes (rnd.c sets it): a voice the budget takes fades over ~12 ms, as a one-block fade of a ringing tail
+ * clicks. A roll keeps the budget 4 below the default 16, so at most 4 such fades at a time stay within it.
+ * 0 (the rest of the firmware): the strict budget, a taken voice gone within its block. */
+static uint8_t voice_soft_fade;
+#define VOICE_SOFT_FADES 4u
+
 static void voice_capacity_kill(voice_t *v)
 {
+    uint32_t p, i, n = 0;
     capacity_steals++;
     voice_kill(v); /* preserve the legacy explicit-fade counter */
+    if (!voice_soft_fade)
+        return;
+    for (p = 0; p < NPART; p++)
+        for (i = 0; i < NVOICE; i++)
+            n += trk[p].v[i].active && trk[p].v[i].stage == 4u && trk[p].v[i].fade;
+    v->fade = n < VOICE_SOFT_FADES;
 }
 
 /* the budget is full: free room for a voice of part t. 0 = nothing to take (soft) */
@@ -485,6 +498,7 @@ static void voice_start(track_t *t, voice_t *v, uint32_t note, uint32_t vel, int
     v->gate = 1;
     v->active = 1;
     v->stage = 1;
+    v->fade = 0;
     v->age = ++vage;
     voice_scale_pitch(t, v, note);
     v->mvel = t->m_vel;                                 /* mod.c: the note's VEL and RAND */
@@ -776,9 +790,14 @@ static int32_t env_tick(track_t *t, voice_t *v)
         }
         break;
     case 4:                                             /* given up for another part: this block fades it */
+        if (v->fade && v->env >= (1 << 17)) {          /* (the budget's: -2.5 dB a block to -42 dB, ~12 ms) */
+            v->env -= v->env >> 2;
+            break;
+        }
         v->env = 0;
         v->stage = 0;
         v->active = 0;
+        v->fade = 0;
         break;
     default:
         v->env = 0;
@@ -827,7 +846,7 @@ static void engine_batch_kernel(const void *data,int32_t *pcm)
     const engine_batch_t *j=data;int16_t params[P_COUNT];
     for(uint32_t k=0;k<8u;k++)params[P_E0+k]=j->engine_params[k];
     for(uint32_t k=0;k<DV_NLANE;k++)params[P_LN0+k]=j->lane_params[k];
-    if(j->engine==&ENG_DRUM){dr_scratch_t scratch;drum_render_into(j->track,j->voice,pcm,j->n,&j->modulation,&scratch,params);}
+    if(MELODEE_DRUM&&j->engine==&ENG_DRUM){dr_scratch_t scratch;drum_render_into(j->track,j->voice,pcm,j->n,&j->modulation,&scratch,params);}
 #if TRIO_ON
     else if(j->engine==&ENG_TRIO)trio_render_p(params,j->voice,pcm,j->n,&j->modulation);
 #endif
@@ -839,7 +858,7 @@ static void engine_render(track_t *t,voice_t *v,const engine_t *e,int32_t *out,u
 {
     /* DRUM and TRIO voices go to the batch (CPU1 when it is online): their state is the voice's own, the settings a
      * copy taken here */
-    if(audio_batch_active && (e==&ENG_DRUM || (TRIO_ON && e==&ENG_TRIO))){
+    if(audio_batch_active && ((MELODEE_DRUM && e==&ENG_DRUM) || (TRIO_ON && e==&ENG_TRIO))){
         engine_batch_t j;j.track=t;j.voice=v;j.engine=e;j.modulation=*m;j.n=n;
         for(uint32_t k=0;k<8u;k++)j.engine_params[k]=t->p[P_E0+k];
         for(uint32_t k=0;k<DV_NLANE;k++)j.lane_params[k]=t->p[P_LN0+k];
@@ -859,7 +878,7 @@ static __attribute__((noinline)) uint32_t track_render_audio(track_t *t, int32_t
     int32_t tune, tune_fine;
     int32_t bend, bend16, bend_fine;
     uint32_t ti = (uint32_t)(t - trk);
-    if (ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM) {
+    if (MELODEE_DRUM && ENGINES[eng_idx(t->eng_req)] == &ENG_DRUM) {
         midi_bend_q8[ti] = midi_bend_target[ti] = 0;
     } else {
         int32_t d = midi_bend_target[ti] - midi_bend_q8[ti];
@@ -910,10 +929,10 @@ static __attribute__((noinline)) uint32_t track_render_audio(track_t *t, int32_t
                     v->stage = 0;
                     v->env = 0;
                     env = 0;
-                } else {
+                } else if (v->stage != 4u) {
                     v->env = 1 << 24;                   /* (the ADSR's release never ends it) */
                     env = 32767;
-                }
+                }                                       /* given up: env_tick's fade over the engine's own level */
             }
             if (e->amp)                                 /* the engine's own amplitude curve */
                 env = e->amp(t, v, env);

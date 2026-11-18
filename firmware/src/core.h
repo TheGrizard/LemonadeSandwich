@@ -59,6 +59,14 @@
 #ifndef MELODEE_ACCESS
 #define MELODEE_ACCESS 0         /* 1 (the device build, tools/build.py): the screen reader, no help cards (pid.h) */
 #endif
+#ifndef MELODEE_DRUM
+#define MELODEE_DRUM 1           /* DRUM (eng_drum.c): out of the LEMONADE SANDWICH device build 2026-11-07 (build.py; the
+                                  * drums are another machine's): its tracks load FM's first voice, its grid never shows */
+#endif
+#ifndef MELODEE_FX_LEAN
+#define MELODEE_FX_LEAN 0        /* 1: PHASER WIDTH FORMANT ROOM CHORUS out, playing as OFF (fx.c; the LEMONADE SANDWICH
+                                  * device build 2026-11-12, for flash: build.py; the host tests keep them) */
+#endif
 #ifndef MELODEE_LOOK
 #define MELODEE_LOOK 1           /* 1: Mono (ui_mono.c), what ships and the host tests build; 0: the detailed look,
                                   * no longer kept up (2026-10-31; branch detailed-look) */
@@ -69,15 +77,22 @@
 #define LOOK(d, m) (d)
 #endif
 /* SID (3) and MACRO (21, Plaits): engines no longer in the code (2026-11-12; SID out of the device since 2.0, DRUM's
- * SID KIT since 3.0, MACRO a prototype never shipped). Their IDs stay reserved: a track saved with them loads FM6's INIT */
-#define ENG_BUILT(e) ((e) == 3u ? 0 : (e) == 9u ? PHYS_ON : (e) == 12u ? MELODEE_FM6 : (e) == 15u ? 0 : (e) == 19u ? MELODEE_ORACLE : \
-                      (e) == 21u ? 0 : 1)   /* SID PHYS FM6 CZ-1 ORACLE MACRO (PHYS: left out, not retired,
-                                                   * since 2026-10-21: its tracks load FM's first voice) */
+ * SID KIT since 3.0, MACRO a prototype never shipped). Their IDs stay reserved: a track saved with them loads FM6's INIT.
+ * LEMONADE SANDWICH: MACRO's ID back for Braids (eng_braids.c, MELODEE_BRAIDS), and DRUM may be left out */
+#ifndef MELODEE_BRAIDS
+#define MELODEE_BRAIDS 0         /* MACRO (eng_braids.c): Braids' synthesis, C++ (build.py); LEMONADE SANDWICH's device build
+                                  * (2026-11-08: Plaits too heavy on the AC79); off by default */
+#endif
+#define MACRO_ON MELODEE_BRAIDS
+#define ENG_BUILT(e) ((e) == 3u ? 0 : (e) == 9u ? PHYS_ON : (e) == 10u ? MELODEE_DRUM : (e) == 12u ? MELODEE_FM6 : (e) == 15u ? 0 : \
+                      (e) == 19u ? MELODEE_ORACLE : (e) == 21u ? MACRO_ON : 1)   /* SID PHYS DRUM FM6 CZ-1 ORACLE MACRO (PHYS:
+                                                   * left out, not retired, since 2026-10-21: its tracks load FM's first voice) */
 #define TRIO_ON (MELODEE_TRIO || MELODEE_LEGACY_EXTRAS)
 #define PHYS_ON (MELODEE_PHYS || MELODEE_LEGACY_EXTRAS)
-#define ENGI_FALLBACK 12u        /* a retired engine's place (eng_rank, project.c): FM6 */
-#if !MELODEE_FM6
-#error "MELODEE_FM6: FM6 is the place of an engine left out"
+#define ENGI_FALLBACK (MELODEE_FM6 ? 12u : 6u)   /* a retired engine's place (eng_rank, project.c): FM6, or TRIO
+                                                   * (LEMONADE SANDWICH's device build: FM6 out, 2026-11-07) */
+#if !MELODEE_FM6 && !TRIO_ON
+#error "MELODEE_FM6 or MELODEE_TRIO: one of them is the place of an engine left out"
 #endif
 #define ENGI_CZ 15u      /* retired (the CZ-1) */
 #define ENGI_ORACLE 19u  /* ORACLE (the Prophet's ID until 2026-10-22); 16..18 reserved: historical preset namespaces */
@@ -90,8 +105,8 @@
 #define USER_NONE 256u
 #define ENGI_ANALOG 0u           /* retired in 1.2: never selectable (eng_ok), its stored sounds play silent */
 #define ENGI_DIGITAL 1u          /* retired: never selectable (eng_ok), its stored sounds play silent */
-#define NENG_SHOWN (NENGINES - 10u - !MELODEE_ORACLE - !MELODEE_SLICE - (MELODEE_LEGACY_EXTRAS ? 1u : 6u - MELODEE_TRIO - MELODEE_PHYS) - 2u /* SID, MACRO */ - \
-                    !MELODEE_FM6)   /* the engines one can pick: PRESETS, the EDIT
+#define NENG_SHOWN (NENGINES - 10u - !MELODEE_ORACLE - !MELODEE_SLICE - (MELODEE_LEGACY_EXTRAS ? 1u : 6u - MELODEE_TRIO - MELODEE_PHYS) - 1u /* SID */ - \
+                    !MELODEE_FM6 - !MELODEE_DRUM - !MACRO_ON)   /* the engines one can pick: PRESETS, the EDIT
                                                 * layer, the editor, in the display order of engines.c ENGINE_ORDER */
 #define ENGI_SLICE 13u           /* reserved without MELODEE_SLICE: never selectable (eng_ok) */
 #ifdef SMP_USER_SLOTS
@@ -226,7 +241,8 @@ enum { Q_OFF, Q_SNAP, Q_WHITE, Q_ALL, Q_MPC, Q_CHRD, Q_HARM };  /* P_QUANT (seq.
 typedef struct {
     uint8_t side; /* stereo spread side, retained while sounding */
     uint8_t note, vel, gate, active;
-    uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release */
+    uint8_t stage;               /* env: 0 off, 1 attack, 2 decay/sustain, 3 release, 4 given up */
+    uint8_t fade;                /* stage 4: 1 = a gentle fade (~12 ms, the budget), 0 = this block (overload, panic) */
     int32_t env;                 /* Q24 */
     int32_t env_out;             /* last control-rate amplitude, Q15 */
     int32_t pitch16, pitch_cur;  /* 1/16 semitone, with glide */

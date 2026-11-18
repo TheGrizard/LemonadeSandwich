@@ -106,7 +106,15 @@ static void proj_motion_ids(motion_store_t *m, uint32_t np)
  * restore the same sound without passing its index through factory preset browsing. */
 static void proj_legacy_perc(track_t *t)
 {
-
+#if !MELODEE_DRUM
+    uint32_t j;                                 /* (DRUM left out: the fallback's first voice, as a gone engine loads) */
+    t->eng_req = (uint8_t)ENGI_FALLBACK;
+    t->preset = 0;
+    for (j = 0; j < P_COUNT; j++)
+        if (!param_kept(j) && !param_reserved(j))
+            t->p[j] = param_desc_of(ENGI_FALLBACK, j)->def;
+    return;
+#endif
     const preset_t *pr = &DRUM_PRESETS[0];
     t->eng_req = ENGI_DRUM;
     uint32_t i;

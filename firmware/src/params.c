@@ -17,7 +17,11 @@ static const char *const N_RECQ[] = {"OFF", "1/4", "1/8", "1/16", "1/32", "8T", 
 static const uint8_t N_RECQ_ORDER[11] = {0, 10, 9, 8, 7, 1, 5, 2, 6, 3, 4};   /* OFF, then N_DIV_ORDER's (+1) */
 static const char *const N_LTRIG[] = {"NOTE", "FREE"};
 static const char *const N_LPOL[] = {"BI", "UNI"};
+#if MELODEE_FX_LEAN                         /* (out: fx.c's MELODEE_FX_LEAN; their IDs kept, shown as -) */
+static const char *const N_FX[] = {"OFF", "-", "-", "-", "TAPE", "SPIT", "ECHO", "-", "REVERB", "-", "FILTER", "DRIVE"};
+#else
 static const char *const N_FX[] = {"OFF", "PHASER", "WIDTH", "FORMANT", "TAPE", "SPIT", "ECHO", "ROOM", "REVERB", "CHORUS", "FILTER", "DRIVE"};
+#endif
 static const char *const N_ONOFF[] = {"OFF", "ON"};
 static const char *const N_QUANT[] = {"OFF", "SNAP", "WHITE", "ALL", "MPC", "CHRD", "HARM"};   /* Q_OFF .. Q_HARM (seq.c kb_map, midi_map) */
 /* chord keys (chord.c): OFF, the diatonic triad / seventh of the track's ROOT and SCALE on the key, fixed shapes */
@@ -58,8 +62,8 @@ static const char *const N_MDST[] = {"OFF", "PITCH", "CUT", "SHP", "AMP", "PAN",
                                      "VIB", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "DEPTH"};
 static const char *const N_ENGNAME[] = {"-", "-", "-", "-", "-", MELODEE_LEGACY_EXTRAS ? "VOICE" : "-", TRIO_ON ? "TRIO" : "-", MELODEE_LEGACY_EXTRAS ? "WHEEL" : "-", "-", PHYS_ON ? "PHYS" : "-",
                                              "DRUM", MELODEE_LEGACY_EXTRAS ? "NOISE" : "-", "FM6", MELODEE_SLICE ? "SLICE" : "-", "-", "-", "-", "-", "-",
-                                             MELODEE_ORACLE ? "ORACLE" : "-", "-", "-"};   /* (3 SID: removed
-                                                                                   * 2026-11-12; 15 CZ-1: retired 2026-10-22; 19 PROPHET, then ORACLE; 20 reserved, 21 MACRO (removed):
+                                             MELODEE_ORACLE ? "ORACLE" : "-", "-", MACRO_ON ? "MACRO" : "-"};   /* (3 SID: removed
+                                                                                   * 2026-11-12; 15 CZ-1: retired 2026-10-22; 19 PROPHET, then ORACLE; 20 reserved, 21 MACRO (Braids:
                                                                                    * one name per engine ID, NENGINES) */
 _Static_assert(NELEM(N_ENGNAME) == NENGINES, "N_ENGNAME: one name per engine ID");
 

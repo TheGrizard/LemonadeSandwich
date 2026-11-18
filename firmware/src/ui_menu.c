@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: GPL-3.0-only
  * Copyright (C) 2026 Leo Kuroshita (@kurogedelic), Hügelton Instruments */
 /* Melodee menu (HOME held): COLOR, HOLD (the layer threshold), LIGHTS (the keys' and buttons'
- * glow: ui_input.c ui_leds), NOTE LIGHTS (OFF, STEP or ALL: the keys a sequence plays lit; ui.c NLIGHT_SAVED),
+ * glow: ui_input.c ui_leds), REC BUTTON (RECORD, FALL, TIDE, WOZZA, ORBIT, LOOPS, HALO, MIRROR, PHASE, CRATE,
+ * COSMIC, STATIC, FORGE, CHAOS, FRACTURED or RND: REC rolls a new piece, held swaps back; rnd.c) and DRIFT (OFF, SLOW
+ * or FAST: a roll changing while it plays; rnd.c rnd_drift), first in the list, NOTE LIGHTS (OFF, STEP or ALL: the keys a sequence plays lit; ui.c NLIGHT_SAVED),
  * KNOB ACCEL (ui_input.c accel_by), TRACK KNOB (RIGHT: ALGORITHM picks the track, LEFT: PRESETS does; panel.c),
  * USB AUDIO (IN+OUT, IN, OUT or OFF; usb.c ua_off_set),
  * USB OUTPUT (what the FM-1 sends: the stereo mix or four track stems, both before MASTER; usb.c ua_tracks_set),
@@ -19,7 +21,8 @@
 #define MENU_HEAD 24                     /* the menu's own title strip (Stage and the pages: H_HEAD) */
 /* the rows in groups (3.3): the screen, the controls, playing, MIDI, USB, then the tools and ABOUT. MI_CLICK .. MI_ADD stay
  * together (menu_value, menu_input take them as a range) */
-enum { MI_COLOR,
+enum { MI_REC_BTN, MI_DRIFT,   /* (LEMONADE SANDWICH: the rolls first, 2026-11-18) */
+       MI_COLOR,
 #if MELODEE_LOOK
        MI_GROUND, MI_KNOBS, MI_LARGE, MI_TEXT, MI_IDLE,
 #endif
@@ -37,7 +40,7 @@ enum { MI_COLOR,
        MI_PANEL, MI_ABOUT, MI_BACK,
        MI_COUNT };
 static const char *const GAMMA_NAME[GAMMA_N] = {"G2.2", "G1.8", "G2.5", "G1.0", "TUNED", "TUNED+VCOM"};   /* (lcd.c) */
-static const char *const MI_NAME[MI_COUNT] = {"COLOR",
+static const char *const MI_NAME[MI_COUNT] = {"REC BUTTON", "DRIFT", "COLOR",
 #if MELODEE_LOOK
                                               "GROUND", "KNOBS", "LARGE VALUE", "TEXT", "IDLE",
 #endif
@@ -477,6 +480,10 @@ static const char *menu_value(uint32_t i, char *b, uint32_t size)
     if (i == MI_MUTES) value = MUTE_Q_NAME[settings_mute_q % 3u];   /* (ui_popup.c: MIXER's sheet turns it too) */
     if (i == MI_AUTOSAVE) value = settings_autosave ? "ON" : "OFF";
     if (i == MI_BATTERY) value = settings_batt_off ? "WHEN LOW" : "ON";
+    if (i == MI_REC_BTN) value = (const char *const[]){"RECORD", "FALL", "TIDE", "WOZZA", "ORBIT", "LOOPS", "HALO",
+                                                         "MIRROR", "PHASE", "CRATE", "COSMIC", "STATIC", "FORGE", "CHAOS", "FRACTURED", "RND"}[rnd_setting() %
+                                                                                                     RND_MODES];
+    if (i == MI_DRIFT) value = (const char *const[]){"OFF", "SLOW", "FAST"}[settings_rnd_drift % RND_DRIFTS];
     if (i == MI_SCREEN) value = (const char *const[]){"NEVER", "5 MIN", "15 MIN", "30 MIN", "60 MIN"}[scr_get()];
     if (i == MI_GAMMA) value = GAMMA_NAME[gamma_get()];
     if (i == MI_LIGHTS) value = LIGHTS_NAME[settings_lights % LIGHTS_N];
@@ -859,6 +866,18 @@ static void menu_input(uint32_t oct)                  /* oct: ui_input.c oct_tap
     if ((s || ok) && ui.menu == 1 && ui.menu_sel == MI_MUTES) {      /* KNOB 2 steps NOW BAR PHRASE, OCT+ wraps */
         mute_q_step(s);
         ui.force = 1; ok = 0;                          /* (entries.c mute_press: GLO's mute keys while playing) */
+    }
+    if ((s || ok) && ui.menu == 1 && ui.menu_sel == MI_REC_BTN) {   /* KNOB 2 steps RECORD .. RND, OCT+ wraps */
+        uint32_t v = rnd_setting();
+        rnd_mode_put(s > 0 ? (v + 1u < RND_MODES ? v + 1u : v) : s < 0 ? (v ? v - 1u : 0u) : (v + 1u) % RND_MODES);
+        ui.force = 1; ok = 0;                          /* (rnd.c: REC rolls, held swaps back) */
+    }
+    if ((s || ok) && ui.menu == 1 && ui.menu_sel == MI_DRIFT) {   /* KNOB 2 steps OFF SLOW FAST, OCT+ wraps (rnd.c) */
+        uint32_t v = settings_rnd_drift % RND_DRIFTS;
+        settings_rnd_drift = (uint8_t)(s > 0 ? (v + 1u < RND_DRIFTS ? v + 1u : v) : s < 0 ? (v ? v - 1u : 0u) : (v + 1u) % RND_DRIFTS);
+        if (settings_rnd_drift != v) settings_save();
+        rnd_drift_start();
+        ui.force = 1; ok = 0;
     }
     if ((s || ok) && ui.menu == 1 && ui.menu_sel == MI_BATTERY) {   /* KNOB 2 right ON, left WHEN LOW; OCT+ toggles */
         settings_batt_off = (uint8_t)(s > 0 ? 0u : s < 0 ? 1u : !settings_batt_off);

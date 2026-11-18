@@ -156,6 +156,7 @@ PARALLEL=${PARALLEL:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}
 case $SOUND in 0 | 1 | only) ;; *) echo "SOUND=0, 1 or only"; exit 2 ;; esac
 [ "$PARALLEL" -ge 1 ] 2>/dev/null || { echo "PARALLEL=n, n >= 1"; exit 2; }
 python3 tools/gen_scales.py --check || exit 1
+python3 tools/gen_splash_art.py --check || exit 1   # (the boot screen's picture, firmware/src/splash_art.h)
 python3 tools/audio_contract.py --check || exit 1
 [ -f build/tessera.fwsc ] || { echo "run ./build.sh first"; exit 1; }
 TABLES=0; [ -f build/gen/melodee_tables.h ] && TABLES=1
@@ -498,6 +499,22 @@ dsp_tracks() {
     step "TRACKS: 4-track pattern, live recording (lengths, swing), voice budget, engine switch, cost" \
         env TRACKS=build/tracks_demo "$OUT/hostsim" 12 24 1 "$OUT/tracks.wav"
 }
+braids_tests() {                                 # MACRO with Braids (eng_braids.c): Braids' C++ for this computer
+    M=firmware/third_party/mi
+    if ! command -v c++ >/dev/null 2>&1; then echo "== BRAIDS: skipped (no c++)"; return; fi
+    step "BRAIDS: its tables at 44.1 kHz, as tools/braids_44k.py writes them" python3 tools/braids_44k.py --check
+    mkdir -p "$OUT/br"
+    _objs=
+    for _f in $M/braids/*.cc $M/stmlib/utils/random.cc firmware/src/braids_glue.cc; do
+        _o=$OUT/br/$(echo "$_f" | tr / _).o
+        c++ -O2 -std=c++11 -fno-exceptions -fno-rtti -fno-threadsafe-statics -w -DMACRO_HOST -DBRAIDS_LEAN \
+            -I$M -Ifirmware/src -c "$_f" -o "$_o" || { fail "compile $_f (BRAIDS)"; return 1; }
+        _objs="$_objs $_o"
+    done
+    $CC -O2 $FW -DMELODEE_BRAIDS=1 -c tests/braids_test.c -o "$OUT/braids_test.o" &&
+        c++ -o "$OUT/braids_test" "$OUT/braids_test.o" $_objs -lm || { fail "compile tests/braids_test.c (BRAIDS)"; return 1; }
+    step "BRAIDS: its models and presets play, pitch, four voices, every knob, cost against SID" "$OUT/braids_test"
+}
 phys_ref() {
     D=${DAISYSP:-vendor/DaisySP}/Source
     if [ ! -d "$D/PhysicalModeling" ] || ! command -v c++ >/dev/null 2>&1; then
@@ -638,6 +655,8 @@ if core && [ $TABLES = 1 ]; then
         demo_projects -O2 $FW -DMELODEE_PHYS=0 -DTRK_START_TESS=1 -- demo_tests
     t "engines off (PHYS, CZ-1, ORACLE left out; SID and MACRO removed): never offered, their tracks FM6's first voice, the parts play" \
         engine_switch_fm:engine_switch_test $FW -DMELODEE_PHYS=0 -DMELODEE_CZ=0 -DMELODEE_ORACLE=0
+    t "engines off as the device (LEMONADE SANDWICH: FM6, DRUM, PHYS, CZ-1 out): their tracks TRIO's first voice, ORACLE and TRIO at power-on" \
+        engine_device_test $FW -DMELODEE_FM6=0 -DMELODEE_DRUM=0 -DMELODEE_PHYS=0 -DMELODEE_CZ=0
     t "editor: real C protocol, malformed transfers and queue recovery" editor_test $FW
     t "DX7 librarian: USB voice/bank receive, dump replies and malformed frame recovery" fm6_sysex_test $FW
     t "SWING: track + global at most 100, sequencer step lengths, the SWG display" swing_test -O2 $FW
@@ -686,6 +705,7 @@ if sound && [ $TABLES = 1 ]; then
     t "audio: 1296 ordered engine assignments, releases, controls and concurrent PCM parity" audio_matrix_test -O2 $FW -pthread
     t "native fp32: FM6 against an independent reference, exact pitch" synth_fpu_test \
         -O2 $FW
+    job braids_tests
     t "modulation matrix: off = bit-identical, the math, MIDI CC1 / CC11 / aftertouch, cost, demos" mod_test \
         -DMELODEE_LEGACY_EXTRAS=1 -O2 $FW -- "$OUT/mod_test" build/mod_demo
     t "matrix S&H / SLEW / DEPTH, SPREAD: off = bit-identical, stereo sides and routing" mod_spread_test -O2 $FW
