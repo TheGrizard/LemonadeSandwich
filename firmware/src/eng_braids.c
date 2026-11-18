@@ -12,7 +12,7 @@
 #include "braids_glue.h"
 
 /* the models one can pick: Braids' shapes (settings.h MacroOscillatorShape), in four or five letters, grouped:
- * analog, voices, FM, noise, then the wavetables (their 33 KB table in once PHYS was out, 2026-11-08). Its gain to an even level
+ * analog, voices, FM, noise, then three more analog (the wavetables' places: their 33 KB table out for 3.7.1, 2026-11-18). Its gain to an even level
  * (measured on the host: the RMS over TIMBR and COLOR 0..127 and five octaves, to about 9000; 4x at most, DUST's
  * 2.5x: its grains' peaks) and its voice budget units (its cost against Plaits'
  * VA, 4 units: 1 at most a quarter of it, else 2) */
@@ -22,14 +22,15 @@ static const struct { uint8_t shape, gain_q4, units; } BR_MODEL[] = {
     {21, 7, 1},  {22, 13, 1}, {23, 28, 2},                  /* VOSIM VOWEL VFOF */
     {25, 6, 1},  {26, 6, 2},  {27, 6, 2},                   /* FM FBFM WTFM */
     {41, 21, 2}, {42, 16, 1}, {43, 8, 1}, {44, 24, 2}, {45, 40, 1}, {46, 6, 1},   /* NOISE TWINQ CLKN CLOUD DUST QPSK */
-    {37, 9, 1},  {38, 9, 2},  {39, 9, 2},                   /* WTBL WMAP WLINE (back: PHYS out, room for their table) */
+    {1, 42, 1},  {8, 38, 1},  {9, 42, 1},                   /* MORPH SYNC SAW3 (the wavetables' places, the saved
+                                                             * models' numbers kept) */
     {34, 22, 1}, {33, 28, 1}, {35, 24, 1},                  /* KICK DRUM CYMB (FORGE, CHAOS, 2026-11-09: Braids' own
                                                              * drums, its 808-like kick, a struck drum, a metal cymbal;
                                                              * at the end, the saved models' numbers kept) */
 };
 static const char *const N_BR_MODEL[] = {"CSAW", "FOLD", "SWARM", "CSAW", "VOSIM", "VOWEL", "VFOF", "FM", "FBFM",
                                          "WTFM", "NOISE", "TWINQ", "CLKN", "CLOUD", "DUST",
-                                         "QPSK", "WTBL", "WMAP", "WLINE", "KICK", "DRUM", "CYMB"};
+                                         "QPSK", "MORPH", "SYNC", "SAW3", "KICK", "DRUM", "CYMB"};
 _Static_assert(NELEM(BR_MODEL) == NELEM(N_BR_MODEL), "BR_MODEL / N_BR_MODEL");
 static const uint16_t BR_TONE[128] = {   /* TONE's one-pole, Q15: 80 Hz x 2^(TONE/16), 1 - e^(-2 pi f / 44100); 127 open */
       371,   388,   405,   423,   441,   461,   481,   502,   524,   547,   571,   596,
@@ -126,8 +127,8 @@ static uint32_t mc_units(const struct track *t) { return BR_MODEL[br_model(t)].u
 #define BRD(n, mo, ti, co, to, a, d, s, r) {n, {mo, ti, co, to, 0, 0, 2, 0}, {a, d, s, r}, 0, 1}   /* (a drum: DRUM, mono) */
 static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the rest POLY; model: 0 CSAW 1 FOLD
                                              * 2 SWARM 3 CSAW (was TOY) 4 VOSIM 5 VOWEL 6 VFOF 7 FM 8 FBFM 9 WTFM 10 NOISE
-                                             * 11 TWINQ 12 CLKN 13 CLOUD 14 DUST 15 QPSK 16 WTBL 17 WMAP
-                                             * 18 WLINE) */
+                                             * 11 TWINQ 12 CLKN 13 CLOUD 14 DUST 15 QPSK 16 MORPH 17 SYNC
+                                             * 18 SAW3) */
     BRP("INIT CSAW",     0,  64,  64, 127,   0,  64, 127,  30, 0),   /* (the tests' pitch: a saw held) */
     BRP("FOLD LEAD",     1,  70,  40, 110,   2,  64, 110,  35, 1),
     BRP("SAW SWARM",     2,  80,  60,  90,  40,  64, 127,  70, 0),
@@ -144,9 +145,9 @@ static const preset_t MC_PRESETS[] = {      /* (the leads and voices MONO, the r
     BRP("GRAIN CLOUD",  13,  60,  60, 120,  60,  64, 127,  85, 0),
     BRP("DUST",         14,  30,  60, 120,  10,  64, 127,  70, 0),
     BRP("QPSK DATA",    15,  50,  50, 100,   0,  64, 110,  30, 0),
-    BRP("WAVE TABLE",   16,  50,  50, 115,  10,  64, 120,  50, 0),
-    BRP("WAVE MAP",     17,  60,  60, 110,  40,  64, 127,  70, 0),
-    BRP("WAVE LINE",    18,  40,  70, 110,  40,  64, 127,  70, 0),
+    BRP("MORPH PAD",    16,  50,  40, 100,  60,  64, 127,  80, 0),
+    BRP("SYNC LEAD",    17,  60,  40, 110,   4,  64, 110,  40, 1),
+    BRP("TRIPLE SAW",   18,  40,  60, 105,  20,  64, 120,  60, 0),
     BRD("BD ANALOG",    19,  70,  40, 110,   0,  80,   0,  60),   /* (the drums: struck at the key's root) */
     BRD("BD DIGI",       7,  30,  20,  90,   0,  52,   0,  40),   /* (two-op FM: a pitch drop, the roll's ENV PITCH) */
     BRD("TOM",          20,  60,  50, 115,   0,  70,   0,  55),

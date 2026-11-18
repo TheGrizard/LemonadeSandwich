@@ -513,7 +513,7 @@ braids_tests() {                                 # MACRO with Braids (eng_braids
     done
     $CC -O2 $FW -DMELODEE_BRAIDS=1 -c tests/braids_test.c -o "$OUT/braids_test.o" &&
         c++ -o "$OUT/braids_test" "$OUT/braids_test.o" $_objs -lm || { fail "compile tests/braids_test.c (BRAIDS)"; return 1; }
-    step "BRAIDS: its models and presets play, pitch, four voices, every knob, cost against SID" "$OUT/braids_test"
+    step "BRAIDS: its models and presets play, pitch, four voices, every knob, cost against ORACLE" "$OUT/braids_test"
 }
 phys_ref() {
     D=${DAISYSP:-vendor/DaisySP}/Source

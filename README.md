@@ -20,7 +20,7 @@ effects (WOZZA keeps its tape wear, STATIC its distortion).
 | **ORBIT** | Bouncing, orbiting patterns, fast and musical (100 to 120 BPM) |
 | **LOOPS** | Four sparse loops of different lengths drifting apart: felt piano, two warm pads and a glass |
 | **HALO** | Warm and hazy, after Arvo Pärt: a slow line, a soft voice on its triad, a canon below, a held halo |
-| **MIRROR** | HALO's mirror: glassy and digital, MACRO's wavetables, microtonal now and then |
+| **MIRROR** | HALO's mirror: glassy and digital, ORACLE's glass and TRIO's thin pulses, microtonal now and then |
 | **PHASE** | After Steve Reich: one bright cell on two tracks, one moving a step ahead every few bars |
 | **CRATE** | An old funk or soul record to sample, no drums: keys, bass, a hook, strings or a choir |
 | **COSMIC** | Synthwave at 108 to 118 BPM: a composed minor phrase, driving bass on the roots, wide pads, a lead, an arp |
@@ -37,7 +37,7 @@ coming back. OFF keeps it exactly as rolled. Every part stays editable afterward
 
 - **TRIO**: three oscillators and a filter (basses, pads, leads, the warm triangles)
 - **ORACLE**: two oscillators, poly-mod and a 4-pole ladder filter, after the Prophet-5
-- **MACRO**: Mutable Instruments Braids: textures, voices, FM, wavetables, CSAW, FOLD, SWARM, and KICK, DRUM and
+- **MACRO**: Mutable Instruments Braids: textures, voices, FM, CSAW, FOLD, SWARM, MORPH, SYNC, SAW3, and KICK, DRUM and
   CYMB models (STRIK DRUM tunes a struck drum to the key)
 
 To fit the FM-1's flash, the device build leaves out FM6, SID, PHYS and DRUM, and the PHASER, WIDTH, FORMANT, ROOM

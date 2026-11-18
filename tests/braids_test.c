@@ -80,7 +80,7 @@ int main(void)
             printf("    model %u (%s): peak %.0f rms %.0f\n", k, ENGINES[ENGI_MACRO]->edit[0].names[k], peak, rms);
         }
     }
-    check("every model plays (22: textures, voices, FM, wavetables, CSAW FOLD SWARM CSAW, KICK DRUM CYMB): sound, finite, "
+    check("every model plays (22: textures, voices, FM, MORPH SYNC SAW3, CSAW FOLD SWARM CSAW, KICK DRUM CYMB): sound, finite, "
           "in range", ok && models == 22u);
     for (k = 0, ok = 1; k < NELEM(MC_PRESETS); k++) {
         sound(k);
@@ -169,13 +169,13 @@ int main(void)
         for (f = 0; f < 4u * FS; f += CTL) mix_block(o, CTL);
         br = now_s() - t0 - idle;
         host_tracks_init();
-        host_preset(&trk[0], ENGI_SID, 0);
+        host_preset(&trk[0], ENGI_ORACLE, 0);
         trk[0].engine = trk[0].eng_req;
         trk_note_on(&trk[0], 60, 100);
         t0 = now_s();
         for (f = 0; f < 4u * FS; f += CTL) mix_block(o, CTL);
         sid = now_s() - t0 - idle;
-        printf("braids: cost on this computer, one note: MACRO (FBFM) %.0f ns a sample, SID %.0f (%.1f x; a report)\n",
+        printf("braids: cost on this computer, one note: MACRO (FBFM) %.0f ns a sample, ORACLE %.0f (%.1f x; a report)\n",
                br * 1e9 / (4.0 * FS), sid * 1e9 / (4.0 * FS), sid > 0 ? br / sid : 0);
     }
     printf(bad ? "braids: %d FAILED\n" : "braids: all passed\n", bad);

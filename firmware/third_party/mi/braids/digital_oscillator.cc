@@ -2558,9 +2558,9 @@ DigitalOscillator::RenderFn DigitalOscillator::fn_table_[] = {
   &DigitalOscillator::RenderKick,
   &DigitalOscillator::RenderCymbal,
   BRAIDS_X(&DigitalOscillator::RenderSnare),
-  &DigitalOscillator::RenderWavetables,
-  &DigitalOscillator::RenderWaveMap,
-  &DigitalOscillator::RenderWaveLine,
+  BRAIDS_X(&DigitalOscillator::RenderWavetables),   // melodee-tess: the wavetables out (2026-11-18: flash on 3.7.1, their 33 KB table)
+  BRAIDS_X(&DigitalOscillator::RenderWaveMap),
+  BRAIDS_X(&DigitalOscillator::RenderWaveLine),
   BRAIDS_X(&DigitalOscillator::RenderWaveParaphonic),
   &DigitalOscillator::RenderFilteredNoise,
   &DigitalOscillator::RenderTwinPeaksNoise,

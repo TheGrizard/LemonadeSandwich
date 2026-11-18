@@ -435,7 +435,7 @@ key skips it.
 ## Sounds
 
 > **In short:** each track's voice. ORACLE for warm analogue pads, brass and basses, TRIO for simple basses, pads and
-> leads, MACRO (Braids) for textures, voices, wavetables and drums. Browse them with PRESETS; change any of them on EDIT.
+> leads, MACRO (Braids) for textures, voices and drums. Browse them with PRESETS; change any of them on EDIT.
 
 LEMONADE SANDWICH has three engines on the device: ORACLE, TRIO and **MACRO**: Mutable Instruments Braids'
 macro-oscillator, by Emilie Gillet (MIT licence; not her product). FM6 is out (its tines and bells sounded cheap), so
@@ -444,7 +444,8 @@ TRIO's first voice. MACRO is cheap: Braids works in whole numbers, so a voice co
 to a half of an ORACLE voice, and a track plays four. Its **MODEL** picks one of 19: **CSAW**, **FOLD** (a wavefolder),
 **SWARM** (seven detuned saws), **CSAW** again (TOY's place: TOY is gone, for flash); the voices **VOSIM**, **VOWEL** (a note strikes a consonant) and **VFOF**;
 **FM**, **FBFM** (feedback FM) and **WTFM** (chaotic FM); and the noises **NOISE** (filtered), **TWINQ** (two resonant peaks), **CLKN** (clocked, digital), **CLOUD** (granular),
-**DUST** (particles) and **QPSK** (modem data); the wavetables **WTBL**, **WMAP** and **WLINE**; and Braids' drums
+**DUST** (particles) and **QPSK** (modem data); three more analog, **MORPH** (triangle to saw to square), **SYNC** (a synced saw) and **SAW3** (three detuned saws; the
+wavetables' places: their 33 KB table is out, for flash on 3.7.1); and Braids' drums
 **KICK** (808-like: TIMBR its decay, COLOR its tone), **DRUM** (a struck drum: a tom) and **CYMB** (metal). **TIMBR** and **COLOR** are Braids' two knobs, each model's own
 (MODS' SHAPE moves TIMBR); **TONE** is a low-pass after it (the filter envelope and CUTOFF cords move it); **BITS** and
 **RATE** crush it, as Braids' own settings did; **STRIK** ON strikes the model at each note (VOWEL's consonant, the
@@ -2673,9 +2674,8 @@ What a roll writes, every one an ordinary setting you can then change on its pag
   its notes are the chord's, and its keys snap to the chord. In every roll TRIO's **INT2** and **INT3** are a unison,
   an octave or a fifth, never a semitone or two off.
 - **MACRO in the rolls** (Braids): RND puts one track a roll (two now and then) on MACRO's VOWEL, CHOIR FOF or
-  VOSIM, a consonant every note, its vowel anywhere: chopped speech among the rest; three rolls in five one track
-  on a wavetable (WAVE TABLE, WAVE MAP or WAVE LINE, anywhere on the table, now and then crushed); and it picks
-  MACRO's other models now and then (never FM BELL). MIRROR's four parts are often MACRO's wavetables,
+  VOSIM, a consonant every note, its vowel anywhere: chopped speech among the rest; and it picks
+  MACRO's other models now and then (never FM BELL).
   CRATE's hook now and then a sung vowel and its strings a choir. STATIC's noise layer is MACRO's GRAIN CLOUD, WIND, TWIN PEAKS, DUST, BIT NOISE or QPSK most rolls,
   and its fizz now and then SAW SWARM, FB GROWL, CHAOS FM, BIT NOISE or QPSK, crushed or driven a little. TIDE's texture is MACRO's
   WIND, DUST or TWIN PEAKS half the time.
@@ -2784,13 +2784,13 @@ to TRIO's intervals, the halo's chords or the line's single steps. With DRIFT OF
 mirror): the same four parts, HALO's opposite: cold, glassy and digital (still in key), struck rather than swelling,
 the rules loosened. 100 to 120 BPM; a key in twelve notes (lydian,
 whole tone, major pentatonic, major, dorian, half-whole diminished) or, in about two rolls of five, off them (SLENDRO,
-PELOG, 19 and 22 EDO, HARM16, JI-MAJ, Bohlen-Pierce). The **halo** is glass, no warm pad: ORACLE's GLASS PAD, MACRO's WAVE TABLE, or TRIO's thin
+PELOG, 19 and 22 EDO, HARM16, JI-MAJ, Bohlen-Pierce). The **halo** is glass, no warm pad: ORACLE's GLASS PAD or TRIO's thin
 pulses through a high-pass, speaking at once; in twelve notes a CHORD track (DRONE, TWO, CIRCLE, WALK or 50S; held,
 or pulsing on the beat or off it), off them a cluster of two or three notes taking turns, held. The **line** is digital
-(ORACLE's SEQ BLIP or SYNC LEAD; MACRO's WAVE TABLE, WAVE MAP or WAVE LINE, the shape LFO scanning the table; TRIO's pulses, ring or sync waves on octaves and fifths, high- or band-passed, short), by step or not (SERIES, TURING, BOUNCE, MARKOV or AWAKE), on 1/16 to 1/4, tight.
-The **mirror** is glassy blips (ORACLE's SEQ BLIP or GLASS PAD, MACRO's WAVE MAP or WAVE TABLE, or TRIO's thin pulses) following the line: onto the halo's chord (QNT CHRD, the tintinnabuli voice) or in parallel a few degrees off
+(ORACLE's SEQ BLIP or SYNC LEAD; TRIO's pulses, ring or sync waves on octaves and fifths, high- or band-passed, short), by step or not (SERIES, TURING, BOUNCE, MARKOV or AWAKE), on 1/16 to 1/4, tight.
+The **mirror** is glassy blips (ORACLE's SEQ BLIP or GLASS PAD, or TRIO's thin pulses) following the line: onto the halo's chord (QNT CHRD, the tintinnabuli voice) or in parallel a few degrees off
 (TWEAK SHIFT; always, off twelve notes), on the line's clock or twice as fast, now and then stuttering (ratchets). The
-**canon** is the line again an octave down, struck (ORACLE's SEQ BLIP, a MACRO wavetable or a TRIO pulse), half as fast or across it in
+**canon** is the line again an octave down, struck (ORACLE's SEQ BLIP or a TRIO pulse), half as fast or across it in
 triplets. No wow: the
 shapes shimmer instead (the LFO on SHAPE, now and then in S&H steps), S&H cords step the line's shape, an LFO moves the
 mirror's place. With **DRIFT** on, MIRROR moves on HALO's clock: the line's pace a step (the mirror on its clock, the
@@ -2940,7 +2940,7 @@ and buttons, playing, MIDI, USB, then the tools. Tessera's additions are below, 
 
 | Item | Choices | What it does |
 |---|---|---|
-| **REC BUTTON** | **RECORD** (the default), FALL, TIDE, WOZZA, ORBIT, LOOPS, HALO, MIRROR, PHASE, CRATE, COSMIC, STATIC, FORGE, CHAOS, FRACTURED, RND | **RECORD**: REC records, as always. **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, an ORACLE melody, a triangle bed and a noise, slow, always on tracks 1 to 4; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **HALO**: warm and hazy, after Pärt: a slow line, a soft voice on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital (MACRO's wavetables), microtonal now and then, its rules loosened; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings or a choir in sections that come back exactly; **COSMIC**: synthwave at 108 to 118 BPM, a composed four-bar minor phrase: a deep driving bass on the roots, wide seventh pads, a melodic lead and an arp late in the phrase; **STATIC**: a wall of noise, atonal, four held layers, the noise never out, building to an overload and dropping back; **FORGE**: dark polyrhythmic techno at about 130 BPM, a deep kick on a written pattern, never four on the floor, Euclidean bass, panned hats and a low tom against it; **CHAOS**: FORGE noisier and more synthetic, crushed FM kicks, metal and noise; **FRACTURED**: glitchy Autechre-like beats at 130 to 150 BPM under FALL's warm pad; **RND**: a whole new piece, random and strange, sung vowels and a wavetable among it. Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
+| **REC BUTTON** | **RECORD** (the default), FALL, TIDE, WOZZA, ORBIT, LOOPS, HALO, MIRROR, PHASE, CRATE, COSMIC, STATIC, FORGE, CHAOS, FRACTURED, RND | **RECORD**: REC records, as always. **FALL**: ambient, a drone, chords and two melodies on TRIO's triangles, the melodies falling; **TIDE**: a sub groove across the bar, FALL's leaves, an ORACLE melody, a triangle bed and a noise, slow, always on tracks 1 to 4; **WOZZA**: minimal piano and synth, slow, off the grid, tape-worn; **ORBIT**: BOUNCE and CONSTELLATION only, fast and musical; **LOOPS**: four sparse loops of lengths apart, drifting: a felt piano, two warm pads and a glass, pentatonic, long and soft; **HALO**: warm and hazy, after Pärt: a slow line, a soft voice on its triad, a canon below, a held halo; **MIRROR**: HALO's mirror, glassy and digital (ORACLE's glass and TRIO's thin pulses), microtonal now and then, its rules loosened; **PHASE**: after Steve Reich, one bright cell on two tracks, one moving a step ahead every few bars, a chord bed under it; **CRATE**: an old funk or soul record to sample, no drums: keys, bass, a hook and lush strings or a choir in sections that come back exactly; **COSMIC**: synthwave at 108 to 118 BPM, a composed four-bar minor phrase: a deep driving bass on the roots, wide seventh pads, a melodic lead and an arp late in the phrase; **STATIC**: a wall of noise, atonal, four held layers, the noise never out, building to an overload and dropping back; **FORGE**: dark polyrhythmic techno at about 130 BPM, a deep kick on a written pattern, never four on the floor, Euclidean bass, panned hats and a low tom against it; **CHAOS**: FORGE noisier and more synthetic, crushed FM kicks, metal and noise; **FRACTURED**: glitchy Autechre-like beats at 130 to 150 BPM under FALL's warm pad; **RND**: a whole new piece, random and strange, sung vowels among it. Every roll's QUANTIZE is WHITE, to play along (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 | **DRIFT** | **OFF** (the default), **SLOW**, **FAST** | Whether a roll keeps moving after it is rolled: off, a change every few phrases, or more often (see [RND: one button, a new piece](#rnd-one-button-a-new-piece)). Saved. |
 
 #### The screen

@@ -266,9 +266,7 @@ static int rnd_mc_ok(void) { return eng_ok(ENGI_MACRO) && MELODEE_BRAIDS; }
  * half a dB) */
 static void rnd_mc_level(uint32_t tr)
 {
-    static const uint8_t up[][2] = {{11, 14}, {14, 20}, {13, 10}, {10, 4}, {2, 16}, {8, 12}, {9, 12},
-                                    {16, 14}, {17, 14}, {18, 8}};   /* (the wavetables: 7 dB, WAVE LINE 4, under
-                                                     * MIRROR's others, measured) */
+    static const uint8_t up[][2] = {{11, 14}, {14, 20}, {13, 10}, {10, 4}, {2, 16}, {8, 12}, {9, 12}};
     uint32_t k;
     if (trk[tr].eng_req != ENGI_MACRO) return;
     for (k = 0; k < NELEM(up); k++)
@@ -282,19 +280,7 @@ static void rnd_mc_model(uint32_t tr)
     (void)tr;
 #endif
 }
-/* a MACRO wavetable's knobs (MIRROR, RND): TIMBR and COLOR anywhere on the table, TONE bright, crushed now and then
- * (digital), no consonant, a little drive */
 static void rnd_tp(uint32_t tr, uint32_t id, int32_t v);
-static void rnd_mc_wave(uint32_t tr)
-{
-    rnd_tp(tr, P_E0 + 1u, rnd_rr(0, 127));
-    rnd_tp(tr, P_E0 + 2u, rnd_rr(0, 127));
-    rnd_tp(tr, P_E0 + 3u, rnd_rr(96, 124));
-    rnd_tp(tr, P_E0 + 4u, rnd_pct(30) ? rnd_rr(1, 3) : 0);
-    rnd_tp(tr, P_E0 + 5u, rnd_pct(15) ? rnd_rr(1, 2) : 0);
-    rnd_tp(tr, P_E0 + 6u, 0);
-    rnd_tp(tr, P_E0 + 7u, rnd_pct(30) ? rnd_rr(10, 40) : 0);
-}
 /* a track's knob, as a roll or DRIFT sets it. TRIO's INT2 and INT3: the nearest unison, octave or fifth (-24 -17 -12
  * -5 0 7 12 19 24), every roll and nudge (a semitone or a tritone off, heard: out of tune; DTN's cents kept) */
 static void rnd_tp(uint32_t tr, uint32_t id, int32_t v)
@@ -425,7 +411,7 @@ static void rnd_sound(uint32_t tr, uint32_t *fm6s, uint32_t *phys, uint32_t *ora
     if ((e == 6u && t->preset == 3u) || (e == ENGI_ORACLE && t->preset == 10u) || (e == ENGI_MACRO && t->preset == 7u))
         engine_load_of(t, e, e == 6u ? 1u : e == ENGI_ORACLE ? 11u : 16u);   /* (no bells anywhere, asked 2026-11-08:
                                                      * TRIO's RING BELL, ORACLE's POLY BELLS, MACRO's FM BELL out of
-                                                     * every pick: a lead, the keys, a wavetable) */
+                                                     * every pick: a lead, the keys, MORPH PAD) */
     for (k = 0; k < 8u; k++) {                      /* the engine's eight, pushed from the preset's */
         const param_desc_t *d = pid_desc(PID_TRACK(P_E0 + k), tr);
         if (!d || d->max <= d->min) continue;
@@ -1370,29 +1356,23 @@ static int rnd_mr_micro(void)                       /* (off twelve notes: no cho
 static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_t *phys, uint32_t *oracles)
 {
     /* MIRROR: HALO's opposite, cold, glassy and digital, in key (asked 2026-11-07): no warm pad; ORACLE's glass and
-     * blips, TRIO's thin, sharp waves (pulses, ring and sync on octaves and fifths) through a high-pass, struck */
-    static const uint8_t wt[] = {16, 17, 18}, wtw[] = {3, 3, 2};   /* MACRO's WAVE TABLE, WAVE MAP, WAVE LINE */
+     * blips, TRIO's thin, sharp waves (pulses, ring and sync on octaves and fifths) through a high-pass, struck
+     * (MACRO's wavetables out with their table, 2026-11-18: ORACLE's or TRIO's in their place) */
     uint8_t nice = rnd_nice;
-    int orc = *oracles < 2u && eng_ok(ENGI_ORACLE), mc = rnd_mc_ok();
+    int orc = *oracles < 2u && eng_ok(ENGI_ORACLE);
     uint32_t e, k = (uint32_t)rnd_rr(0, 99);
-    if (role == RND_ROLE_CHORDS) {                  /* glass: ORACLE's GLASS PAD, MACRO's wavetable, or TRIO's thin
-                                                     * pulses, high-passed */
-        if (orc && k < 45u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 2;
-        else if (mc && k < 70u) rnd_want_e = ENGI_MACRO, rnd_want_pi = 16;   /* (WAVE TABLE: a unit a voice) */
+    if (role == RND_ROLE_CHORDS) {                  /* glass: ORACLE's GLASS PAD or TRIO's thin pulses, high-passed */
+        if (orc && k < 60u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 2;
         else rnd_want_e = 6u, rnd_want_pi = 8;      /* (SOFT PAD, made thin and bright below) */
-    } else if (role == RND_ROLE_MELODY) {           /* digital: ORACLE's SEQ BLIP or SYNC LEAD, MACRO's wavetables,
-                                                     * TRIO's ring and sync */
-        if (orc && k < 35u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(60) ? 20 : 5;
-        else if (mc && k < 70u) rnd_want_e = ENGI_MACRO, rnd_want_pi = rnd_pick(wt, wtw, NELEM(wt));
+    } else if (role == RND_ROLE_MELODY) {           /* digital: ORACLE's SEQ BLIP or SYNC LEAD, TRIO's ring and sync */
+        if (orc && k < 55u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(60) ? 20 : 5;
         else rnd_want_e = 6u, rnd_want_pi = rnd_pct(50) ? 1 : 2;   /* ARP LEAD, SYNC LEAD (their waves below) */
     } else if (role == RND_ROLE_TINT) {             /* glass bells */
-        if (orc && k < 45u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(50) ? 20 : 2;   /* SEQ BLIP, GLASS PAD (no
+        if (orc && k < 60u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = rnd_pct(50) ? 20 : 2;   /* SEQ BLIP, GLASS PAD (no
                                                      * bells anywhere, 2026-11-08) */
-        else if (mc && k < 70u) rnd_want_e = ENGI_MACRO, rnd_want_pi = rnd_pct(60) ? 17 : 16;
         else rnd_want_e = 6u, rnd_want_pi = 1;      /* ARP LEAD (thin, high-passed below) */
     } else {                                        /* the canon: low, digital, struck (not HALO's held pad) */
-        if (orc && k < 30u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 20;   /* SEQ BLIP */
-        else if (mc && k < 55u) rnd_want_e = ENGI_MACRO, rnd_want_pi = rnd_pct(50) ? 16 : 18;
+        if (orc && k < 45u) rnd_want_e = ENGI_ORACLE, rnd_want_pi = 20;   /* SEQ BLIP */
         else rnd_want_e = 6u, rnd_want_pi = 1;      /* ARP LEAD */
     }
     (void)fm6s; (void)phys;
@@ -1431,7 +1411,6 @@ static void rnd_mirror_sound(uint32_t tr, uint32_t role, uint32_t *fm6s, uint32_
         rnd_tp(tr, P_E0 + 6u, rnd_rr(10, 50));
         rnd_tp(tr, P_E0 + 7u, rnd_rr(10, 40));      /* PW: narrow */
     }
-    if (e == ENGI_MACRO) rnd_mc_wave(tr);
     if (role == RND_ROLE_CHORDS) {
         /* (slower: a chord gone before it swells, measured) */
         {
@@ -4776,17 +4755,12 @@ static void rnd_orc_levels(void)
 static void rnd_vowels(void)
 {
     static const uint8_t vp[] = {5, 6, 4}, vw[] = {4, 3, 2};   /* VOWEL AH, CHOIR FOF, VOSIM VOX */
-    static const uint8_t wp[] = {16, 17, 18}, ww[] = {3, 3, 2};   /* WAVE TABLE, WAVE MAP, WAVE LINE */
     uint32_t n, i, used = 0;
-    int wave;
     if (!rnd_mc_ok() || rnd_setting() != RND_FREE) return;
-    wave = rnd_pct(60);                             /* (a wavetable track too, three rolls in five, asked 2026-11-08;
-                                                     * two MACRO tracks at most) */
-    n = rnd_pct(85) ? (!wave && rnd_pct(30) ? 2u : 1u) : 0u;
-    n += (uint32_t)wave;
+    n = rnd_pct(85) ? (rnd_pct(30) ? 2u : 1u) : 0u;   /* (two MACRO tracks at most; the wavetable track out with their
+                                                     * table, 2026-11-18) */
     for (i = 0; i < n; i++) {
         uint32_t tr = rnd_next() % NTRK, j;
-        int w = wave && i == n - 1u;
         track_t *t;
         int16_t keep[4];
         for (j = 0; j < NTRK; j++)                  /* (a track MACRO already first: as many MACRO tracks as before) */
@@ -4796,18 +4770,15 @@ static void rnd_vowels(void)
         used |= 1u << tr;
         t = &trk[tr];
         memcpy(keep, &t->p[P_ATK], sizeof keep);    /* (RND's envelope kept: ATK DEC SUS REL) */
-        engine_load_of(t, ENGI_MACRO, w ? rnd_pick(wp, ww, NELEM(wp)) : rnd_pick(vp, vw, NELEM(vp)));
+        engine_load_of(t, ENGI_MACRO, rnd_pick(vp, vw, NELEM(vp)));
         memcpy(&t->p[P_ATK], keep, sizeof keep);
-        if (w) rnd_mc_wave(tr);
-        else {
-            rnd_tp(tr, P_E0 + 1u, rnd_rr(0, 127));  /* TIMBR, COLOR: the vowel, the formants */
-            rnd_tp(tr, P_E0 + 2u, rnd_rr(0, 127));
-            rnd_tp(tr, P_E0 + 3u, rnd_rr(100, 127));   /* TONE: open-ish (the formants high up) */
-            rnd_tp(tr, P_E0 + 4u, rnd_pct(30) ? rnd_rr(1, 4) : 0);   /* BITS, RATE: crushed now and then */
-            rnd_tp(tr, P_E0 + 5u, rnd_pct(25) ? rnd_rr(1, 3) : 0);
-            rnd_tp(tr, P_E0 + 6u, 1);               /* STRIK: a consonant a note */
-            rnd_tp(tr, P_E0 + 7u, rnd_pct(40) ? rnd_rr(10, 50) : 0);
-        }
+        rnd_tp(tr, P_E0 + 1u, rnd_rr(0, 127));      /* TIMBR, COLOR: the vowel, the formants */
+        rnd_tp(tr, P_E0 + 2u, rnd_rr(0, 127));
+        rnd_tp(tr, P_E0 + 3u, rnd_rr(100, 127));    /* TONE: open-ish (the formants high up) */
+        rnd_tp(tr, P_E0 + 4u, rnd_pct(30) ? rnd_rr(1, 4) : 0);   /* BITS, RATE: crushed now and then */
+        rnd_tp(tr, P_E0 + 5u, rnd_pct(25) ? rnd_rr(1, 3) : 0);
+        rnd_tp(tr, P_E0 + 6u, 1);                   /* STRIK: a consonant a note */
+        rnd_tp(tr, P_E0 + 7u, rnd_pct(40) ? rnd_rr(10, 50) : 0);
         rnd_tp(tr, P_VOICE, rnd_pct(60) ? V_MONO : V_POLY);
         rnd_tp(tr, P_LEVEL, rnd_rr(84, 100));
         rnd_mc_level(tr);
