@@ -51,11 +51,11 @@ static project_t p;
 
 int main(void)
 {
-    static const uint32_t GONE[4] = {12u, ENGI_SID, ENGI_DRUM, ENGI_PHYS};
+    static const uint32_t GONE[4] = {12u, 3u /* (SID, retired) */, ENGI_DRUM, ENGI_PHYS};
     uint32_t k, shown = 0, ok = 1;
     for (k = 0; k < NENGINES; k++) shown += eng_ok(k);
     check("FM6, SID, DRUM, PHYS, CZ-1 never offered; ORACLE and TRIO are (MACRO with Braids: its own test); the fallback TRIO",
-          !eng_ok(12) && !eng_ok(ENGI_SID) && !eng_ok(ENGI_DRUM) && !eng_ok(15) && eng_ok(ENGI_ORACLE) && eng_ok(6) &&
+          !eng_ok(12) && !eng_ok(3u) && !eng_ok(ENGI_DRUM) && !eng_ok(15) && eng_ok(ENGI_ORACLE) && eng_ok(6) &&
           !eng_ok(ENGI_PHYS) && ENGI_FALLBACK == 6u && shown == NENG_SHOWN && NENG_SHOWN == 2u);
     for (k = 0; k < NENG_SHOWN; k++) ok &= ENG_BUILT(eng_vis(k));
     for (k = 0; k < NPART; k++) ok &= ENG_BUILT(TRK_DEF[k][0]) && eng_ok(TRK_DEF[k][0]);

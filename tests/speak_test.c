@@ -526,7 +526,7 @@ int main(int argc, char **argv)
     hold(B_HOME);
     settle();
     printf("  said: %s", host_said);
-    bad += check("speak: the menu: its first row, with its place", said("N MENU. COLOR YELLOW, 1 OF "));   /* (the row says its ink) */
+    bad += check("speak: the menu: its first row, with its place", said("N MENU. REC BUTTON RECORD, 1 OF "));   /* (LEMONADE SANDWICH: the rolls first) */
     said_clear();
     turn(EN_K1, 1);
     settle();
