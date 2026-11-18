@@ -106,6 +106,18 @@ static int32_t rnd_push(int32_t a, int32_t lo, int32_t hi, uint32_t wild)
 }
 
 /* ------------------------------------------------------------ what a roll touches (and the swap keeps) --- */
+/* Tessera 3.3 to 3.7's layers a roll turns off (each 0 is its off: SPLIT, FOLLOW's HOLD HOW RHYTHM, STRUM, SOUND ON,
+ * FORWARD, form chaining, Entries, Piece Length) and QNT LINK OWN (0), each track its own QNT as the rolls set it */
+#define RND_TX_OFF TX_SUB_SPLIT, TX_TW_HOLD, TX_TW_FHOW, TX_TW_FRHY, TX_CH_STRUM, TX_SOUND, TX_SEQ_DIR, TX_FC_FORM, \
+                   TX_ET_AMOUNT, TX_PL_LENGTH, TX_QNT_LINK
+#define RND_TX_PROJECT(x) ((x) == TX_FC_FORM || (x) == TX_ET_AMOUNT || (x) == TX_PL_LENGTH || (x) == TX_QNT_LINK)
+static const uint8_t RND_TX_OFFS[] = {RND_TX_OFF};
+static void rnd_layers_off(void)
+{
+    uint32_t tr, i;
+    for (tr = 0; tr < TESSERA_TRACKS; tr++)
+        for (i = 0; i < sizeof RND_TX_OFFS; i++) pid_set(PID_TESS(RND_TX_OFFS[i]), tr, 0);
+}
 /* the Tessera settings a roll writes, MODE first (a MODE change resets what follows it), STEPS before PULSES */
 static const uint8_t RND_TX[] = {
     TX_MODE,
@@ -128,6 +140,7 @@ static const uint8_t RND_TX[] = {
     TX_SUB_RATCH, TX_SUB_CHANCE, TX_SUB_HUMAN,
     TX_TW_LG_WITH, TX_TW_BR_MODE, TX_SUB_SHAPE,     /* (GLITCH's links and rolls) */
     TX_GRD_X, TX_GRD_Y, TX_GRD_DENS, TX_GRD_KICK, TX_GRD_SNR, TX_GRD_HAT, TX_GRD_TOMS, TX_GRD_PART4,   /* (PULSE's ATLAS) */
+    RND_TX_OFF                                      /* (the later layers, off for a roll: rnd_layers_off) */
 };
 #define RND_NTX (sizeof RND_TX / sizeof RND_TX[0])
 static const uint8_t RND_G[] = {                    /* the project's: the send effects */
@@ -186,7 +199,9 @@ static void rnd_swap(void)
                                                      * Turing's LOCK is its PROB turned round) */
         int16_t now[RND_NTX];
         for (i = 0; i < RND_NTX; i++) now[i] = (int16_t)pid_get(PID_TESS(RND_TX[i]), tr);
-        for (i = 0; i < RND_NTX; i++) pid_set(PID_TESS(RND_TX[i]), tr, rnd_snap.tx[tr][i]);
+        for (i = 0; i < RND_NTX; i++)
+            if (!tr || !RND_TX_PROJECT(RND_TX[i])) pid_set(PID_TESS(RND_TX[i]), tr, rnd_snap.tx[tr][i]);
+            else now[i] = rnd_snap.tx[tr][i];       /* (the project's: track 1's swaps it, once) */
         memcpy(rnd_snap.tx[tr], now, sizeof now);
     }
     {
@@ -3538,7 +3553,7 @@ static void rnd_cs_write(uint32_t parts)           /* bit tr: track tr written a
                         if (RND_CS_CT(cur - dir * o)) { x = cur - dir * o; break; }
                     }
                 cur = x > 44 ? x - 7 : x < 38 ? x + 7 : x;
-                t = rnd_cs_deg(root, x) - (root >= 7 ? 12 : 0);   /* (about the same height in every key, over the
+                t = rnd_cs_deg(root, cur) - (root >= 7 ? 12 : 0);   /* (about the same height in every key, over the
                                                      * pad: 60..81) */
                 rnd_cs_step(RND_CS_LEAD, base + i, &t, 1, 100);
             }
@@ -4900,6 +4915,7 @@ static void rnd_roll(void)
     if (!rnd_seed) rnd_seed = 0x2545F491u;
     rnd_state = rnd_seed;
     rnd_take();                                     /* (the hold swaps back to this) */
+    rnd_layers_off();
     rnd_backed = 0;
     rnd_nice = (uint8_t)(rnd_setting() == RND_FALL);   /* (FALL: the ambient roles, the gentle sounds, on TRIO's
                                                      * triangles; the others after, theirs) */

@@ -14,7 +14,8 @@
  * palette: UI_PAL_TAG + index (any other id: the default).
  * favorites.factory[15][28]: tagged AUTOSAVE OFF; zero/unknown keeps autosave ON.
  * favorites.factory[15][30] bits 5..6 MIDI OUT (0 KEYS, 1 ALL, 2 OFF), bit 7 CLOCK OUT (midi_out.c).
- * favorites.factory[15][24] bit 4: MIDI CC IN OFF (midi_cc.c); zero keeps it ON. Bits 6..7: MENU MUTES (0 NOW).
+ * favorites.factory[15][24] bit 4: MIDI CC IN OFF (midi_cc.c); zero keeps it ON. Bits 6..7: REC BUTTON (rnd.c).
+ * lowcut bits 12..13: MENU MUTES (0 NOW; LEMONADE SANDWICH: upstream keeps them in [15][24] bits 6..7, the rolls').
  * favorites.factory[15][25]: tagged TRACK KNOB LEFT (panel.c KNOB_SWAP_TAG); zero/unknown keeps it on the right.
  * favorites.factory[8] bytes 4..7: 'U', 'V', 1, USB VOLUME 0..100 % (upstream's place); untagged = UA_VOLUME_DEFAULT.
  * favorites.factory[8] bytes 8..15: the four USER scales (uscale.h), 16 bits each, low byte first; 0 (any value without
@@ -113,7 +114,7 @@ static int settings_import(persist_t *p, int n)
     settings_clock_out = (uint8_t)(p->favorites.factory[15][30] >> 7);
     settings_cc_off = (uint8_t)((p->favorites.factory[15][24] >> 4) & 1u);   /* (midi_cc.c) */
     settings_batt_off = (uint8_t)((p->favorites.factory[15][24] >> 5) & 1u);   /* (MENU BATTERY, core.h) */
-    settings_mute_q = (uint8_t)((p->favorites.factory[15][24] >> 6) % 3u);      /* (MENU MUTES; 3 unknown: NOW) */
+    settings_mute_q = (uint8_t)((p->lowcut >> 12 & 3u) % 3u);                  /* (MENU MUTES; 3 unknown: NOW) */
     settings_knob_swap = p->favorites.factory[15][25] == KNOB_SWAP_TAG;
     settings.magic = SETTINGS_MAGIC;
     settings.palette = palette_from_stored(p->palette);
@@ -164,6 +165,7 @@ static void settings_export(persist_t *p)
     p->lowcut = favorites.factory[15][24] & 0xC0u ? (settings_rnd_variant <= 7u ? settings_rnd_variant : 0u) |
                                                     (uint32_t)(settings_rnd_drift <= 2u ? settings_rnd_drift : 0u) << 8
                                                   : 0u;   /* (rnd.c RND_CODE, DRIFT) */
+    p->lowcut |= (uint32_t)(settings_mute_q % 3u) << 12;   /* (MENU MUTES) */
     uint32_t rp = settings_click % 3u | (settings_click_level == 0u ? 1u : settings_click_level == 2u ? 2u : 0u) << 2 |
                   (settings_countin % 3u) << 4 | (settings_preview != 0u) << 6 | (settings_chord_add != 0u) << 7;
     p->zoom = (settings.zoom & 0xFFu) | (rp ? RECORD_PREF_TAG | rp << 8 : 0u);
@@ -200,8 +202,8 @@ static void settings_export(persist_t *p)
     p->favorites.factory[15][28] = settings_autosave ? 0u : AUTOSAVE_OFF_TAG;
     p->favorites.factory[15][30] = (uint8_t)((p->favorites.factory[15][30] & 0x1Fu) | settings_midi_out << 5 |
                                              (settings_clock_out != 0u) << 7);
-    p->favorites.factory[15][24] = (uint8_t)((p->favorites.factory[15][24] & ~0xF0u) | (settings_cc_off != 0u) << 4 |
-                                             (settings_batt_off != 0u) << 5 | (settings_mute_q % 3u) << 6);
+    p->favorites.factory[15][24] = (uint8_t)((p->favorites.factory[15][24] & ~0x30u) | (settings_cc_off != 0u) << 4 |
+                                             (settings_batt_off != 0u) << 5);   /* (bits 6, 7: the rolls', rnd.c) */
     p->favorites.factory[15][25] = settings_knob_swap ? KNOB_SWAP_TAG : 0u;
     p->ext.usb_off=(p->ext.usb_off&3u)|(settings_budget!=VOICE_BUDGET_DEFAULT?WORK_BUDGET_TAG|((uint32_t)settings_budget<<8):0u);
     p->ext.boot = settings_boot;

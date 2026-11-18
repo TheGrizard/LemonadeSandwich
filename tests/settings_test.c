@@ -93,7 +93,7 @@ int main(void)
     }
     {   /* PANEL GAMMA: row 15 byte 24 bits 1..3; 0 (any settings before it, and TUNED+VCOM until 2.1-rc2) G2.2; bit 0, a CZ-1 star, kept */
         assert(gamma_get() == GAMMA_DEF);
-        favorites.factory[15][24] = 0x01u;                       /* (bit 4: MIDI CC IN, midi_cc.c; bit 5: BATTERY; 6..7 MUTES) */
+        favorites.factory[15][24] = 0x01u;                       /* (bit 4: MIDI CC IN, midi_cc.c; bit 5: BATTERY; 6..7 REC BUTTON) */
         for (uint32_t g = 0; g < GAMMA_N; g++) {
             gamma_put(g);
             settings_export(&p); memset(&favorites, 0, sizeof favorites); settings_import(&p, sizeof p);

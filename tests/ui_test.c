@@ -3340,7 +3340,8 @@ static int test_display_preferences(void)
                  !ui.menu && settings.palette == UI_DEFAULT_INDEX && !memcmp(sounds, trk, sizeof sounds));
     hold(B_HOME);
     {
-        int ok = ui.menu == 1 && ui.menu_sel == MI_COLOR && !menu_cols;   /* HOME held: the list, not the sheet */
+        int ok = ui.menu == 1 && ui.menu_sel == 0u && !menu_cols;   /* HOME held: the list, not the sheet */
+        ui.menu_sel = MI_COLOR;                     /* (LEMONADE SANDWICH: REC BUTTON first, then COLOR) */
         turn(EN_K2, 1); turn(EN_K2, -1);
         ok &= menu_cols == 1 && settings.palette == UI_DEFAULT_INDEX;
         turn(EN_K1, 1);
@@ -6625,7 +6626,7 @@ static int test_quick_layers(void)
             memset(&p, 0, sizeof p);
             settings_mute_q = 2; settings_export(&p); settings_mute_q = 0;
             ok = settings_import(&p, sizeof p) && settings_mute_q == 2u;
-            p.favorites.factory[15][24] &= (uint8_t)~0xC0u;
+            p.lowcut &= ~0x3000u;                         /* (LEMONADE SANDWICH: MUTES in lowcut, settings_persist.c) */
             settings_import(&p, sizeof p);
             bad += check("  MUTES is saved with the settings; saved before it: NOW", ok && settings_mute_q == 0u);
         }
@@ -8108,6 +8109,9 @@ static int test_sim_control(void)
     frame();
     bad += check("  the simulator gone: off", !sim.on && !kb_remote);
     song.sel = 0;
+    return bad;
+}
+
 /* RND (rnd.c): MENU > REC BUTTON RND makes REC roll the whole project (engines, never DRUM; generators, effects, cords,
  * key); REC held swaps back to before the roll and held again to the roll. Then many rolls: the limits a roll keeps
  * (FM6 and PHYS once, one CHORD track, the parts in, one key) and what they play (sound, no hard clipping) */
@@ -8400,7 +8404,7 @@ static int test_rnd(void)
             turn(EN_K2, 1);
             steps_ok &= rnd_setting() == steps[k].m && (favorites.factory[15][24] & 0xC0u) == steps[k].bits &&
                         settings_rnd_variant == steps[k].var && rnd_mode();
-            if (!steps_ok) printf("rnd: REC BUTTON step %u: wanted %s, got mode %u\n", k, steps[k].name, rnd_setting());
+            if (!steps_ok) printf("rnd: REC BUTTON step %u: wanted %s, got mode %u (menu %u sel %u)\n", k, steps[k].name, rnd_setting(), ui.menu, ui.menu_sel);
             settings_rnd_drift = (uint8_t)(k % RND_DRIFTS);
             settings_export(&pr);
             settings_rnd_variant = 0;
@@ -8436,8 +8440,22 @@ static int test_rnd(void)
     {                                               /* FALL (as NICE was): the ambient roles, gentle sounds */
         uint32_t k, roles_ok = 1, fx_off = 1, regs = 1, quiet = 0, clean = 1, modal = 1, clipped_n = 0;
         rnd_mode_put(RND_FALL);
+        tessera.qnt_own = 0; tessera.sub_split[1] = 50; tessera.follow_hold[2] = 1; tessera.sound_off[3] = 1;
+        tessera.fc_form = 1; tessera.et_amount = 40; tessera.pl_length = 3;
+        pattern_dir[0][trk[0].pattern % NPAT] = SEQ_BACK;
         press(B_REC);
         bad += check("RND FALL: REC tapped: a roll, FALL and the seed said", !memcmp(ui.msg, "FALL ", 5) && !song.rec);
+        bad += check("RND: ..QNT LINK OWN; SPLIT, HOLD, SOUND OFF, FORM, ENTRIES, PIECE LENGTH off; FORWARD (3.7's layers)",
+                     tessera.qnt_own == 1u && !tessera.sub_split[1] && !tessera.follow_hold[2] && !tessera.sound_off[3] &&
+                     !tessera.fc_form && !tessera.et_amount && !tessera.pl_length &&
+                     pattern_dir[0][trk[0].pattern % NPAT] == SEQ_FWD);
+        hold(B_REC);
+        bad += check("RND: ..REC held: they come back", !tessera.qnt_own && tessera.sub_split[1] == 50u &&
+                     tessera.sound_off[3] == 1u && tessera.pl_length == 3u && pattern_dir[0][trk[0].pattern % NPAT] == SEQ_BACK);
+        hold(B_REC);
+        tessera.qnt_own = 0; tessera.sub_split[1] = 0; tessera.follow_hold[2] = 0; tessera.sound_off[3] = 0;
+        tessera.fc_form = 0; tessera.et_amount = 0; tessera.pl_length = 0; pattern_dir[0][trk[0].pattern % NPAT] = SEQ_FWD;
+        press(B_REC);
         for (r = 0; r < 200u; r++) {
             uint32_t chordt = 0, drones = 0;
             rnd_roll();
