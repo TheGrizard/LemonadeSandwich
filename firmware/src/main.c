@@ -205,7 +205,7 @@ static void melodee_init(void)
         track_defaults(t);
         set_engine_of(t, TRK_DEF[i][0]);
         apply_preset_to(t, TRK_DEF[i][1]);    /* with its sends */
-        if (TRK_DEF[i][0] != ENGI_DRUM)
+        if (TRK_DEF[i][0] != ENGI_DRUM_ON)
             TRK_DEF_SCALE_OF(t);
         t->engine = t->eng_req;
         track_defaults_steps(t);              /* (a sound load never touches them) */

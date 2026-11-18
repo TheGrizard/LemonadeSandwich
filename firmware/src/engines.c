@@ -70,7 +70,7 @@ static void eng_state_clear(uint32_t part)
 static void eng_state_reset(void) { for (uint32_t k = 0; k < NPART; k++) eng_state_clear(k); }
 static int eng_state_prepare(const track_t *t)
 {
-    uint32_t size = t->engine==ENGI_DRUM?drum_bytes(t):eng_state_size(t->engine);
+    uint32_t size = t->engine==ENGI_DRUM_ON?drum_bytes(t):eng_state_size(t->engine);
     return !size || resource_get(RES_ENGINE0 + (uint32_t)(t - trk), size) != 0;
 }
 static phys_slot_t *phys_slots(uint32_t part) { return resource_get(RES_ENGINE0 + part % NPART, sizeof(phys_slot_t) * PHYS_POLY); }

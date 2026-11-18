@@ -126,10 +126,10 @@ static void up_oracle_put(up_rec_t *r, const uint8_t *p)
 static int up_valid(const up_rec_t *r)
 {
     int oracle = MELODEE_ORACLE && r->engine == ENGI_ORACLE && r->ver == UP_VER_ORACLE;
-    if (!(r->used == UP_USED && (r->ver == UP_VER || r->ver == UP_VER_GRID || oracle || (r->engine==ENGI_DRUM && (r->ver==UP_VER_DRUM || r->ver==UP_VER_DRUM_GRID))) && (r->engine < USER_GENERAL || oracle) &&
+    if (!(r->used == UP_USED && (r->ver == UP_VER || r->ver == UP_VER_GRID || oracle || (r->engine==ENGI_DRUM_ON && (r->ver==UP_VER_DRUM || r->ver==UP_VER_DRUM_GRID))) && (r->engine < USER_GENERAL || oracle) &&
           r->np >= 8u && r->np <= UP_PMAX * 2u && r->name[0])) return 0;
     for (uint32_t i = 0; i < r->np; i++) if (r->packed[i] > 191u) return 0;
-    if(r->engine==ENGI_DRUM && (r->ver==UP_VER_DRUM || r->ver==UP_VER_DRUM_GRID)){drum_patch_t p;if(!up_drum_raw(r,&p))return 0;}
+    if(r->engine==ENGI_DRUM_ON && (r->ver==UP_VER_DRUM || r->ver==UP_VER_DRUM_GRID)){drum_patch_t p;if(!up_drum_raw(r,&p))return 0;}
     if (oracle) { uint8_t p[UP_ORACLE_BYTES]; if (!up_oracle_raw(r, p)) return 0; }
     return 1;
 }
@@ -502,7 +502,7 @@ static int up_store(uint32_t k, const char *name)
 #if MELODEE_ORACLE
     if (r.engine == ENGI_ORACLE) up_oracle_put(&r, or_patch_of(TSEL));   /* (its pattern: never a drum grid) */
 #endif
-    if(r.engine==ENGI_DRUM){uint8_t b[DRUM_WIRE_BYTES];drum_patch_pack(b,&drum_patch[song.sel]);memcpy(r.cz_extra,b,sizeof r.cz_extra);memcpy(r.packed+r.np,b+sizeof r.cz_extra,8u);r.ver=r.ver==UP_VER_GRID?UP_VER_DRUM_GRID:UP_VER_DRUM;}
+    if(r.engine==ENGI_DRUM_ON){uint8_t b[DRUM_WIRE_BYTES];drum_patch_pack(b,&drum_patch[song.sel]);memcpy(r.cz_extra,b,sizeof r.cz_extra);memcpy(r.packed+r.np,b+sizeof r.cz_extra,8u);r.ver=r.ver==UP_VER_GRID?UP_VER_DRUM_GRID:UP_VER_DRUM;}
     int rc = up_put(k, &r);
     if ((rc == 0 || rc == 3) && r.engine == ENGI_FM6) {    /* its voice: native FM6 slot k */
         uint8_t pk[FM6_PACKED];
@@ -547,7 +547,7 @@ static int up_load(uint32_t k)
             if (!param_kept(i))
                 t->p[i] = param_reserved(i) ? 0 : v[i];
         t->preset = 0;
-        if(r->engine==ENGI_DRUM){memset(&drum_patch[song.sel],0,sizeof(drum_patch_t));if(r->ver==UP_VER_DRUM || r->ver==UP_VER_DRUM_GRID)up_drum_raw(r,&drum_patch[song.sel]);}
+        if(r->engine==ENGI_DRUM_ON){memset(&drum_patch[song.sel],0,sizeof(drum_patch_t));if(r->ver==UP_VER_DRUM || r->ver==UP_VER_DRUM_GRID)up_drum_raw(r,&drum_patch[song.sel]);}
 #if MELODEE_ORACLE
         if (r->engine == ENGI_ORACLE) {                 /* ORACLE: the record's patch (up_valid checked it; else INIT) */
             uint8_t p[UP_ORACLE_BYTES];

@@ -357,7 +357,7 @@ static uint32_t rnd_engine(uint32_t *fm6s, uint32_t *phys, uint32_t *oracles, ui
     }
     for (k = 0; k < NENG_SHOWN; k++) {
         uint32_t e = eng_vis(k), wt = rnd_engine_weight(e, role);
-        if (!eng_ok(e) || e == ENGI_DRUM || !ENGINES[e]->npresets) continue;
+        if (!eng_ok(e) || e == ENGI_DRUM_ON || !ENGINES[e]->npresets) continue;
         if (e == RND_FM6 && (*fm6s || !rnd_fm6_ok())) wt = 0u;
         if (e == RND_PHYS && (*phys || !rnd_phys_ok())) wt = 0u;
         if (e == ENGI_ORACLE && *oracles) wt = 0u;      /* (one at most: as heavy as FM6) */

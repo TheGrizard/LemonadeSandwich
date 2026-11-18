@@ -278,7 +278,7 @@ static uint32_t lowest_held(const track_t *t)           /* index of the lowest h
  * (eng_drum.c drum_amp), so its last block's peak instead (v->s[7], Q15): the quietest ringing tail goes first */
 static int32_t voice_level(const track_t *t, const voice_t *v)
 {
-    if (t->engine == ENGI_DRUM) {
+    if (t->engine == ENGI_DRUM_ON) {
         int32_t pk = v->s[7] > 32767 ? 32767 : v->s[7];
         return pk << 9;
     }
@@ -289,7 +289,7 @@ static int32_t voice_level(const track_t *t, const voice_t *v)
  * and hat don't leave only the last. (An emergency shed, audio.c, may still take it: it must free time.) */
 static int voice_fresh(const track_t *t, const voice_t *v)
 {
-    return t->engine == ENGI_DRUM && v->s[7] > 32767;
+    return t->engine == ENGI_DRUM_ON && v->s[7] > 32767;
 }
 static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
 {
@@ -394,7 +394,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
             voice_room(t, 0);
         return v;
     }
-    if (t->engine == ENGI_DRUM) {
+    if (t->engine == ENGI_DRUM_ON) {
         voice_t *v = drum_reuse(t, note);
         if (v)
             return voice_reuse(t, v);
@@ -410,7 +410,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
         if (k < np && vp == t)
             return &t->v[k];                            /* our own: restart it in place (no click) */
         if (k >= NVOICE) {
-            if (t->engine == ENGI_DRUM)
+            if (t->engine == ENGI_DRUM_ON)
                 return 0;                               /* a drum hit with nothing to give up: it gives way */
             break;
         }

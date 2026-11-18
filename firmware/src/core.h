@@ -218,6 +218,8 @@ static void params_by_count(int16_t *out, const int16_t *in, uint32_t np, const 
 /* engine indices the stores name (engines.c ENGINES[]: append-only) */
 #define ENGI_PHYS 9u
 #define ENGI_DRUM 10u
+#define ENGI_DRUM_ON (MELODEE_DRUM ? ENGI_DRUM : 0x100u)   /* (LEMONADE SANDWICH: compared with, never equal without DRUM:
+                                                     * its code drops out, 2026-11-18) */
 #define ENGI_NOISE 11u          /* (without MELODEE_LEGACY_EXTRAS: retired, never selectable) */
 /* PHYS MODEL DRUM (MODEL 4, before 1.0) -> the DRUM engine, its E values in place: {MODEL, TUNE, TONE, DECY,
  * SNAP, ACC, KICK 0..127, PERC 0..127} -> {KIT, TUNE, TONE, DECY, SNAP, ACC, KICK 0..1, DRV 0}. 1 = it was one

@@ -749,7 +749,7 @@ static void project_new_blank(void)
         track_defaults(t);
         set_engine_of(t, TRK_DEF[k][0]);
         apply_preset_to(t, TRK_DEF[k][1]);
-        if (TRK_DEF[k][0] != ENGI_DRUM)
+        if (TRK_DEF[k][0] != ENGI_DRUM_ON)
             TRK_DEF_SCALE_OF(t);
         track_defaults_steps(t);
         pat_last[k] = 0;
