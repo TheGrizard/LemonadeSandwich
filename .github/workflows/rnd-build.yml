@@ -6,7 +6,7 @@ name: Build RND
 
 on:
   push:
-    branches: [rnd-roll]
+    branches: [rnd-roll, ls-3.7]
   workflow_dispatch:
 
 permissions:
