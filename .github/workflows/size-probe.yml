@@ -1,0 +1,55 @@
+name: Size probe
+
+# The RND fork: a development build of both variants (dual core and MELODEE_DUAL_CORE=0) on every push to rnd-roll
+# or by hand, uploaded as one artifact (tessera-rnd.fwsc, tessera-rnd-1core.fwsc, SHA256SUMS). Install either with
+# the web installer's local-file option. Then the full host suite on the dual-core build.
+
+on:
+  push:
+    branches: [ls-3.7-probe]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      JIELI_TOOLCHAIN: ${{ github.workspace }}/.nightly-deps/jieli/toolchain
+      AC79_SDK: ${{ github.workspace }}/.nightly-deps/sdk
+      PARALLEL: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libharfbuzz-dev libfribidi-dev libraqm-dev
+          python -m pip install Pillow fonttools==4.68.0
+      - uses: actions/cache@v4
+        with:
+          path: .nightly-deps
+          key: jieli-linux-sdk-d179b448-v1
+      - name: Fetch pinned SDK and toolchain
+        run: |
+          if [ ! -x "$JIELI_TOOLCHAIN/pi32v2/bin/clang" ]; then
+            tools/get_toolchain.sh "$GITHUB_WORKSPACE/.nightly-deps/jieli"
+          fi
+          if [ ! -d "$AC79_SDK/.git" ]; then
+            git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$AC79_SDK"
+          fi
+          test "$(git -C "$AC79_SDK" rev-parse HEAD)" = d179b4484759423312073f5fbb232501aa491047
+      - name: Probe sizes
+        run: |
+          set +e
+          ./build.sh > dual.log 2>&1; echo "build rc $?"
+          grep -E "overflow|image|pool|arena" dual.log | tail -8
+          T=$JIELI_TOOLCHAIN
+          ls -la build/melodee.elf
+          "$T/common/bin/objdump" -h build/melodee.elf | grep -E " \.text| \.rodata| \.data"
+          "$T/common/bin/objdump" -t build/melodee.elf > syms.txt
+          python3 tools/probe_sizes.py syms.txt
