@@ -1,14 +1,15 @@
 # LEMONADE SANDWICH
 
 **Generative firmware for the M-VAVE FM-1, with a one-button piece machine.** A personal fork of
-[Tessera](https://github.com/Rastapopolix/tessera) by Thomas Bradley ([TheGrizard](https://github.com/TheGrizard)).
+[Tessera](https://github.com/Rastapopolix/tessera) by Thomas Bradley ([TheGrizard](https://github.com/TheGrizard)),
+built on Tessera 3.7.1.
 Everything Tessera does is still here: four tracks, the generators (Turing, Euclid, Markov, Morph, Grids, chords and
 more), the step sequencer and the mod matrix. On top of it, the **REC button rolls a whole new piece**: sounds, key,
 tempo, generators and modulation across all four tracks in one press, each roll with its own character.
 
 ## The rolls
 
-Pick one in **MENU > REC BUTTON** (hold **HOME** for the menu, **KNOB 1** picks the row, **KNOB 2** the value, hold
+Pick one in **MENU > REC BUTTON** (hold **HOME** for the menu: it's the top row; **KNOB 2** picks the roll, hold
 **HOME** again to leave), then press **REC**. Press it again for another. The rolls are in key and dry, with no reverb, ready for your own
 effects (WOZZA keeps its tape wear, STATIC its distortion).
 
@@ -30,7 +31,7 @@ effects (WOZZA keeps its tape wear, STATIC its distortion).
 | **FRACTURED** | Glitchy, broken beats after Autechre under FALL's warm pad, 130 to 150 BPM |
 | **RND** | A whole new piece, random and strange |
 
-**MENU > DRIFT** (OFF, SLOW, FAST) lets a roll change while it plays: new riffs, melodies, parts dropping out and
+**MENU > DRIFT** (the row under REC BUTTON: OFF, SLOW, FAST) lets a roll change while it plays: new riffs, melodies, parts dropping out and
 coming back. OFF keeps it exactly as rolled. Every part stays editable afterwards like any Tessera pattern.
 
 ## The engines
@@ -40,20 +41,25 @@ coming back. OFF keeps it exactly as rolled. Every part stays editable afterward
 - **MACRO**: Mutable Instruments Braids: textures, voices, FM, CSAW, FOLD, SWARM, MORPH, SYNC, SAW3, and KICK, DRUM and
   CYMB models (STRIK DRUM tunes a struck drum to the key)
 
-To fit the FM-1's flash, the device build leaves out FM6, SID, PHYS and DRUM, and the PHASER, WIDTH, FORMANT, ROOM
-and CHORUS effects (saved patches still load; those effects play as off). TAPE, SPIT, ECHO, REVERB and FILTER remain.
+To fit the FM-1's flash, the device build leaves out FM6, PHYS and DRUM, MACRO's wavetables, the PHASER, WIDTH,
+FORMANT, ROOM and CHORUS effects, and Tessera's screen reader (saved projects still load: a missing engine plays TRIO's
+first sound, a missing effect plays as off). TAPE, SPIT, ECHO, REVERB, FILTER and DRIVE remain.
 
 ## Install
 
-1. Download the latest **tessera-rnd-N** build from
-   [Actions > RND build](https://github.com/TheGrizard/LemonadeSandwich/actions/workflows/rnd-build.yml) (needs a
-   GitHub login) and unzip it. Use **tessera-rnd.fwsc**; **tessera-rnd-1core.fwsc** is a one-core fallback.
-2. Connect the FM-1 by USB, open the [Tessera web installer](https://rastapopolix.github.io/tessera/webapp/installer/)
-   in Chrome or Edge, choose the file and press **Install**. Keep USB connected until it finishes. It installs over
-   M-VAVE's official firmware or another Tessera-based build.
+1. Download **lemonade-sandwich-X.Y.fwsc** from the latest
+   [release](https://github.com/TheGrizard/LemonadeSandwich/releases/latest)
+   (**lemonade-sandwich-X.Y-1core.fwsc** is a one-core fallback).
+2. Connect the FM-1 by USB and open the [Tessera web installer](https://rastapopolix.github.io/tessera/webapp/installer/) in Chrome or
+   Edge. Open **Test build from this computer**, choose the file and press **Install test build**. Keep USB connected
+   until it finishes. It installs over M-VAVE's official firmware or another Tessera-based build.
+
+Development builds (**tessera-rnd-N**) are under
+[Actions > RND build](https://github.com/TheGrizard/LemonadeSandwich/actions/workflows/rnd-build.yml) (needs a GitHub
+login).
 
 **Newer FM-1s** (some white units with the M-VAVE logo) have a different flash chip, the UCUN UC25HQ80. Builds from
-**tessera-rnd-73** on support it. An older LEMONADE SANDWICH on one of those boards won't save settings or start an
+**tessera-rnd-73** and every release support it. An older LEMONADE SANDWICH on one of those boards won't save settings or start an
 update; it can be brought up to date with the current version of Tessera's USB recovery tool
 ([tools/fm1_recover.py](https://github.com/Rastapopolix/tessera/blob/main/tools/fm1_recover.py) with `--write
 --allow-untested-flash`; see Tessera's [recovery guide](https://github.com/Rastapopolix/tessera/blob/main/docs/RECOVERY.md)).

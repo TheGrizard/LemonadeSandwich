@@ -1,4 +1,7 @@
-name: Release Tessera
+name: Release LEMONADE SANDWICH
+
+# LEMONADE SANDWICH: Tessera's release workflow, its packages named lemonade-sandwich-X.Y[-1core].fwsc and its release
+# "LEMONADE SANDWICH X.Y" (2026-11-19).
 
 # A tag vX.Y[.Z][-suffix] on main: builds both firmware variants (dual core and MELODEE_DUAL_CORE=0), runs the full host
 # suite, checks the two packages as the site does (web/make_site.py: one identity, two distinct builds, Tessera's own
@@ -74,16 +77,16 @@ jobs:
         run: |
           mkdir -p build/release-assets
           MELODEE_LOOK=1 ./build.sh --release "$V" 2>&1 | tee dual.log   # 3.0: the Mono look only
-          cp "build/tessera-$V.fwsc" build/release-assets/
+          cp "build/tessera-$V.fwsc" "build/release-assets/lemonade-sandwich-$V.fwsc"
           MELODEE_DUAL_CORE=0 MELODEE_LOOK=1 ./build.sh --release "$V" 2>&1 | tee single.log
-          cp "build/tessera-$V-1core.fwsc" build/release-assets/
+          cp "build/tessera-$V-1core.fwsc" "build/release-assets/lemonade-sandwich-$V-1core.fwsc"
       - name: Check the packages as the site does, checksums
         run: |
-          python web/make_site.py "build/release-assets/tessera-$V.fwsc" \
-            "build/release-assets/tessera-$V-1core.fwsc" "$V" build/site-check
+          python web/make_site.py "build/release-assets/lemonade-sandwich-$V.fwsc" \
+            "build/release-assets/lemonade-sandwich-$V-1core.fwsc" "$V" build/site-check
           (cd build/release-assets && sha256sum *.fwsc > SHA256SUMS && cat SHA256SUMS)
           {
-            echo "### Tessera $V"
+            echo "### LEMONADE SANDWICH $V"
             echo '```'
             grep -h -E "audio working arena|^app |^package " dual.log single.log
             cat build/release-assets/SHA256SUMS
@@ -96,7 +99,7 @@ jobs:
           subject-path: build/release-assets/*.fwsc
       - uses: actions/upload-artifact@v4
         with:
-          name: tessera-${{ env.V }}
+          name: lemonade-sandwich-${{ env.V }}
           path: build/release-assets/*
 
   publish:
@@ -131,4 +134,4 @@ jobs:
           pre=""
           case "$v" in *-*) pre="--prerelease" ;; esac
           gh release create "$GITHUB_REF_NAME" build/release-assets/* --verify-tag $pre \
-            --title "Tessera $v" --notes-file "docs/RELEASE_$base.md"
+            --title "LEMONADE SANDWICH $v" --notes-file "docs/RELEASE_$base.md"
