@@ -6,6 +6,7 @@ firmware/src/*.pre*
 tools/*.pre*
 fm1-recovery-backups/
 *.fwsc
+!/docs/firmware/*.fwsc
 
 .nightly-deps/
 .nightly-pages/
