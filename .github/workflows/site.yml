@@ -1,0 +1,104 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# LEMONADE SANDWICH's site (GitHub Pages: main's docs/): the project page, the web installer with the newest release's
+# packages (as published, both cores and one), the web simulator built from this commit's source (web/sim/build.sh),
+# the editor and the manual (web/make_site.py). Runs:
+#   - on a push to a site branch (lemonade-site, site/*): builds the site into that branch's docs/ and commits it there,
+#     so the pull request into main carries the site;
+#   - when a release is published: builds it on a new branch site/TAG from main, to open as a pull request into main;
+#   - by hand (Actions > Site > Run workflow), as on a release, for the newest release.
+name: Site
+
+on:
+  push:
+    branches: [lemonade-site, 'site/**']
+    paths-ignore: ['docs/**']
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  site:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      JIELI_TOOLCHAIN: ${{ github.workspace }}/.nightly-deps/jieli/toolchain
+      AC79_SDK: ${{ github.workspace }}/.nightly-deps/sdk
+      PARALLEL: '2'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libharfbuzz-dev libfribidi-dev libraqm-dev
+          python -m pip install Pillow fonttools==4.68.0 markdown-it-py
+      - uses: actions/cache@v4
+        with:
+          path: .nightly-deps
+          key: jieli-linux-sdk-d179b448-v1
+      - name: Fetch pinned SDK and toolchain
+        run: |
+          if [ ! -x "$JIELI_TOOLCHAIN/pi32v2/bin/clang" ]; then
+            tools/get_toolchain.sh "$GITHUB_WORKSPACE/.nightly-deps/jieli"
+          fi
+          if [ ! -d "$AC79_SDK/.git" ]; then
+            git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$AC79_SDK"
+          fi
+          test "$(git -C "$AC79_SDK" rev-parse HEAD)" = d179b4484759423312073f5fbb232501aa491047
+
+      - name: The release to publish, and its packages
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = release ]; then tag="${{ github.event.release.tag_name }}"
+          else tag=$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name'); fi
+          [ -n "$tag" ] && [ "$tag" != null ] || { echo 'no release yet'; exit 1; }
+          v="${tag#[vV]}"
+          echo "TAG=$tag" >> "$GITHUB_ENV"; echo "V=$v" >> "$GITHUB_ENV"
+          mkdir -p build/release
+          gh release download "$tag" --pattern "lemonade-sandwich-$v.fwsc" --pattern "lemonade-sandwich-$v-1core.fwsc" --dir build/release
+          ls -l build/release
+
+      - name: The firmware's generated sources (./build.sh), for the simulator
+        run: ./build.sh
+
+      - name: Emscripten
+        run: |
+          set -euo pipefail
+          git clone -q https://github.com/emscripten-core/emsdk.git "$HOME/emsdk"
+          git -C "$HOME/emsdk" checkout -q a2b92777574c2feda07994cd4f1079a3dfc151f8   # emsdk 6.0.10
+          "$HOME/emsdk/emsdk" install 6.0.10
+          "$HOME/emsdk/emsdk" activate 6.0.10
+
+      - name: The simulator and the site
+        run: |
+          set -euo pipefail
+          set +u; source "$HOME/emsdk/emsdk_env.sh"; set -u
+          web/sim/build.sh --release "$V"
+          python web/make_site.py "build/release/lemonade-sandwich-$V.fwsc" "build/release/lemonade-sandwich-$V-1core.fwsc" "$V" docs build/sim
+
+      - name: Commit the site
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if [ "${{ github.event_name }}" != push ]; then
+            branch="site/$TAG"
+            git checkout -B "$branch"
+          else
+            branch="${GITHUB_REF#refs/heads/}"
+          fi
+          git add docs
+          if git diff --cached --quiet; then echo 'the site is unchanged'; exit 0; fi
+          git commit -q -m "Site: LEMONADE SANDWICH $V (web/make_site.py, the simulator from ${GITHUB_SHA::7})"
+          git push -q origin "HEAD:$branch"
+          echo "::notice::Site for $V on $branch: open a pull request into main (https://github.com/$GITHUB_REPOSITORY/compare/main...$branch)"
