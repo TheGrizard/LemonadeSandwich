@@ -6,7 +6,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tessera · Installer</title>
+<title>Lemonade Sandwich · Installer</title>
 <link rel="icon" href="../../media/brand/logo.svg" type="image/svg+xml">
 <style>
   /* TESSERA-MONO: tools/gen_mono_webfont.py writes the face here (firmware/src/gfx.c's 5 x 7 font) */
@@ -136,9 +136,8 @@ try { var t = localStorage.getItem("tessera-theme"); if (t) document.documentEle
 <body>
 <nav>
   <div class="wrap">
-    <a class="brand" href="../../" aria-label="Tessera">
-      <svg viewBox="0 0 78 78" aria-hidden="true"><rect x="4" y="5" width="18" height="18" fill="none" stroke="currentColor" stroke-width="4"/><rect x="31" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="4"/><rect x="53" y="2" width="22" height="22" fill="currentColor"/><rect x="5" y="30" width="18" height="18" fill="none" stroke="currentColor" stroke-width="4"/><rect x="30" y="30" width="18" height="18" fill="none" stroke="currentColor" stroke-width="4"/><rect x="55" y="31" width="18" height="18" fill="none" stroke="currentColor" stroke-width="4"/><rect x="4" y="55" width="18" height="18" fill="none" stroke="currentColor" stroke-width="4"/><rect x="31" y="57" width="18" height="18" fill="none" stroke="currentColor" stroke-width="4"/><rect x="55" y="55" width="18" height="18" fill="none" stroke="currentColor" stroke-width="4"/></svg>
-      TESSERA
+    <a class="brand" href="../../" aria-label="Lemonade Sandwich">
+      LEMONADE SANDWICH
     </a>
     <label class="lang"><span id="lang-code" aria-hidden="true">EN</span><select id="lang" aria-label="Language">
       <option value="en" lang="en">English</option><option value="es" lang="es">Español</option>
@@ -151,7 +150,7 @@ try { var t = localStorage.getItem("tessera-theme"); if (t) document.documentEle
 </nav>
 <main class="wrap">
   <div class="kicker" id="ver">FM-1</div>
-  <h1>TESSERA</h1>
+  <h1>LEMONADE SANDWICH</h1>
   <div class="bar" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <p class="tip"><b data-t="tipLabel"></b><span data-t="tip"></span></p>
   <ul class="needs">
@@ -1875,7 +1874,7 @@ const selection = () => {     /* the release, or a channel ("nightly-dual": meta
 const ready = () => { lastKey = "ready"; $("status").textContent = `Tessera ${selection().channel.version} (${t(build() + "Tag")})`; };
 const log = (t) => { $("log").textContent += t + "\n"; };
 let image = null;
-const meta = {"version": "3.7", "product": "FM-1_837", "pkg": {"dual": "../../firmware/tessera-3.7.fwsc", "single": "../../firmware/tessera-3.7-1core.fwsc"}, "beta": null, "nightly": null, "synth": null};
+const meta = {"version": "1.0", "product": "FM-1_810", "pkg": {"dual": "../../firmware/lemonade-sandwich-1.0.fwsc", "single": "../../firmware/lemonade-sandwich-1.0-1core.fwsc"}, "beta": null, "nightly": null, "synth": null};
 $("ver").textContent = `FM-1 · ${meta.version}`;
 $("beta-options").hidden = !meta.beta;
 if (meta.beta) {

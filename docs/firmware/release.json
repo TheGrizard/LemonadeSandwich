@@ -1,8 +1,8 @@
 {
-  "version": "3.7",
-  "product": "FM-1_837",
+  "version": "1.0",
+  "product": "FM-1_810",
   "pkg": {
-    "dual": "../../firmware/tessera-3.7.fwsc",
-    "single": "../../firmware/tessera-3.7-1core.fwsc"
+    "dual": "../../firmware/lemonade-sandwich-1.0.fwsc",
+    "single": "../../firmware/lemonade-sandwich-1.0-1core.fwsc"
   }
 }
