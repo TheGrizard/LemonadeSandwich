@@ -143,7 +143,8 @@ def copy_sim(sim, dest, version=None):
     sim = Path(sim)
     if not (sim / "melodee.wasm").exists():
         raise SystemExit(f"{sim}: no melodee.wasm (web/sim/build.sh)")
-    if version and f"Tessera v{version.lower()}" not in (sim / "index.html").read_text(encoding="utf-8"):
+    page = (sim / "index.html").read_text(encoding="utf-8")
+    if version and not any(f"{n} v{version.lower()}" in page for n in ("Lemonade Sandwich", "Tessera")):
         raise SystemExit(f"{sim}: not the {version} simulator (web/sim/build.sh --release {version})")
     dest.mkdir(parents=True, exist_ok=True)
     for f in ("index.html", "worklet.js", "melodee.wasm"):
@@ -194,7 +195,7 @@ def main(pkg, single, version, out, nightly=None, installer_only=False, synth=No
         strip_module((HERE / "fm1ota.js").read_text(encoding="utf-8")) + "\n" + \
         strip_module((HERE / "fm1backup.js").read_text(encoding="utf-8"))
     v = re.sub(r'[^A-Za-z0-9.-]', '-', version)
-    name, name1 = f"tessera-{v}.fwsc", f"tessera-{v}-1core.fwsc"
+    name, name1 = f"lemonade-sandwich-{v}.fwsc", f"lemonade-sandwich-{v}-1core.fwsc"   # (LEMONADE SANDWICH's names)
     release_meta = {"version": version, "product": product,
                     "pkg": {"dual": "../../firmware/" + name, "single": "../../firmware/" + name1}}
     meta = json.dumps({**release_meta, "beta": beta_meta, "nightly": nightly_meta, "synth": synth_meta})
@@ -207,7 +208,7 @@ def main(pkg, single, version, out, nightly=None, installer_only=False, synth=No
         d.mkdir(parents=True, exist_ok=True)
     keep = {name, name1, "melodee-nightly.fwsc", "melodee-nightly-1core.fwsc", "melodee-synth.fwsc",
             "melodee-synth-1core.fwsc", *(f[3] for f in beta_files.values())}
-    for old in [*fw.glob("melodee-*.fwsc"), *fw.glob("tessera-*.fwsc")]:   # (melodee-tess-*: the releases before 2.0)
+    for old in [*fw.glob("melodee-*.fwsc"), *fw.glob("tessera-*.fwsc"), *fw.glob("lemonade-sandwich-*.fwsc")]:   # (melodee-tess-*: the releases before 2.0)
         if old.name not in keep:
             old.unlink()
     (inst / "index.html").write_text(html, encoding="utf-8")

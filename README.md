@@ -47,12 +47,15 @@ first sound, a missing effect plays as off). TAPE, SPIT, ECHO, REVERB, FILTER an
 
 ## Install
 
-1. Download **lemonade-sandwich-X.Y.fwsc** from the latest
-   [release](https://github.com/TheGrizard/LemonadeSandwich/releases/latest)
-   (**lemonade-sandwich-X.Y-1core.fwsc** is a one-core fallback).
-2. Connect the FM-1 by USB and open the [Tessera web installer](https://rastapopolix.github.io/tessera/webapp/installer/) in Chrome or
-   Edge. Open **Test build from this computer**, choose the file and press **Install test build**. Keep USB connected
-   until it finishes. It installs over M-VAVE's official firmware or another Tessera-based build.
+Open **[LEMONADE SANDWICH's installer](https://thegrizard.github.io/LemonadeSandwich/webapp/installer/)** in Chrome or
+Edge (or the Web MIDI Browser app on an iPhone or iPad), connect the FM-1 by USB and follow the page. Keep USB connected
+until it finishes. It installs over M-VAVE's official firmware, Tessera or another FM-1 firmware. The
+[project page](https://thegrizard.github.io/LemonadeSandwich/) has the rolls, a simulator to try it in the browser, the
+editor and the manual.
+
+Or download **lemonade-sandwich-X.Y.fwsc** from the latest
+[release](https://github.com/TheGrizard/LemonadeSandwich/releases/latest)
+(**lemonade-sandwich-X.Y-1core.fwsc** is a one-core fallback) for `python3 tools/fm1_install.py`.
 
 Development builds (**tessera-rnd-N**) are under
 [Actions > RND build](https://github.com/TheGrizard/LemonadeSandwich/actions/workflows/rnd-build.yml) (needs a GitHub

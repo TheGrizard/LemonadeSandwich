@@ -1379,7 +1379,7 @@ function editorTabs() {
       `simulator: ${keys.size} lines in en ${Object.keys(ST).join(" ")}${gaps.length ? ", missing " + gaps.slice(0, 8) : ""}${used.length ? ", no English for " + used : ""}${holes.length ? ", {placeholders} differ " + holes : ""}`);
   }
   /* the project page: every other language has every piece of the page, with the same links and release marks */
-  {
+  if (readFileSync(join(HERE, "home", "index.html"), "utf8").includes("window.HOME_TEXT = {")) {   /* (LEMONADE SANDWICH's page: English only, no translations to check) */
     const hh = readFileSync(join(HERE, "home", "index.html"), "utf8");
     const hb = hh.indexOf("window.HOME_TEXT = {");
     const HT = vm.runInNewContext("(" + hh.slice(hb + 19, hh.indexOf("\n};", hb) + 2) + ")");

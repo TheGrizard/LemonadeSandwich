@@ -31,7 +31,7 @@ LABEL="Tessera, Melodee $VERSION base"
 if [ "$1" = --release ]; then           # as tools/build.py --release: X.Y[.Z] or X.Y[.Z]-suffix, lower case, a v in front
     echo "$2" | grep -Eq '^[1-9]\.[0-9](\.[0-9])?(-[A-Za-z0-9]+)?$' || { echo "--release $2: use X.Y[.Z] or X.Y[.Z]-suffix"; exit 1; }
     VERSION="v$(echo "$2" | tr 'A-Z' 'a-z')"
-    LABEL="Tessera $VERSION"
+    LABEL="Lemonade Sandwich $VERSION"   # (LEMONADE SANDWICH: its own name on the page)
 elif [ -n "$1" ]; then
     echo "usage: web/sim/build.sh [--release X.Y[.Z]]"; exit 1
 fi
