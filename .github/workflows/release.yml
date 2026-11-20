@@ -133,5 +133,12 @@ jobs:
           base="${v%%-*}"
           pre=""
           case "$v" in *-*) pre="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" build/release-assets/* --verify-tag $pre \
-            --title "LEMONADE SANDWICH $v" --notes-file "docs/RELEASE_$base.md"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # (LEMONADE SANDWICH: a release started on GitHub's Releases page, its tag made there: this fills it in)
+            gh release edit "$GITHUB_REF_NAME" --title "LEMONADE SANDWICH $v" --notes-file "docs/RELEASE_$base.md" \
+              --draft=false --prerelease="$([ -n "$pre" ] && echo true || echo false)"
+            gh release upload "$GITHUB_REF_NAME" build/release-assets/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" build/release-assets/* --verify-tag $pre \
+              --title "LEMONADE SANDWICH $v" --notes-file "docs/RELEASE_$base.md"
+          fi
